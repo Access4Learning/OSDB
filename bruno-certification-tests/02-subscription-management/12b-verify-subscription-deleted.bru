@@ -1,0 +1,74 @@
+meta {
+  name: 12b Verify Subscription Deleted
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec02DomainId}}/{{sec02SolutionId}}/subscriptions?queueId={{sec02QueueId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec02Consumer' });
+
+  const queueId = bru.getVar('sec02QueueId');
+  if (!queueId) {
+    throw new Error('12b-verify-subscription-deleted: Missing sec02QueueId.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error('12b-verify-subscription-deleted: Expected 200, got ' + status);
+  }
+
+  const data = res.getBody();
+  const subscriptions = data.subscriptions ? data.subscriptions.subscription || [] : (data.subscription || []);
+  const deletedId = bru.getVar('sec02SubscriptionId');
+  const stillPresent = subscriptions.some(s => s.id === deletedId);
+
+  if (stillPresent) {
+    throw new Error('Deleted subscription ' + deletedId + ' still appears in subscription list!');
+  }
+
+  console.log('✓ Verified: subscription absent from list after deletion');
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Deleted subscription not in list", function() {
+    const data = res.getBody();
+    const subscriptions = data.subscriptions ? data.subscriptions.subscription || [] : (data.subscription || []);
+    const deletedId = bru.getVar('sec02SubscriptionId');
+    const stillPresent = subscriptions.some(s => s.id === deletedId);
+    expect(stillPresent).to.be.false;
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies the deleted subscription no longer appears in the subscription list.
+
+  ## Rationale
+
+  After deletion, a GET on the subscriptions list should not include the deleted
+  subscription. This confirms the broker properly removes subscriptions.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Subscription list does NOT contain the previously deleted subscription ID
+}

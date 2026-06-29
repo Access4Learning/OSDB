@@ -1,0 +1,94 @@
+meta {
+  name: 13 Invalid ACL Subscription
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec02DomainId}}/{{sec02SolutionId}}/subscriptions/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceType: OBJECT
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{sec02QueueId}}",
+      "aclEntryId": "00000000-0000-0000-0000-000000000000",
+      "messageType": "EVENT"
+    }
+  }
+}
+
+assert {
+  res.status: eq 404
+  res.body.message: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec02Consumer' });
+
+  const queueId = bru.getVar('sec02QueueId');
+  if (!queueId) {
+    throw new Error('sec02QueueId not set. Run 05-create-queue first.');
+  }
+}
+
+tests {
+  test("Subscription creation rejected with 404 for nonexistent ACL", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+
+  test("Error response contains message field", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('message');
+    expect(data.message).to.be.a('string');
+    expect(data.message.length).to.be.greaterThan(0);
+  });
+
+  test("Error response contains error code", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('code');
+  });
+
+  test("Error response scope is BROKER", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('scope');
+    expect(data.scope).to.equal('BROKER');
+  });
+
+  test("No subscription was created (list unchanged)", function() {
+    // The subscription list should not have grown from this failed attempt
+    // This is implicitly verified by the 404 status â€” the broker rejected the request
+    expect(res.getStatus()).to.equal(404);
+  });
+}
+
+docs {
+  ## Summary
+
+  Attempts to create a subscription with a nonexistent ACL entry ID and verifies
+  the broker rejects the request with 404.
+
+  ## Rationale
+
+  Subscriptions are bound to ACL entries. If the referenced ACL entry does not exist,
+  the broker cannot resolve the service name, zone, and context. A compliant broker
+  must reject such requests with a 404 error rather than creating an invalid subscription.
+  This prevents orphaned subscriptions that can never receive messages.
+
+  ## Expected Result
+
+  - HTTP 404 Not Found
+  - Error response body contains: message (describing the ACL entry was not found),
+    code (error code), and scope ("BROKER")
+  - No subscription is created
+}

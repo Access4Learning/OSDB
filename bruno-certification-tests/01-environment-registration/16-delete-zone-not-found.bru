@@ -1,0 +1,55 @@
+meta {
+  name: 16 Delete Zone Not Found
+  type: http
+  seq: 16
+}
+
+delete {
+  url: {{gatewayUrl}}/{{sec01DomainId}}/{{sec01SolutionId}}/zones/nonexistent-zone-xyz
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec01Admin' });
+}
+
+assert {
+  res.status: eq 404
+}
+
+tests {
+  test("Delete non-existent zone returns 404", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+
+  test("Response contains error details", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('code');
+  });
+}
+
+docs {
+  ## Summary
+
+  Attempts to delete a zone that does not exist and verifies the broker returns 404 Not Found.
+
+  ## Rationale
+
+  The zone deletion endpoint must return HTTP 404 when the target zone ID does not
+  match any existing zone. This confirms the `NoResourceFoundException` handler is
+  wired correctly for the delete path.
+
+  ## Expected Result
+
+  - HTTP 404 Not Found
+  - Response body contains an error code
+}

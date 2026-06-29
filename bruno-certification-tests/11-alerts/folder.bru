@@ -1,0 +1,78 @@
+meta {
+  name: 11 Alerts
+  seq: 12
+}
+
+docs {
+  # Alerts
+
+  ## Concept Overview
+
+  In SIF 3.7, the **Alerts** utility service allows any environment to report operational
+  alerts (warnings, errors, critical issues) to the broker. The OSDB automatically
+  registers the broker-services environment as the alerts provider when a solution is
+  created — no manual provider registration is needed for basic alert functionality.
+
+  ### Alert Visibility (Query/List)
+
+  When querying alerts via GET, ownership filtering applies:
+  - **Admin environments** see all alerts in the solution
+  - **Non-admin environments** see only alerts they themselves created
+
+  ### Alert Event Delivery (Notifications)
+
+  When an alert is created, the broker publishes it as an EVENT to subscribed environments.
+  Delivery scope depends on whether the alert references a specific message:
+
+  - **Broadcast alerts** (no `messageID`): Delivered to ALL environments subscribed to
+    the alerts service. Used for general operational notifications.
+  - **Directed alerts** (with `messageID`): Delivered ONLY to the environment that
+    originated the referenced message. This is the key error-reporting mechanism:
+    a consumer detects bad data in a provider's event, creates an alert referencing
+    that event's messageID, and only the originating provider receives the notification.
+
+  ### Example: Directed Alert Flow
+
+  1. Provider publishes a TestObjects UPDATE event (broker caches messageID → provider)
+  2. Consumer receives the event and detects invalid data
+  3. Consumer creates an alert with `messageID` pointing to the problematic event
+  4. Broker resolves messageID → sourceEnvironmentId = Provider
+  5. Alert event delivered ONLY to the Provider (not other subscribers)
+  6. Provider can investigate and correct the issue
+
+  ## Required Fields
+
+  `reporter`, `exchange`, `level`
+
+  ## Optional Fields
+
+  `cause`, `description`, `messageID`, `body`, `error`, `xpath`,
+  `category`, `code`, `internal`, `SIF_ExtendedElements`
+
+  ## Test Sections
+
+  **Steps 01-15: Basic Alert CRUD**
+  1. Alert creation (admin + consumer)
+  2. Alert listing with SIF collection wrapper
+  3. Alert retrieval by ID
+  4. Validation (missing required fields → 400)
+  5. Ownership filtering (consumer only sees own alerts)
+
+  **Steps 20-45: Event Publishing + Directed Alert Delivery**
+  1. Three environments (Provider, Consumer 1, Consumer 2) with queues and subscriptions
+  2. Provider publishes TestObjects UPDATE event → both consumers receive it
+  3. Consumer 1 creates directed alert referencing the event's messageID
+  4. Only the Provider receives the alert (directed delivery)
+  5. Consumer 1 and Consumer 2 do NOT receive the alert
+
+  ## Prerequisites
+
+  - Self-contained (creates its own domain/solution/environments)
+  - Broker auto-registers as alerts provider during solution creation
+
+  ## SIF Specification Reference
+
+  - SIF 3.7 Infrastructure — Utility Services — §7 Alerts
+  - "Subscribe to Alert creation Events" (SIF 3.3 §7)
+}
+

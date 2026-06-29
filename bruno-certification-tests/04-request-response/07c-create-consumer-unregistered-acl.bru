@@ -1,0 +1,79 @@
+meta {
+  name: 07c Create Consumer Unregistered Service ACL
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec04ConsumerEnvId}}",
+    "serviceName": "UnregisteredServiceObjects",
+    "zoneId": "{{sec04ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "QUERY",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Admin' });
+
+  const consumerEnvId = bru.getVar('sec04ConsumerEnvId');
+  if (!consumerEnvId) {
+    throw new Error('07c-create-consumer-unregistered-acl: Missing sec04ConsumerEnvId.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '04-request-response/07c-create-consumer-unregistered-acl: Failed to create QUERY ACL for UnregisteredServiceObjects, got ' +
+      status + ': ' + JSON.stringify(res.getBody())
+    );
+  }
+  bru.setVar('sec04UnregisteredQueryAclId', res.getBody().id);
+  console.log('✓ Created QUERY ACL for UnregisteredServiceObjects:', res.getBody().id);
+}
+
+tests {
+  test("Consumer QUERY ACL for UnregisteredServiceObjects created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a QUERY ACL entry for "UnregisteredServiceObjects" so the consumer can
+  pass through the gateway's authorization check. This allows test 15 to verify
+  that the requests-connector properly returns 404 when no provider is registered.
+
+  ## Rationale
+
+  Without this ACL, the gateway would reject the consumer's request with 403
+  before it even reaches the requests-connector. The test intent is to verify
+  the broker's behavior when no provider exists — not to test authorization.
+
+  ## Expected Result
+
+  - QUERY ACL created for consumer → `sec04UnregisteredQueryAclId`
+}

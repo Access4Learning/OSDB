@@ -1,0 +1,73 @@
+meta {
+  name: 13 Delayed Delayed
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{sec04ConsumerRequestsUrl}}/{{immediateProviderServiceName}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec04ZoneId}}
+  contextId: DEFAULT
+  requestType: DELAYED
+  queueId: {{sec04QueueId}}
+  serviceType: OBJECT
+}
+
+assert {
+  res.status: eq 202
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Consumer' });
+
+  const requestsUrl = bru.getVar('sec04ConsumerRequestsUrl');
+  const queueId = bru.getVar('sec04QueueId');
+  if (!requestsUrl || !queueId) {
+    throw new Error(
+      '04-request-response/13-delayed-delayed: Missing sec04ConsumerRequestsUrl or sec04QueueId. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('DELAYED/DELAYED request response status:', status);
+
+  if (status === 202) {
+    console.log('✓ Request accepted (202)');
+  } else {
+    console.error('✗ Expected 202, got:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("DELAYED/DELAYED request returns 202 Accepted", function() {
+    expect(res.getStatus()).to.equal(202);
+  });
+}
+
+docs {
+  ## Summary
+
+  Sends a DELAYED request for the DELAYED/DELAYED choreography.
+
+  ## Rationale
+
+  In the DELAYED/DELAYED choreography, the broker accepts the consumer's request
+  (202) and enqueues it to the provider's queue. The provider independently polls
+  its queue, processes the request, and submits the response through the Responses
+  Connector.
+
+  ## Expected Result
+
+  - HTTP 202 Accepted from the Requests Connector
+}

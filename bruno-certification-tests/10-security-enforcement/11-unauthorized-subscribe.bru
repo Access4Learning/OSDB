@@ -1,0 +1,95 @@
+meta {
+  name: 11 Unauthorized Subscribe
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{sec10Consumer2SubscriptionsUrl}}/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{sec10Consumer2EnvId}}",
+      "aclEntryId": "{{sec10Consumer2QueryAclId}}",
+      "messageType": "EVENT"
+    }
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.message: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec10Consumer2' });
+
+  const subscriptionsUrl = bru.getVar('sec10Consumer2SubscriptionsUrl');
+  if (!subscriptionsUrl) {
+    throw new Error(
+      '10-security-enforcement/11-unauthorized-subscribe: Missing sec10Consumer2SubscriptionsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Consumer 2 (QUERY only) attempted SUBSCRIBE → status: ' + status);
+
+  if (status === 403) {
+    console.log('✓ Correctly rejected: Consumer 2 lacks SUBSCRIBE access');
+    const body = res.getBody();
+    bru.setVar('sec10UnauthorizedSubscribeBody', JSON.stringify(body));
+  } else {
+    console.error('✗ Expected 403, got: ' + status);
+  }
+}
+
+tests {
+  test("Subscription creation rejected with 403 Forbidden", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+
+  test("Error response contains message field", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('message');
+    expect(data.message).to.be.a('string');
+    expect(data.message.length).to.be.greaterThan(0);
+  });
+
+  test("Consumer 2 does not have SUBSCRIBE access", function() {
+    // Consumer 2 was granted only QUERY — SUBSCRIBE should be denied
+    expect(res.getStatus()).to.equal(403);
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that Consumer 2 (QUERY-only) is rejected when attempting to create
+  a subscription.
+
+  ## Rationale
+
+  A SIF-compliant broker must enforce ACL boundaries. Consumer 2 has only QUERY
+  access for CertSecurityObjects, meaning it can send requests but cannot create
+  subscriptions. The broker must return 403 with an error body when subscription
+  creation is attempted without the appropriate SUBSCRIBE ACL grant.
+
+  ## Expected Result
+
+  - HTTP 403 Forbidden
+  - Response body contains `message` field describing insufficient access rights
+}

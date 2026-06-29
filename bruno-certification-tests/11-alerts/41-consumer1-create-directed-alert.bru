@@ -1,0 +1,100 @@
+meta {
+  name: 41 Consumer 1 Creates Directed Alert
+  type: http
+  seq: 38
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/alerts/alert
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "alert": {
+      "reporter": "Consumer1-ErrorDetector",
+      "exchange": "EVENT",
+      "level": "ERROR",
+      "description": "Detected invalid data in TestObjects UPDATE event from Provider",
+      "messageID": "{{sec11EventMessageId}}"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.alert: isDefined
+  res.body.alert.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Consumer' });
+  
+  const eventMessageId = bru.getVar('sec11EventMessageId');
+  if (!eventMessageId) {
+    throw new Error(
+      '11-alerts/41: Missing sec11EventMessageId. Step 36 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '11-alerts/41 FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  
+  const data = res.getBody();
+  bru.setVar('sec11DirectedAlertId', data.alert.id);
+  console.log('✓ Directed alert created: ' + data.alert.id);
+  console.log('  References messageID: ' + bru.getVar('sec11EventMessageId'));
+}
+
+tests {
+  test("Directed alert created (201)", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response contains alert ID", function() {
+    expect(res.getBody().alert.id).to.exist;
+  });
+  
+  test("Reporter matches", function() {
+    expect(res.getBody().alert.reporter).to.equal('Consumer1-ErrorDetector');
+  });
+}
+
+docs {
+  ## Summary
+  Consumer 1 creates a directed alert referencing the Provider's messageId.
+  
+  ## Rationale — Directed Alert Creation
+  When a consumer detects an error in a received message, it reports an alert with the
+  `messageID` field set to the original event's messageId. The broker uses this reference
+  to look up which environment sent that message (the Provider's sourceEnvironmentId).
+  
+  This creates a DIRECTED alert — it will only be delivered to the environment that
+  originated the referenced message (the Provider), not broadcast to all alert subscribers.
+  
+  Key fields:
+  - `reporter`: identifies who detected the error
+  - `exchange`: "EVENT" because the error was in an event message
+  - `level`: "ERROR" severity
+  - `messageID`: references the Provider's event messageId from step 36
+  
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec11DirectedAlertId` stored
+  - Alert targets only the Provider (verified in steps 42-45)
+}

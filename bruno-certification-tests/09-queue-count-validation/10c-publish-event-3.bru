@@ -1,0 +1,68 @@
+meta {
+  name: 10c Publish Event 3
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{sec09ProviderEventsUrl}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceName: CertCountObjects
+  serviceType: OBJECT
+  eventAction: CREATE
+  messageType: EVENT
+  zoneId: {{sec09ZoneId}}
+  contextId: DEFAULT
+}
+
+body:json {
+  {
+    "certCountObject": {
+      "refId": "{{$randomUUID}}",
+      "localId": "cert-count-event-3",
+      "name": "Count Validation Event 3",
+      "description": "Third event published for queue count validation"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Provider' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 202 && status !== 204) {
+    throw new Error('Failed to publish event 3: status ' + status);
+  }
+  console.log('✓ Event 3 published (status ' + status + ')');
+  bru.setVar('sec09EventCount', 3);
+  console.log('=== All 3 events published successfully ===');
+}
+
+assert {
+  res.status: in [202, 204]
+}
+
+tests {
+  test("Event 3 accepted", function() {
+    expect([202, 204]).to.include(res.getStatus());
+  });
+
+  test("All 3 events published", function() {
+    expect(bru.getVar('sec09EventCount')).to.equal(3);
+  });
+}
+
+docs {
+  ## Summary
+  Publishes the third event for queue count validation.
+}

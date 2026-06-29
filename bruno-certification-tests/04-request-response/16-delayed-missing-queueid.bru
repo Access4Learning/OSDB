@@ -1,0 +1,86 @@
+meta {
+  name: 16 Delayed Missing QueueId
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{sec04ConsumerRequestsUrl}}/{{immediateProviderServiceName}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec04ZoneId}}
+  contextId: DEFAULT
+  requestType: DELAYED
+  serviceType: OBJECT
+}
+
+assert {
+  res.status: in [400, 422]
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Consumer' });
+
+  const requestsUrl = bru.getVar('sec04ConsumerRequestsUrl');
+  if (!requestsUrl) {
+    throw new Error(
+      '04-request-response/16-delayed-missing-queueid: Missing sec04ConsumerRequestsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('DELAYED without queueId response status:', status);
+
+  if (status === 400 || status === 422) {
+    console.log('✓ Correctly rejected DELAYED request without queueId');
+    const body = res.getBody();
+    if (body && body.message) {
+      console.log('  Error message:', body.message);
+    }
+  } else {
+    console.error('✗ Expected 400 or 422, got:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("DELAYED request without queueId returns error", function() {
+    const status = res.getStatus();
+    expect(status === 400 || status === 422).to.be.true;
+  });
+
+  test("Error response indicates missing queueId", function() {
+    const body = res.getBody();
+    expect(body).to.exist;
+    // The error message should mention queueId requirement
+    const bodyStr = JSON.stringify(body).toLowerCase();
+    expect(bodyStr).to.include('queue');
+  });
+}
+
+docs {
+  ## Summary
+
+  Sends a DELAYED request without the required `queueId` header and verifies
+  the broker rejects it with an error response.
+
+  ## Rationale
+
+  DELAYED choreographies require a `queueId` header so the broker knows where
+  to deliver the provider's response. If the consumer omits this header, the
+  broker must reject the request with a clear error rather than accepting it
+  and having nowhere to deliver the response.
+
+  ## Expected Result
+
+  - HTTP 400 Bad Request or 422 Unprocessable Entity
+  - Error body with a message indicating queueId is required for DELAYED requests
+}

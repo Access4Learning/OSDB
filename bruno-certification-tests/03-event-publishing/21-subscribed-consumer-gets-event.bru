@@ -1,0 +1,103 @@
+meta {
+  name: 21 Subscribed Consumer Gets Event
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{sec03Consumer1QueuesUrl}}/{{sec03Queue1Id}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec03Consumer1' });
+
+  const queuesUrl = bru.getVar('sec03Consumer1QueuesUrl');
+  const queueId = bru.getVar('sec03Queue1Id');
+  if (!queuesUrl || !queueId) {
+    throw new Error(
+      '03-event-publishing/11-subscribed-consumer-gets-event: Missing queue URL or ID. ' +
+      'Ensure setup steps completed successfully.'
+    );
+  }
+
+  const eventPublished = bru.getVar('sec03EventPublished');
+  if (!eventPublished) {
+    throw new Error(
+      '03-event-publishing/11-subscribed-consumer-gets-event: Event not published. ' +
+      'Run 10-publish-event first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 200) {
+    const messageId = res.getHeader('messageid');
+    if (messageId) {
+      bru.setVar('sec03DeliveredMessageId', messageId);
+      console.log('âœ“ Event delivered to Consumer 1');
+      console.log('  Message ID: ' + messageId);
+    }
+
+    const body = res.getBody();
+    console.log('  Event payload: ' + JSON.stringify(body, null, 2));
+  } else {
+    console.error('Unexpected status: ' + status + '. Expected 200 with event payload.');
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Consumer 1 receives event (200 OK)", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response has messageid header", function() {
+    const messageId = res.getHeader('messageid');
+    expect(messageId).to.exist;
+    expect(messageId).to.be.a('string').and.not.be.empty;
+  });
+
+  test("Response body contains event payload", function() {
+    const body = res.getBody();
+    expect(body).to.exist;
+    expect(body).to.have.property('certEventObject');
+    expect(body.certEventObject).to.have.property('refId');
+    expect(body.certEventObject).to.have.property('name');
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that Consumer 1 (subscribed) receives the published event in its queue.
+
+  ## Rationale
+
+  After the provider publishes an event, the broker must distribute it to all consumers
+  with matching subscriptions. Consumer 1 has a subscription for "CertEventObjects" in
+  the test zone, so its queue should contain the event. The GET request retrieves the
+  next message from the queue.
+
+  A compliant broker returns:
+  - 200 OK with the event payload in the body
+  - A `messageid` response header identifying the delivered message
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Body contains the original event payload (certEventObject with refId, name, etc.)
+  - `messageid` response header is present and non-empty
+  - `sec03DeliveredMessageId` stored for header verification test
+}

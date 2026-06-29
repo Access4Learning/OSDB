@@ -1,0 +1,89 @@
+meta {
+  name: 21 Nonexistent Token 404
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/requests/NonExistentQuery
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceType: XQUERYTEMPLATE
+  zoneId: {{sec14ZoneId}}
+  contextId: DEFAULT
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec14Consumer' });
+
+  const consumerEnvId = bru.getVar('sec14ConsumerEnvId');
+  if (!consumerEnvId) {
+    throw new Error(
+      '14-named-query-support/21-nonexistent-token-404: Missing sec14ConsumerEnvId. ' +
+      'Step 06-create-consumer-env must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 403) {
+    console.log('✓ Non-existent queryToken blocked by gateway ACL (403) — consumer has no ACL for "NonExistentQuery"');
+  } else if (status === 404) {
+    console.log('✓ Non-existent queryToken correctly returns 404 from requests-connector');
+  } else {
+    throw new Error(
+      '14-named-query-support/21-nonexistent-token-404 FAILED: expected 403 or 404, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+}
+
+assert {
+  res.status: in [403, 404]
+}
+
+tests {
+  test("Non-existent queryToken returns 403 or 404", function() {
+    expect(res.getStatus()).to.be.oneOf([403, 404]);
+  });
+
+  test("Error response contains message", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('message');
+    expect(data.message).to.be.a('string');
+    expect(data.message.length).to.be.greaterThan(0);
+  });
+}
+
+docs {
+  ## Summary
+  Verifies that invoking a queryToken that no provider has registered results in
+  an error response (either 403 or 404).
+
+  ## Rationale
+  Per requirement 3.4, if no provider has registered a Named Query Template with
+  the specified queryToken and serviceType XQUERYTEMPLATE, the system should reject
+  the request.
+
+  Two valid outcomes exist:
+  1. **HTTP 403** — The gateway blocks the request because the consumer has no
+     QUERY ACL entry for "NonExistentQuery" (ACL enforcement happens first)
+  2. **HTTP 404** — The request passes gateway ACL but the requests-connector
+     finds no provider registered for this token
+
+  Both outcomes correctly prevent the consumer from invoking a non-existent query.
+  The actual result depends on whether a QUERY ACL for "NonExistentQuery" exists.
+  Since step 08 only grants QUERY access for "StudentSnapshot", the gateway will
+  likely return 403.
+
+  ## Expected Result
+  - HTTP 403 Forbidden (gateway ACL blocks — no ACL for this token)
+  - OR HTTP 404 Not Found (requests-connector finds no provider)
+}

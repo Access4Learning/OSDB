@@ -1,0 +1,73 @@
+meta {
+  name: 04 Setup Zone
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec05DomainId}}/{{sec05SolutionId}}/zones
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+body:json {
+  {
+    "zoneId": "cert-params-{{$timestamp}}",
+    "description": "Zone for parameter styles certification tests"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec05Admin' });
+
+  const domainId = bru.getVar('sec05DomainId');
+  const solutionId = bru.getVar('sec05SolutionId');
+  if (!domainId || !solutionId) {
+    throw new Error(
+      '05-parameter-styles/01-setup-zone: Missing sec05DomainId or sec05SolutionId. ' +
+      'Run steps 01-03 first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '05-parameter-styles/01-setup-zone FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec05ZoneId', data.zoneId || data.id);
+  console.log('Ã¢Å“â€œ Created zone:', bru.getVar('sec05ZoneId'));
+}
+
+docs {
+  ## Summary
+
+  Creates a dedicated zone for parameter styles tests.
+
+  ## Rationale
+
+  Each test section creates its own zone for isolation. This ensures
+  no interference from other test sections and enables clean teardown.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Zone ID stored in `sec05ZoneId` Bruno variable
+}

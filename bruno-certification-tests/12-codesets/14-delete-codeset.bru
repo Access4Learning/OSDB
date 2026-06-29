@@ -1,0 +1,63 @@
+meta {
+  name: 14 Delete Code Set
+  type: http
+  seq: 14
+}
+
+delete {
+  url: {{gatewayUrl}}/{{sec12DomainId}}/{{sec12SolutionId}}/codeSets/{{sec12CodeSetId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec12Admin' });
+
+  const codeSetId = bru.getVar('sec12CodeSetId');
+  if (!codeSetId) {
+    throw new Error(
+      '12-codesets/14-delete-codeset: Missing sec12CodeSetId. ' +
+      'Step 10-create-codeset must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 204) {
+    throw new Error(
+      '12-codesets/14-delete-codeset FAILED: expected 204, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  console.log('✓ Code set deleted: ' + bru.getVar('sec12CodeSetId'));
+}
+
+assert {
+  res.status: eq 204
+}
+
+tests {
+  test("Code set deleted with status 204", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  ## Summary
+  Deletes a code set (admin only).
+
+  ## Rationale
+  Verifies that DELETE /codeSets/{id} removes the code set and returns 204.
+
+  ## Expected Result
+  - HTTP 204 No Content
+}
+

@@ -1,0 +1,69 @@
+meta {
+  name: 99 Teardown
+  type: http
+  seq: 99
+}
+
+delete {
+  url: {{gatewayUrl}}/domains/{{sec13DomainId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 200 || status === 204) {
+    console.log('✓ Domain deleted (cascade removes all resources): ' + bru.getVar('sec13DomainId'));
+  } else if (status === 404) {
+    console.log('✓ Domain already deleted (404)');
+  } else {
+    console.error('⚠ Unexpected status ' + status + ' — continuing');
+  }
+
+  // Clear section variables
+  bru.setVar('sec13DomainId', null);
+  bru.setVar('sec13DomainName', null);
+  bru.setVar('sec13SolutionId', null);
+  bru.setVar('sec13SolutionName', null);
+  bru.setVar('sec13AdminEnvironmentId', null);
+  bru.setVar('sec13AdminSessionToken', null);
+  bru.setVar('sec13AdminSharedSecret', null);
+  bru.setVar('sec13ConsumerEnvId', null);
+  bru.setVar('sec13ConsumerSessionToken', null);
+  bru.setVar('sec13ConsumerSharedSecret', null);
+  bru.setVar('sec13NamespaceId', null);
+  bru.setVar('sec13NamespaceUri', null);
+}
+
+assert {
+  res.status: in [200, 204, 404]
+}
+
+tests {
+  test("Domain teardown completed", function() {
+    expect(res.getStatus()).to.be.oneOf([200, 204, 404]);
+  });
+}
+
+docs {
+  ## Summary
+  Deletes the test domain, which cascade-deletes all resources.
+
+  ## Rationale
+  Ensures clean state after test execution regardless of pass/fail status.
+
+  ## Expected Result
+  - HTTP 200/204: Domain and all child resources deleted
+  - HTTP 404: Already cleaned up
+}
+

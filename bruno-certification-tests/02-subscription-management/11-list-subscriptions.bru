@@ -1,0 +1,85 @@
+meta {
+  name: 11 List Subscriptions
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec02DomainId}}/{{sec02SolutionId}}/subscriptions?queueId={{sec02QueueId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.subscriptions.subscription: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec02Consumer' });
+
+  const queueId = bru.getVar('sec02QueueId');
+  if (!queueId) {
+    throw new Error('sec02QueueId not set. Run 05-create-queue first.');
+  }
+}
+
+tests {
+  test("List subscriptions returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response uses SIF collection wrapper with 'subscriptions.subscription' key", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('subscriptions');
+    expect(data.subscriptions).to.have.property('subscription');
+    expect(data.subscriptions.subscription).to.be.an('array');
+  });
+
+  test("Collection contains at least one subscription", function() {
+    const data = res.getBody();
+    expect(data.subscriptions.subscription.length).to.be.greaterThan(0);
+  });
+
+  test("Previously created subscription is present in the list", function() {
+    const data = res.getBody();
+    const createdId = bru.getVar('sec02SubscriptionId');
+    const found = data.subscriptions.subscription.some(s => s.id === createdId);
+    expect(found).to.be.true;
+  });
+
+  test("Each subscription has expected SIF fields", function() {
+    const data = res.getBody();
+    data.subscriptions.subscription.forEach(sub => {
+      expect(sub).to.have.property('id');
+      expect(sub).to.have.property('queueId');
+      expect(sub).to.have.property('serviceName');
+      expect(sub).to.have.property('zoneId');
+    });
+  });
+}
+
+docs {
+  ## Summary
+
+  Lists all active subscriptions for the consumer's queue using the SIF collection
+  wrapper format.
+
+  ## Rationale
+
+  SIF 3.7 requires that subscription queries return results in the standard collection
+  format: `{"subscription": [...]}`. This test verifies the broker returns the correct
+  wrapper structure and includes the subscription created in the previous step.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Body: `{"subscription": [...]}` containing at least the previously created subscription
+  - Each subscription includes id, queueId, serviceName, zoneId fields
+}

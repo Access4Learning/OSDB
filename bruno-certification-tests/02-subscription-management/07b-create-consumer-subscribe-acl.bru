@@ -1,0 +1,70 @@
+meta {
+  name: 07b Create Consumer SUBSCRIBE ACL
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec02DomainId}}/{{sec02SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec02ConsumerEnvId}}",
+    "serviceName": "StudentPersonal",
+    "zoneId": "{{sec02ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "SUBSCRIBE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec02Admin' });
+
+  const consumerEnvId = bru.getVar('sec02ConsumerEnvId');
+  if (!consumerEnvId) {
+    throw new Error('07b: Missing sec02ConsumerEnvId.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '02-subscription-management/07b FAILED: Consumer ACL creation returned ' +
+      status + '. Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  bru.setVar('sec02ConsumerAclId', res.getBody().id);
+  console.log('✓ Consumer SUBSCRIBE ACL created: ' + res.getBody().id);
+}
+
+tests {
+  test("Consumer SUBSCRIBE ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  ## Summary
+  Creates SUBSCRIBE ACL for consumer environment on StudentPersonal.
+
+  ## Expected Result
+  - HTTP 201 → `sec02ConsumerAclId` stored
+}

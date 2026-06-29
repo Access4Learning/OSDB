@@ -1,0 +1,82 @@
+meta {
+  name: 04 Setup Zone
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec06DomainId}}/{{sec06SolutionId}}/zones
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+body:json {
+  {
+    "zoneId": "sec06-queue-ops-zone-{{$timestamp}}",
+    "description": "Certification test zone for 06-queue-operations"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Admin' });
+
+  // Verify provisioning state
+  const domainId = bru.getVar('sec06DomainId');
+  const solutionId = bru.getVar('sec06SolutionId');
+  if (!domainId || !solutionId) {
+    throw new Error(
+      '06-queue-operations/01-setup-zone: Missing sec06DomainId or sec06SolutionId. ' +
+      'Run steps 01-03 first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '06-queue-operations/01-setup-zone FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec06ZoneId', data.zoneId || data.id);
+  console.log('Ã¢Å“â€œ Zone created: ' + (data.zoneId || data.id));
+}
+
+tests {
+  test("Zone created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Zone ID stored", function() {
+    const zoneId = bru.getVar('sec06ZoneId');
+    expect(zoneId).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a dedicated zone for the queue operations test section.
+
+  ## Rationale
+
+  Each certification test section creates its own zone to ensure complete isolation
+  from other test sections. This zone will contain the provider and consumer
+  environments used in queue operations tests.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - `sec06ZoneId` Bruno variable set to the new zone's identifier
+}

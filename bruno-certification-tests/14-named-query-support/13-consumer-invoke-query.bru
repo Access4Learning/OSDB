@@ -1,0 +1,82 @@
+meta {
+  name: 13 Consumer Invoke Named Query
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/requests/{{sec14QueryToken}}?grade=10&schoolYear=2024
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceType: XQUERYTEMPLATE
+  zoneId: {{sec14ZoneId}}
+  contextId: DEFAULT
+}
+
+assert {
+  res.status: lt 300
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec14Consumer' });
+  
+  const queryToken = bru.getVar('sec14QueryToken');
+  if (!queryToken) {
+    throw new Error(
+      '14-named-query-support/13-consumer-invoke-query: Missing sec14QueryToken. ' +
+      'Step 10-register-named-query must run successfully first.'
+    );
+  }
+  
+  // Debug: log the zone and consumer info for troubleshooting defaultZoneId fallback
+  console.log('Consumer invoke — relying on defaultZoneId fallback (no zoneId/contextId headers)');
+  console.log('  sec14ZoneId (used for ACL): ' + bru.getVar('sec14ZoneId'));
+  console.log('  sec14ConsumerEnvId: ' + bru.getVar('sec14ConsumerEnvId'));
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status >= 300) {
+    throw new Error(
+      '14-named-query-support/13-consumer-invoke-query FAILED: expected 2xx, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  
+  console.log('✓ Consumer invoked Named Query successfully: status=' + status);
+}
+
+tests {
+  test("Consumer invoke named query returns success (2xx)", function() {
+    expect(res.getStatus()).to.be.lessThan(300);
+  });
+}
+
+docs {
+  ## Summary
+  Consumer invokes the Named Query "StudentSnapshot" via GET /requests/{queryToken}
+  with `serviceType: XQUERYTEMPLATE` header and query parameters.
+  
+  ## Rationale
+  Per requirements 3.1 and 5.1:
+  - Consumer sends GET /requests/StudentSnapshot?grade=10&schoolYear=2024
+  - Consumer includes header `serviceType: XQUERYTEMPLATE`
+  - Gateway extracts "StudentSnapshot" as serviceName, checks QUERY ACL
+  - Requests-connector looks up provider by serviceName + serviceType=XQUERYTEMPLATE
+  - Request is forwarded to provider
+  
+  In certification tests without a real provider backend, we validate that:
+  1. The gateway ACL check passes (not 403)
+  2. The routing logic reaches the requests-connector
+  
+  ## Expected Result
+  - NOT 403 (proves gateway ACL enforcement passed for consumer with QUERY ACL)
+  - Actual status depends on provider availability (likely 404 or 502 in test env)
+}

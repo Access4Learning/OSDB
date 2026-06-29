@@ -1,0 +1,80 @@
+meta {
+  name: 07b Create Consumer ACL
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec01DomainId}}/{{sec01SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec01ConsumerEnvId}}",
+    "serviceName": "CertTestObjects",
+    "zoneId": "{{sec01ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "SUBSCRIBE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec01Admin' });
+
+  const consumerEnvId = bru.getVar('sec01ConsumerEnvId');
+  if (!consumerEnvId) {
+    throw new Error('07b-create-consumer-acl: Missing sec01ConsumerEnvId.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '01-environment-registration/07b-create-consumer-acl FAILED: Consumer ACL creation returned ' +
+      status + '. Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  bru.setVar('sec01ConsumerAclId', res.getBody().id);
+  console.log('✓ Consumer SUBSCRIBE ACL created: ' + res.getBody().id);
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.zoneId: isDefined
+  res.body.contextId: isDefined
+}
+
+tests {
+  test("Consumer SUBSCRIBE ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a SUBSCRIBE ACL entry for the consumer environment on CertTestObjects.
+
+  ## Rationale
+
+  The consumer needs SUBSCRIBE access to receive events for CertTestObjects in the
+  test zone. This ACL is required before creating subscriptions or polling queues.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - `sec01ConsumerAclId` stored for teardown and downstream tests
+}

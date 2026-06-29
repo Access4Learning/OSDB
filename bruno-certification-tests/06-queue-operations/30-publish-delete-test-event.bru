@@ -1,0 +1,86 @@
+meta {
+  name: 30 Publish Delete Test Event
+  type: http
+  seq: 31
+}
+
+post {
+  url: {{sec06ProviderEventsUrl}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceName: CertQueueObjects
+  serviceType: OBJECT
+  eventAction: CREATE
+  messageType: EVENT
+  zoneId: {{sec06ZoneId}}
+  contextId: DEFAULT
+}
+
+body:json {
+  {
+    "certQueueObject": {
+      "refId": "{{$randomUUID}}",
+      "localId": "cert-queue-delete-test",
+      "sequence": 10,
+      "name": "Queue Delete Test Event",
+      "description": "Event published specifically for single-message DELETE testing"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Provider' });
+
+  const eventsUrl = bru.getVar('sec06ProviderEventsUrl');
+  if (!eventsUrl) {
+    throw new Error(
+      '06-queue-operations/30-publish-delete-test-event: Missing sec06ProviderEventsUrl. ' +
+      'Ensure earlier setup steps completed successfully.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 202 && status !== 204) {
+    throw new Error(
+      '06-queue-operations/30-publish-delete-test-event FAILED: expected 202 or 204, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  console.log('✓ Delete test event published (status ' + status + ')');
+}
+
+assert {
+  res.status: in [202, 204]
+}
+
+tests {
+  test("Delete test event accepted by broker", function() {
+    const status = res.getStatus();
+    expect([202, 204]).to.include(status);
+  });
+}
+
+docs {
+  ## Summary
+
+  Publishes a fresh event so there is a message in the queue for the DELETE single message tests.
+
+  ## Rationale
+
+  After the previous test sequence (25a-25e), the queue should be empty. We need a new
+  message in the queue to test the DELETE /{queueId}/messages/{messageId} endpoint.
+
+  ## Expected Result
+
+  - HTTP 202 Accepted or 204 No Content
+}

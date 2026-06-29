@@ -1,0 +1,103 @@
+meta {
+  name: 36 Provider Publishes TestObjects UPDATE Event
+  type: http
+  seq: 33
+}
+
+post {
+  url: {{sec11ProviderEventsUrl}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceName: TestObjects
+  serviceType: OBJECT
+  eventAction: UPDATE
+  messageType: EVENT
+  messageId: {{sec11EventMessageId}}
+  zoneId: {{sec11ZoneId}}
+  contextId: DEFAULT
+}
+
+body:json {
+  {
+    "testObject": {
+      "id": "test-obj-1",
+      "name": "Updated Test Object",
+      "description": "TestObjects UPDATE event for directed alert test"
+    }
+  }
+}
+
+assert {
+  res.status: in [202, 204]
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Provider' });
+  
+  const eventsUrl = bru.getVar('sec11ProviderEventsUrl');
+  if (!eventsUrl) {
+    throw new Error(
+      '11-alerts/36: Missing sec11ProviderEventsUrl. Step 35 must run first.'
+    );
+  }
+  
+  // Generate a UUID for the messageId header — this is what the directed alert will reference
+  const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+  bru.setVar('sec11EventMessageId', uuid);
+  console.log('Generated event messageId: ' + uuid);
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 202 && status !== 204) {
+    throw new Error(
+      '11-alerts/36 FAILED: expected 202 or 204, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  
+  console.log('✓ TestObjects UPDATE event published (status ' + status + ')');
+  console.log('  messageId: ' + bru.getVar('sec11EventMessageId'));
+}
+
+tests {
+  test("Event accepted by broker", function() {
+    const status = res.getStatus();
+    expect([202, 204]).to.include(status);
+  });
+  
+  test("Event messageId was generated", function() {
+    expect(bru.getVar('sec11EventMessageId')).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+  Provider publishes a TestObjects UPDATE event with a known messageId.
+  
+  ## Rationale — Broadcast Event Delivery
+  When a provider publishes an event, the broker fans it out to ALL consumers with
+  matching subscriptions (service + zone + context + messageType). Both Consumer 1 and
+  Consumer 2 have SUBSCRIBE ACLs and active subscriptions for TestObjects EVENTs, so
+  both should receive this event.
+  
+  The messageId header is critical: it becomes the correlation key that Consumer 1 will
+  reference when creating a directed alert. The broker tracks which environment sent
+  each messageId, enabling targeted alert delivery back to the originator.
+  
+  ## Expected Result
+  - HTTP 202 Accepted or 204 No Content
+  - Event queued for delivery to Consumer 1 and Consumer 2
+  - `sec11EventMessageId` stored for directed alert reference
+}

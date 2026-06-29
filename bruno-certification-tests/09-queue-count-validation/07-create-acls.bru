@@ -1,0 +1,74 @@
+meta {
+  name: 07 Create Consumer SUBSCRIBE ACL
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec09DomainId}}/{{sec09SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec09ConsumerEnvId}}",
+    "serviceName": "CertCountObjects",
+    "zoneId": "{{sec09ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "SUBSCRIBE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Admin' });
+
+  const provideAclId = bru.getVar('sec09ProvideAclId');
+  if (!provideAclId) {
+    throw new Error(
+      '09-queue-count-validation/07: Missing sec09ProvideAclId. Run 07a first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '09-queue-count-validation/07 FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec09SubscribeAclId', data.id);
+  console.log('✓ SUBSCRIBE ACL for Consumer created: ' + data.id);
+}
+
+tests {
+  test("SUBSCRIBE ACL created for Consumer", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()).to.have.property('id');
+  });
+
+  test("PROVIDE ACL was created in previous step", function() {
+    const provideAclId = bru.getVar('sec09ProvideAclId');
+    expect(provideAclId).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+  Creates SUBSCRIBE ACL for consumer in queue count validation.
+
+  ## Expected Result
+  - HTTP 201 → `sec09SubscribeAclId` stored
+}

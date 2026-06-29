@@ -1,0 +1,103 @@
+meta {
+  name: 06 Create Consumer Environment
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "CertReqRespConsumer-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec04ZoneId}}"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.sessionToken: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Admin' });
+
+  const zoneId = bru.getVar('sec04ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '04-request-response/03-create-consumer-env: Missing sec04ZoneId. ' +
+      'Run 01-setup-zone first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '04-request-response/03-create-consumer-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec04ConsumerEnvId', data.id);
+  bru.setVar('sec04ConsumerSessionToken', data.sessionToken);
+  bru.setVar('sec04ConsumerSharedSecret', data.sharedSecret);
+
+  // Extract requestsConnector URL from infrastructure services
+  if (data.infrastructureServices && data.infrastructureServices.infrastructureService) {
+    const services = data.infrastructureServices.infrastructureService;
+
+    const requestsConn = services.find(s => s.name === 'requestsConnector');
+    if (requestsConn) {
+      bru.setVar('sec04ConsumerRequestsUrl', requestsConn.value);
+      console.log('  Requests Connector URL:', requestsConn.value);
+    }
+
+    const queuesConn = services.find(s => s.name === 'queues');
+    if (queuesConn) {
+      bru.setVar('sec04ConsumerQueuesUrl', queuesConn.value);
+      console.log('  Queues URL:', queuesConn.value);
+    }
+
+    const responsesConn = services.find(s => s.name === 'responsesConnector');
+    if (responsesConn) {
+      bru.setVar('sec04ResponsesConnectorUrl', responsesConn.value);
+      console.log('  Responses Connector URL:', responsesConn.value);
+    }
+  }
+
+  console.log('âœ“ Created consumer environment (BROKERED):', data.id);
+}
+
+docs {
+  ## Summary
+
+  Creates a BROKERED consumer environment for request/response tests.
+
+  ## Rationale
+
+  A BROKERED consumer environment sends requests via the broker's Requests
+  Connector rather than directly to providers. The broker handles routing
+  based on provider registrations and choreography type.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Consumer environment ID, session token, shared secret stored
+  - Requests Connector URL extracted and stored in `sec04ConsumerRequestsUrl`
+  - `sec04ConsumerEnvId`, `sec04ConsumerSessionToken`, `sec04ConsumerSharedSecret` set
+}

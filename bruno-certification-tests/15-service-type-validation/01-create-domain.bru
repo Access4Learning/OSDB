@@ -1,0 +1,65 @@
+meta {
+  name: 01 Create Domain
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{gatewayUrl}}/domains
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "domainId": "{{sec15DomainName}}",
+    "description": "SIF certification domain for section 15 (service-type-validation)"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+
+  const now = new Date();
+  const ts = now.getFullYear().toString()
+    + String(now.getMonth() + 1).padStart(2, '0')
+    + String(now.getDate()).padStart(2, '0')
+    + '-'
+    + String(now.getHours()).padStart(2, '0')
+    + String(now.getMinutes()).padStart(2, '0')
+    + String(now.getSeconds()).padStart(2, '0')
+    + String(now.getMilliseconds()).padStart(3, '0');
+  const domainName = 'cert-sec15-' + ts;
+  bru.setVar('sec15DomainName', domainName);
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '15-service-type-validation/01-create-domain FAILED: expected 200-201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  const domainId = data.domainId || bru.getVar('sec15DomainName');
+  bru.setVar('sec15DomainId', domainId);
+  console.log('Domain created: ' + domainId);
+}
+
+docs {
+  ## Summary
+  Creates a uniquely-named domain for the service-type-validation test section.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec15DomainId` variable stored for subsequent steps
+}

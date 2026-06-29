@@ -1,0 +1,88 @@
+meta {
+  name: 07 Create Provider xQuery ACL
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec14ProviderEnvId}}",
+    "serviceName": "StudentSnapshot",
+    "zoneId": "{{sec14ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "PROVIDE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec14Admin' });
+
+  const providerEnvId = bru.getVar('sec14ProviderEnvId');
+  if (!providerEnvId) {
+    throw new Error(
+      '14-named-query-support/07-create-provider-xquery-acl: Missing sec14ProviderEnvId. ' +
+      'Step 05-create-provider-env must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '14-named-query-support/07-create-provider-xquery-acl FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec14ProviderXQueryAclId', data.id);
+  console.log('✓ Provider PROVIDE ACL for StudentSnapshot xQuery created: ' + data.id);
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+tests {
+  test("Provider PROVIDE ACL for StudentSnapshot created", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody();
+    expect(data.id).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+  Creates an ACL entry granting the provider PROVIDE access to the "StudentSnapshot"
+  named query service.
+
+  ## Rationale
+  Per the SIF specification, provider registration for a specific Named Query requires
+  a PROVIDE ACL entry where serviceName matches the queryToken. This ACL authorizes
+  the provider environment to register (via POST /provider-registrations) as a provider
+  for the "StudentSnapshot" named query with serviceType=XQUERYTEMPLATE.
+
+  Template catalog management (POST /xquerys) is an admin operation and does not
+  require this ACL.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec14ProviderXQueryAclId` stored for teardown
+}
+

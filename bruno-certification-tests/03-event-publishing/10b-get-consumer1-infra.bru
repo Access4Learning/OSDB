@@ -1,0 +1,52 @@
+meta {
+  name: 10b Get Consumer1 Infrastructure
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec03DomainId}}/{{sec03SolutionId}}/environments/{{sec03Consumer1EnvId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec03Admin' });
+}
+
+script:post-response {
+  const envData = res.getBody();
+  if (envData.infrastructureServices && envData.infrastructureServices.infrastructureService) {
+    const services = envData.infrastructureServices.infrastructureService;
+    const queuesService = services.find(s => s.name === 'queues');
+    if (queuesService) {
+      bru.setVar('sec03Consumer1QueuesUrl', queuesService.value);
+      console.log('✓ Consumer 1 QUEUES URL: ' + queuesService.value);
+    }
+  }
+}
+
+tests {
+  test("Consumer 1 environment fetched", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  ## Summary
+  Fetches Consumer 1 environment to extract QUEUES URL.
+
+  ## Expected Result
+  - HTTP 200
+  - `sec03Consumer1QueuesUrl` stored
+}

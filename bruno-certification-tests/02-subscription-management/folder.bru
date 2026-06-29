@@ -1,0 +1,72 @@
+meta {
+  name: 02 Subscription Management
+  seq: 3
+}
+
+docs {
+  # Subscription Management
+
+  ## Concept Overview
+
+  A **subscription** in SIF 3.7 is the binding that connects a consumer's queue to
+  a specific event stream (or delayed-request stream) flowing through the broker.
+  Three entities cooperate:
+
+  1. **ACL Entry** Ã¢â‚¬â€ defines *what* a consumer is allowed to access (service name,
+     zone, context, access type). This is the permission record.
+  2. **Queue** Ã¢â‚¬â€ the consumer's message inbox. The broker deposits messages here.
+  3. **Subscription** Ã¢â‚¬â€ links the queue to an ACL entry, telling the broker:
+     "deliver messages matching this ACL's scope into this queue."
+
+  Without a subscription, even a consumer with valid ACL rights will never receive
+  events Ã¢â‚¬â€ the ACL authorises access but the subscription activates delivery.
+
+  ### Binding Semantics
+
+  When a subscription is created the broker resolves the referenced `aclEntryId` to
+  extract the `serviceName`, `zoneId`, and `contextId`. These resolved values appear
+  on the subscription record and are used at dispatch time to match incoming events
+  to the correct queues.
+
+  A subscription's `messageType` field indicates what it listens for:
+  - **EVENT** Ã¢â‚¬â€ provider-published change notifications
+  - **DELAYED_REQUEST** Ã¢â‚¬â€ asynchronous request messages routed to a provider's queue
+
+  ### Lifecycle
+
+  ```
+  Consumer creates Queue  Ã¢â€ â€™  Admin creates ACL  Ã¢â€ â€™  Consumer creates Subscription
+       Ã¢â€ â€œ                                                    Ã¢â€ â€œ
+  Messages arrive in queue  Ã¢â€ Â  Broker matches events to subscription scope
+       Ã¢â€ â€œ
+  Consumer deletes Subscription  Ã¢â€ â€™  Delivery stops (queue remains)
+  ```
+
+  ## Test Purpose
+
+  Verify the complete subscription lifecycle:
+  - Successful creation returns correct fields
+  - Listing returns the SIF collection wrapper with active subscriptions
+  - Deletion removes the subscription and stops future delivery
+  - Invalid ACL references are rejected with 404
+
+  ## Prerequisites
+
+  - Steps 01-03 create domain/solution/admin credentials (sec02DomainId, sec02SolutionId,
+    sec02Admin* credentials available)
+  - Broker is running and reachable at `{{gatewayUrl}}`
+
+  ## Expected Behavior
+
+  - Setup creates a zone, provider environment, consumer environment, ACLs, and queue
+  - Subscription CRUD tests all pass with correct status codes and response shapes
+  - Teardown removes all resources created by this section
+  - No resources leak into subsequent test sections
+
+  ## SIF Specification Reference
+
+  - SIF 3.7 Ã‚Â§7.2 Ã¢â‚¬â€ Subscription management
+  - SIF 3.7 Ã‚Â§7.2.1 Ã¢â‚¬â€ Creating subscriptions
+  - SIF 3.7 Ã‚Â§7.2.2 Ã¢â‚¬â€ Querying subscriptions
+  - SIF 3.7 Ã‚Â§7.2.3 Ã¢â‚¬â€ Deleting subscriptions
+}

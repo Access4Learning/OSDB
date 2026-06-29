@@ -1,0 +1,65 @@
+meta {
+  name: 10a Get Provider Infrastructure
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec03DomainId}}/{{sec03SolutionId}}/environments/{{sec03ProviderEnvId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec03Admin' });
+
+  const providerEnvId = bru.getVar('sec03ProviderEnvId');
+  if (!providerEnvId) {
+    throw new Error('10a: Missing sec03ProviderEnvId.');
+  }
+}
+
+script:post-response {
+  const envData = res.getBody();
+  if (envData.infrastructureServices && envData.infrastructureServices.infrastructureService) {
+    const services = envData.infrastructureServices.infrastructureService;
+    const eventsConnector = services.find(s => s.name === 'eventsConnector');
+    if (eventsConnector) {
+      bru.setVar('sec03ProviderEventsUrl', eventsConnector.value);
+      console.log('✓ Provider EVENTS_CONNECTOR URL: ' + eventsConnector.value);
+    } else {
+      throw new Error('EVENTS_CONNECTOR not found in provider infrastructure services');
+    }
+  } else {
+    throw new Error('No infrastructure services found on provider environment');
+  }
+}
+
+tests {
+  test("Provider environment fetched", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Provider events URL stored", function() {
+    expect(bru.getVar('sec03ProviderEventsUrl')).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+  Fetches provider environment to extract EVENTS_CONNECTOR URL.
+
+  ## Expected Result
+  - HTTP 200
+  - `sec03ProviderEventsUrl` stored
+}

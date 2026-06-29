@@ -1,0 +1,73 @@
+meta {
+  name: 07c Get Provider Options
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/provider-registrations/available-options?environmentId={{sec11ProviderEnvId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Admin' });
+
+  const providerEnvId = bru.getVar('sec11ProviderEnvId');
+  if (!providerEnvId) {
+    throw new Error('07c: Missing sec11ProviderEnvId.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  const data = res.getBody();
+
+  if (status !== 200 || !data || data.length === 0) {
+    throw new Error(
+      '11-alerts/07c: No available provider options. ' +
+      'Status: ' + status + ', Data: ' + JSON.stringify(data)
+    );
+  }
+
+  const option = data.find(o => o.serviceName === 'alerts');
+  if (!option) {
+    throw new Error(
+      '11-alerts/07c: No available option for "alerts". ' +
+      'Available: ' + data.map(o => o.serviceName).join(', ')
+    );
+  }
+
+  bru.setVar('sec11ContextServiceUuid', option.contextServiceUuid);
+  console.log('✓ Found contextServiceUuid for alerts: ' + option.contextServiceUuid);
+}
+
+tests {
+  test("Provider options returned", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an('array').and.not.be.empty;
+  });
+
+  test("contextServiceUuid stored", function() {
+    expect(bru.getVar('sec11ContextServiceUuid')).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+  Fetches available provider options to get contextServiceUuid for alerts registration.
+
+  ## Expected Result
+  - HTTP 200
+  - `sec11ContextServiceUuid` stored
+}

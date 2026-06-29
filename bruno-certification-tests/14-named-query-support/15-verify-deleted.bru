@@ -1,0 +1,65 @@
+meta {
+  name: 15 Verify Named Query Deleted
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/xquerys/{{sec14QueryToken}}
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec14Provider' });
+
+  const queryToken = bru.getVar('sec14QueryToken');
+  if (!queryToken) {
+    throw new Error(
+      '14-named-query-support/15-verify-deleted: Missing sec14QueryToken. ' +
+      'Step 10-register-named-query must have stored sec14QueryToken.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 404) {
+    throw new Error(
+      '14-named-query-support/15-verify-deleted FAILED: expected 404, got ' + status + '. ' +
+      'Template should have been deleted in step 14. Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  console.log('✓ Named Query Template confirmed deleted (404 Not Found)');
+}
+
+assert {
+  res.status: eq 404
+}
+
+tests {
+  test("Named Query Template returns 404 after deletion", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+}
+
+docs {
+  ## Summary
+  Verifies the Named Query Template was deleted by attempting to retrieve it.
+
+  ## Rationale
+  After step 14 deletes the template, a GET by token should return 404 Not Found.
+  This confirms the delete operation persisted correctly and the template is no
+  longer accessible.
+
+  ## Expected Result
+  - HTTP 404 Not Found
+}

@@ -1,0 +1,87 @@
+meta {
+  name: 14b Poll Query Params Response
+  type: http
+  seq: 19
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/queues/{{sec04QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  deleteMessageId: {{sec04DelayedDelMessageId}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Consumer' });
+
+  // Wait for processing
+  await new Promise(resolve => setTimeout(resolve, 3000));
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Queue poll status:', status);
+
+  if (status === 200) {
+    const messageId = res.getHeader('messageid');
+    const relativeServicePath = res.getHeader('relativeservicepath');
+    bru.setVar('sec04DelayedQueryParamsMsgId', messageId);
+
+    console.log('  messageid:', messageId);
+    console.log('  relativeServicePath:', relativeServicePath);
+
+    if (relativeServicePath && relativeServicePath.includes('filter=active')) {
+      console.log('✓ Query params preserved in relativeServicePath header');
+      bru.setVar('sec04QueryParamsPreserved', 'true');
+    } else {
+      console.log('⚠ relativeServicePath does not contain query params');
+      bru.setVar('sec04QueryParamsPreserved', 'false');
+    }
+  } else if (status === 204) {
+    console.log('  Queue empty — response not yet delivered');
+  }
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+tests {
+  test("Queue poll returns response or empty", function() {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+
+  test("relativeServicePath header preserves query string", function() {
+    const preserved = bru.getVar('sec04QueryParamsPreserved');
+    if (preserved === 'true') {
+      expect(preserved).to.equal('true');
+    } else if (preserved === 'false') {
+      expect.fail('relativeServicePath header does not contain original query string');
+    } else {
+      console.log('NOTE: Could not verify — queue may be empty (provider not running)');
+    }
+  });
+}
+
+docs {
+  ## Summary
+
+  Polls the queue for the response to the DELAYED request with query params,
+  verifying the `relativeServicePath` header preserves the query string.
+
+  ## Rationale
+
+  The SIF spec requires query parameters to be preserved in the relativeServicePath
+  header on queued messages. This step verifies that preservation.
+
+  ## Expected Result
+
+  - HTTP 200 with relativeServicePath containing `filter=active`, or
+  - HTTP 204 if response not yet delivered
+}

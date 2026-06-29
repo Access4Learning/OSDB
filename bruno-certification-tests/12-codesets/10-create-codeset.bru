@@ -1,0 +1,85 @@
+meta {
+  name: 10 Create Code Set
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec12DomainId}}/{{sec12SolutionId}}/codeSets/codeSet
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "codeSet": {
+      "zone": "environment-global",
+      "version": "1.0",
+      "timestamp": "2024-01-01T00:00:00Z",
+      "source": "http://cert-test.example.org/codesets",
+      "codeItems": {
+        "codeItem": [
+          { "code": "A", "value": "VALUE_A", "action": "ADD", "timestamp": "2024-01-01T00:00:00Z" },
+          { "code": "B", "value": "VALUE_B", "action": "ADD", "timestamp": "2024-01-01T00:00:00Z" },
+          { "code": "C", "value": "VALUE_C", "action": "ADD", "timestamp": "2024-01-01T00:00:00Z" }
+        ]
+      }
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec12Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '12-codesets/10-create-codeset FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  const codeSet = data.codeSet || data;
+  bru.setVar('sec12CodeSetId', codeSet.id);
+  console.log('✓ Code set created: ' + bru.getVar('sec12CodeSetId'));
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Code set created with status 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response contains code set data", function() {
+    const data = res.getBody();
+    const codeSet = data.codeSet || data;
+    expect(codeSet.id).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+  Creates a code set as admin.
+
+  ## Rationale
+  Verifies that the POST /codeSets/codeSet endpoint works correctly for admin users.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - Response body contains the code set with ID and values
+  - `sec12CodeSetId` stored for subsequent operations
+}
+

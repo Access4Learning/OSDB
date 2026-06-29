@@ -1,0 +1,77 @@
+meta {
+  name: 08 Create Consumer Queue
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "cert-reqresp-queue",
+      "ownerId": "{{sec04ConsumerEnvId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.queue.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Consumer' });
+
+  const consumerEnvId = bru.getVar('sec04ConsumerEnvId');
+  if (!consumerEnvId) {
+    throw new Error(
+      '04-request-response/05-create-queue: Missing sec04ConsumerEnvId. ' +
+      'Run 03-create-consumer-env first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '04-request-response/05-create-queue FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec04QueueId', data.queue.id);
+  console.log('Created consumer queue:', data.queue.id);
+}
+
+docs {
+  ## Summary
+
+  Creates a queue owned by the consumer environment for receiving delayed responses.
+
+  ## Rationale
+
+  DELAYED choreographies (DELAYED/IMMEDIATE and DELAYED/DELAYED) require a consumer
+  queue where the broker delivers the provider's response. The consumer passes the
+  queue ID in the `queueId` header when making DELAYED requests.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Queue ID stored in `sec04QueueId` Bruno variable
+}

@@ -1,0 +1,79 @@
+meta {
+  name: 33 Verify Deleted Message Gone
+  type: http
+  seq: 34
+}
+
+get {
+  url: {{sec06ConsumerQueuesUrl}}/{{sec06QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+
+  const queuesUrl = bru.getVar('sec06ConsumerQueuesUrl');
+  const queueId = bru.getVar('sec06QueueId');
+  if (!queuesUrl || !queueId) {
+    throw new Error(
+      '06-queue-operations/33-verify-deleted-message-gone: Missing queue URL or ID.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  const deletedId = bru.getVar('sec06DeleteTargetMessageId');
+
+  if (status === 204) {
+    console.log('✓ Queue is empty after DELETE (204 No Content)');
+  } else if (status === 200) {
+    const nextMessageId = res.getHeader('messageid');
+    if (nextMessageId !== deletedId) {
+      console.log('✓ Deleted message is gone — next message is different: ' + nextMessageId);
+    } else {
+      console.error('✗ Deleted message reappeared! messageId: ' + nextMessageId);
+    }
+  } else {
+    console.error('Unexpected status: ' + status);
+  }
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+tests {
+  test("Deleted message does not reappear (queue returns different message or empty)", function() {
+    const status = res.getStatus();
+    expect([200, 204]).to.include(status);
+    if (status === 200) {
+      const nextMessageId = res.getHeader('messageid');
+      const deletedId = bru.getVar('sec06DeleteTargetMessageId');
+      expect(nextMessageId).to.not.equal(deletedId);
+    }
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies the deleted message no longer exists in the queue by peeking.
+
+  ## Rationale
+
+  After a successful DELETE of the only message in the queue, a subsequent peek should
+  return 204 No Content, confirming the message was permanently removed.
+
+  ## Expected Result
+
+  - HTTP 204 No Content (queue is empty)
+  - No response body
+}

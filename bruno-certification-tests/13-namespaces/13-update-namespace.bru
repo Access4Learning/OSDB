@@ -1,0 +1,82 @@
+meta {
+  name: 13 Update Namespace
+  type: http
+  seq: 13
+}
+
+put {
+  url: {{gatewayUrl}}/{{sec13DomainId}}/{{sec13SolutionId}}/namespaces/{{sec13NamespaceId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "namespace": {
+      "zone": "environment-global",
+      "uri": "{{sec13NamespaceUri}}",
+      "url": "http://www.sifassociation.org/cert/test/schema-v2.xsd"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec13Admin' });
+
+  const namespaceId = bru.getVar('sec13NamespaceId');
+  if (!namespaceId) {
+    throw new Error(
+      '13-namespaces/13-update-namespace: Missing sec13NamespaceId. ' +
+      'Step 10-create-namespace must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '13-namespaces/13-update-namespace FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  console.log('✓ Namespace updated: ' + bru.getVar('sec13NamespaceId'));
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Namespace updated with status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Updated namespace has new URL", function() {
+    const data = res.getBody();
+    const ns = data.namespace || data;
+    expect(ns.url).to.include("schema-v2.xsd");
+  });
+}
+
+docs {
+  ## Summary
+  Updates an existing namespace (admin only).
+
+  ## Rationale
+  Verifies that PUT /namespaces/{id} updates the namespace fields correctly.
+
+  ## Expected Result
+  - HTTP 200 OK
+  - Updated namespace contains new schemaLocation and description
+}
+

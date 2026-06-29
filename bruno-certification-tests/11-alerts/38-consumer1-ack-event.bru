@@ -1,0 +1,65 @@
+meta {
+  name: 38 Consumer 1 ACK Event
+  type: http
+  seq: 35
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/queues/{{sec11Consumer1QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  deleteMessageId: {{sec11Consumer1EventMsgId}}
+}
+
+assert {
+  res.status: eq 204
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Consumer' });
+  
+  const msgId = bru.getVar('sec11Consumer1EventMsgId');
+  if (!msgId) {
+    throw new Error(
+      '11-alerts/38: Missing sec11Consumer1EventMsgId. Step 37 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 204) {
+    throw new Error(
+      '11-alerts/38: Expected 204 (queue empty after ACK), got ' + status + '. ' +
+      'There may be unexpected messages in Consumer 1 queue.'
+    );
+  }
+  
+  console.log('✓ Consumer 1 ACKed event — queue now empty');
+}
+
+tests {
+  test("Queue empty after ACK (204 No Content)", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  ## Summary
+  Acknowledges (deletes) the TestObjects event from Consumer 1's queue and verifies empty.
+  
+  ## Rationale
+  Using the SIF "Get Next and Pop" pattern, passing deleteMessageId removes the
+  acknowledged message and returns the next one. Since there should only be one message
+  (the TestObjects event), the queue should now be empty (204). This clean state is
+  important for step 44 where we verify no directed alert arrives.
+  
+  ## Expected Result
+  - HTTP 204 No Content (queue empty after the single event was ACKed)
+}

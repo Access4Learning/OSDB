@@ -1,0 +1,84 @@
+meta {
+  name: 08b Get Provider Options
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/provider-registrations/available-options?environmentId={{sec04ProviderEnvId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Admin' });
+
+  const providerEnvId = bru.getVar('sec04ProviderEnvId');
+  if (!providerEnvId) {
+    throw new Error('08b-get-provider-options: Missing sec04ProviderEnvId.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  const data = res.getBody();
+
+  if (status !== 200 || !data || data.length === 0) {
+    throw new Error(
+      '04-request-response/08b-get-provider-options: No available provider options found. ' +
+      'Ensure PROVIDE ACL was created. Status: ' + status + ', Data: ' + JSON.stringify(data)
+    );
+  }
+
+  const serviceName = bru.getEnvVar('immediateProviderServiceName');
+  const option = data.find(o => o.serviceName === serviceName);
+  if (!option) {
+    throw new Error(
+      '04-request-response/08b-get-provider-options: No available option for service "' + serviceName + '". ' +
+      'Available: ' + data.map(o => o.serviceName).join(', ')
+    );
+  }
+
+  bru.setVar('sec04ContextServiceUuid', option.contextServiceUuid);
+  console.log('✓ Found contextServiceUuid for ' + serviceName + ': ' + option.contextServiceUuid);
+}
+
+tests {
+  test("Provider options returned", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    expect(data).to.be.an('array').and.not.be.empty;
+  });
+
+  test("contextServiceUuid stored", function() {
+    const uuid = bru.getVar('sec04ContextServiceUuid');
+    expect(uuid).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+
+  Fetches available provider registration options to obtain the contextServiceUuid.
+
+  ## Rationale
+
+  Before registering a provider, we need the contextServiceUuid that the broker assigned
+  when the PROVIDE ACL was created. This endpoint returns available options filtered by
+  environmentId.
+
+  ## Expected Result
+
+  - HTTP 200 with array of available options
+  - `sec04ContextServiceUuid` stored for provider registration
+}

@@ -1,0 +1,83 @@
+meta {
+  name: 06 Create Consumer Environment
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec09DomainId}}/{{sec09SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "sec09-consumer-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec09ZoneId}}"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '09-queue-count-validation/03-create-consumer-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec09ConsumerEnvId', data.id);
+  bru.setVar('sec09ConsumerSessionToken', data.sessionToken);
+  bru.setVar('sec09ConsumerSharedSecret', data.sharedSecret);
+  console.log('âœ“ Consumer environment created: ' + data.id);
+}
+
+tests {
+  test("Consumer environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response contains credentials", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('sessionToken');
+    expect(data).to.have.property('sharedSecret');
+  });
+
+  test("Environment type is BROKERED", function() {
+    const data = res.getBody();
+    expect(data.type).to.equal('BROKERED');
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a BROKERED-type consumer environment that will own the queue under test.
+
+  ## Rationale
+
+  BROKERED environments receive messages via broker-managed queues. This consumer's
+  queue will accumulate events from the provider, and the test will validate that
+  the queue's messageCount accurately tracks publish and acknowledgment operations.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - `sec09ConsumerEnvId` set to environment UUID
+  - `sec09ConsumerSessionToken` stored for consumer authentication
+  - `sec09ConsumerSharedSecret` stored for consumer authentication
+}

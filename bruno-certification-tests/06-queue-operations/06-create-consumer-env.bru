@@ -1,0 +1,85 @@
+meta {
+  name: 06 Create Consumer Environment
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec06DomainId}}/{{sec06SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "sec06-consumer-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec06ZoneId}}"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '06-queue-operations/03-create-consumer-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec06ConsumerEnvId', data.id);
+  bru.setVar('sec06ConsumerSessionToken', data.sessionToken);
+  bru.setVar('sec06ConsumerSharedSecret', data.sharedSecret);
+  console.log('âœ“ Consumer environment created: ' + data.id);
+  console.log('  Application Name: ' + data.applicationName);
+  console.log('  Type: ' + data.type);
+}
+
+tests {
+  test("Consumer environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response contains credentials", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('sessionToken');
+    expect(data).to.have.property('sharedSecret');
+  });
+
+  test("Environment type is BROKERED", function() {
+    const data = res.getBody();
+    expect(data.type).to.equal('BROKERED');
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a BROKERED-type consumer environment that will poll queue messages.
+
+  ## Rationale
+
+  BROKERED environments receive messages via queues managed by the broker. This
+  consumer will be the one performing Get Next and Pop operations against its queue
+  to verify the SIF Â§9.3.1 behavior.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - `sec06ConsumerEnvId` set to environment UUID
+  - `sec06ConsumerSessionToken` stored for consumer authentication
+  - `sec06ConsumerSharedSecret` stored for consumer authentication
+}

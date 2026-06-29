@@ -1,0 +1,88 @@
+meta {
+  name: 10 Create Operation
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{sec07ConsumerServicesUrl}}/{{sec07ServiceName}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec07ZoneId}}
+  contextId: DEFAULT
+  requestType: DELAYED
+  queueId: {{sec07ConsumerQueueId}}
+  serviceName: {{sec07ServiceName}}
+}
+
+body:json {
+  {
+    "operation": "CREATE",
+    "data": {
+      "name": "CertTestJob-{{$timestamp}}",
+      "description": "Certification test job created via service operations",
+      "type": "CERTIFICATION"
+    }
+  }
+}
+
+assert {
+  res.status: eq 202
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec07Consumer' });
+
+  const servicesUrl = bru.getVar('sec07ConsumerServicesUrl');
+  const queueId = bru.getVar('sec07ConsumerQueueId');
+  const serviceName = bru.getVar('sec07ServiceName');
+  if (!servicesUrl || !queueId || !serviceName) {
+    throw new Error(
+      '07-service-operations/10-create-operation: Missing sec07ConsumerServicesUrl, ' +
+      'sec07ConsumerQueueId, or sec07ServiceName. Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('CREATE service operation response status:', status);
+
+  if (status === 202) {
+    console.log('✓ CREATE operation accepted (202)');
+  } else {
+    console.error('✗ Expected 202, got:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("POST (CREATE) service operation returns 202 Accepted", function() {
+    expect(res.getStatus()).to.equal(202);
+  });
+}
+
+docs {
+  ## Summary
+
+  Sends a POST (CREATE) service operation to the Services Connector with
+  requestType=DELAYED and a valid queueId.
+
+  ## Rationale
+
+  The CREATE operation verifies that the broker accepts a new functional service
+  request via POST and routes it asynchronously. The broker must return 202
+  Accepted within 5 seconds, confirming the operation has been enqueued for
+  the provider.
+
+  ## Expected Result
+
+  - HTTP 202 Accepted
+  - Operation enqueued to provider's queue for processing
+}

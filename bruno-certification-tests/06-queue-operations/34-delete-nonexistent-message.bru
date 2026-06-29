@@ -1,0 +1,78 @@
+meta {
+  name: 34 Delete Nonexistent Message
+  type: http
+  seq: 35
+}
+
+delete {
+  url: {{sec06ConsumerQueuesUrl}}/{{sec06QueueId}}/messages/00000000-0000-0000-0000-000000000000
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+
+  const queuesUrl = bru.getVar('sec06ConsumerQueuesUrl');
+  const queueId = bru.getVar('sec06QueueId');
+  if (!queuesUrl || !queueId) {
+    throw new Error(
+      '06-queue-operations/34-delete-nonexistent-message: Missing queue URL or ID.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 404) {
+    console.log('✓ Nonexistent messageId correctly rejected with 404');
+    const body = res.getBody();
+    if (body && body.message) {
+      console.log('  Error message: ' + body.message);
+    }
+  } else {
+    console.error('Unexpected status: ' + status + '. Expected 404 for nonexistent messageId.');
+  }
+}
+
+assert {
+  res.status: eq 404
+}
+
+tests {
+  test("Delete nonexistent message returns 404", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+
+  test("Response contains error body with message", function() {
+    const body = res.getBody();
+    expect(body).to.exist;
+    expect(body).to.have.property('message');
+  });
+}
+
+docs {
+  ## Summary
+
+  Negative path: Attempt to DELETE a message that doesn't exist in the queue.
+
+  ## Rationale
+
+  When a consumer tries to delete a messageId that is not present in the queue,
+  the broker must return 404 Not Found with an error body. This prevents silent
+  failures and helps consumers detect stale or invalid message references.
+
+  The UUID `00000000-0000-0000-0000-000000000000` is used as a guaranteed-invalid
+  message ID since no real message would have this identifier.
+
+  ## Expected Result
+
+  - HTTP 404 Not Found
+  - Response body contains an error message indicating the message was not found
+}

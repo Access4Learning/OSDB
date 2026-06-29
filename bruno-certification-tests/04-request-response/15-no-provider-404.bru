@@ -1,0 +1,88 @@
+meta {
+  name: 15 No Provider 404
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{sec04ConsumerRequestsUrl}}/UnregisteredServiceObjects
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec04ZoneId}}
+  contextId: DEFAULT
+  requestType: IMMEDIATE
+  serviceType: OBJECT
+}
+
+assert {
+  res.status: eq 404
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Consumer' });
+
+  const requestsUrl = bru.getVar('sec04ConsumerRequestsUrl');
+  if (!requestsUrl) {
+    throw new Error(
+      '04-request-response/15-no-provider-404: Missing sec04ConsumerRequestsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('No-provider request response status:', status);
+
+  if (status === 404) {
+    console.log('✓ Correctly returned 404 for unregistered service');
+    const body = res.getBody();
+    if (body && body.message) {
+      console.log('  Error message:', body.message);
+    }
+  } else {
+    console.error('✗ Expected 404, got:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("Request for unregistered service returns 404", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+
+  test("Error response contains message", function() {
+    const body = res.getBody();
+    expect(body).to.exist;
+    // SIF brokers should return an error body indicating no provider found
+    if (body.message) {
+      expect(body.message).to.be.a('string');
+    } else if (body.error) {
+      expect(body.error).to.be.a('string');
+    }
+  });
+}
+
+docs {
+  ## Summary
+
+  Sends a request for a service object that has no registered provider and
+  verifies the broker returns a 404 error.
+
+  ## Rationale
+
+  When no provider is registered for a given service name in the specified zone
+  and context, the SIF broker must return a 404 error rather than timing out or
+  returning an ambiguous error. This test ensures the broker performs provider
+  lookup and returns a clear error when no match exists.
+
+  ## Expected Result
+
+  - HTTP 404 Not Found
+  - Error response body with a message indicating no provider is registered
+}

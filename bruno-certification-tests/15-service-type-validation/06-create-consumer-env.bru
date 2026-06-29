@@ -1,0 +1,90 @@
+meta {
+  name: 06 Create Consumer Environment
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec15DomainId}}/{{sec15SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "CertSvcTypeConsumer-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec15ZoneId}}"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.sessionToken: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec15Admin' });
+
+  const zoneId = bru.getVar('sec15ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '15-service-type-validation/06-create-consumer-env: Missing sec15ZoneId. ' +
+      'Run 04-setup-zone first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '15-service-type-validation/06-create-consumer-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec15ConsumerEnvId', data.id);
+  bru.setVar('sec15ConsumerSessionToken', data.sessionToken);
+  bru.setVar('sec15ConsumerSharedSecret', data.sharedSecret);
+
+  // Extract requestsConnector URL from infrastructure services
+  if (data.infrastructureServices && data.infrastructureServices.infrastructureService) {
+    const services = data.infrastructureServices.infrastructureService;
+
+    const requestsConn = services.find(s => s.name === 'requestsConnector');
+    if (requestsConn) {
+      bru.setVar('sec15ConsumerRequestsUrl', requestsConn.value);
+      console.log('  Requests Connector URL:', requestsConn.value);
+    }
+
+    const servicesConn = services.find(s => s.name === 'servicesConnector');
+    if (servicesConn) {
+      bru.setVar('sec15ConsumerServicesUrl', servicesConn.value);
+      console.log('  Services Connector URL:', servicesConn.value);
+    }
+  }
+
+  console.log('Created consumer environment (BROKERED):', data.id);
+}
+
+docs {
+  ## Summary
+  Creates a BROKERED consumer environment for service-type-validation tests.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - Consumer environment ID, session token, shared secret stored
+  - Requests Connector URL extracted and stored in `sec15ConsumerRequestsUrl`
+  - Services Connector URL extracted and stored in `sec15ConsumerServicesUrl`
+  - `sec15ConsumerEnvId`, `sec15ConsumerSessionToken`, `sec15ConsumerSharedSecret` set
+}

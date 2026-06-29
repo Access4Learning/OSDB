@@ -1,0 +1,155 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+*-effective-pom
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+
+# Eclipse
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.loadpath
+.recommenders
+
+# IntelliJ IDEA
+*.iws
+out/
+.idea_modules/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Test data
+**/data/messages/**
+!**/data/messages/.gitkeep
+**/data/test-messages/**
+!**/data/test-messages/.gitkeep
+
+# Property-based testing
+.jqwik-database
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Test output
+test-zone-info.json
+compile-output.txt
+
+# Local environment
+.env
+.env.local
+
+# Docker
+.dockerignore
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+
+# Spring Boot
+spring.log
+application-*.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Redis
+dump.rdb
+
+# Flyway
+flyway.conf
+
+# Local development overrides
+application-local-override.yml
+application-local-override.yaml
+
+# Development documentation archive
+dev-docs-archive/
+
+# Project tracking (Jira ticket drafts - never check in)
+project-tracking/
+
+# Pipeline logs (copied from local machine for analysis)
+pipeline-log.txt
+
+# Kiro temp workspace files
+.kiro_tmp/
+
+# Sensitive data - excluded from public repo
+infra/cdk.out/
+external_docs/LD/SOW.txt
+experimental-admin-console/.env.aws
+aws.env
+
+# Development artifacts (Kiro-generated summaries)
+*-SUMMARY.md
+*-VERIFICATION-REPORT.md
+
+# One-off fix scripts
+fix-*.ps1
+fix-*.py
+compile-errors.txt
+
+# Test output
+test-output.txt
+test-results.txt
+verify-output.txt

@@ -1,0 +1,82 @@
+meta {
+  name: 11 Immediate With Query Params
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{sec04ConsumerRequestsUrl}}/{{immediateProviderServiceName}}?page=1&limit=10
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec04ZoneId}}
+  contextId: DEFAULT
+  requestType: IMMEDIATE
+  serviceType: OBJECT
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Consumer' });
+
+  const requestsUrl = bru.getVar('sec04ConsumerRequestsUrl');
+  if (!requestsUrl) {
+    throw new Error(
+      '04-request-response/11-immediate-with-query-params: Missing sec04ConsumerRequestsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('IMMEDIATE request (with query params) response status:', status);
+
+  if (status === 200) {
+    const data = res.getBody();
+    console.log('✓ Query params forwarded successfully');
+    console.log('  Response:', JSON.stringify(data).substring(0, 200));
+  } else {
+    console.error('✗ Expected 200, got:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("IMMEDIATE request with query params returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response contains provider data (params were forwarded)", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    expect(data).to.not.be.null;
+  });
+}
+
+docs {
+  ## Summary
+
+  Sends an IMMEDIATE GET request with query parameters (?page=1&limit=10) and
+  verifies the broker forwards them to the provider.
+
+  ## Rationale
+
+  SIF 3.7 requires the broker to preserve query parameters when forwarding
+  requests to providers. The provider should receive the complete URL including
+  the query string. This test verifies that query parameters are not stripped
+  during the IMMEDIATE routing flow.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Provider receives the request with ?page=1&limit=10 intact
+  - Response body contains provider data (confirming the request was processed)
+}

@@ -1,0 +1,85 @@
+meta {
+  name: 28 Create Consumer 1 Queue
+  type: http
+  seq: 25
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "cert-alerts-consumer1-q",
+      "ownerId": "{{sec11ConsumerEnvId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.queue.id: isDefined
+  res.body.queue.ownerId: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Consumer' });
+  
+  const consumerEnvId = bru.getVar('sec11ConsumerEnvId');
+  if (!consumerEnvId) {
+    throw new Error(
+      '11-alerts/28: Missing sec11ConsumerEnvId. Step 06 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '11-alerts/28 FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  
+  const data = res.getBody();
+  bru.setVar('sec11Consumer1QueueId', data.queue.id);
+  console.log('✓ Consumer 1 queue created: ' + data.queue.id);
+}
+
+tests {
+  test("Consumer 1 queue created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().queue.id).to.exist;
+  });
+  
+  test("Queue owned by Consumer 1", function() {
+    expect(res.getBody().queue.ownerId).to.equal(bru.getVar('sec11ConsumerEnvId'));
+  });
+}
+
+docs {
+  ## Summary
+  Creates a message queue owned by Consumer 1.
+  
+  ## Rationale
+  Consumer 1 needs a queue to receive TestObjects events from the Provider. This queue
+  will also be subscribed to alerts to prove that Consumer 1 does NOT receive its own
+  directed alert back.
+  
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec11Consumer1QueueId` stored
+}

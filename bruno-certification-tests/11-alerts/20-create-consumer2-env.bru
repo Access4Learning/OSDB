@@ -1,0 +1,84 @@
+meta {
+  name: 20 Create Consumer 2 Environment
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "CertConsumer2-Alerts-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec11ZoneId}}"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.sessionToken: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Admin' });
+  
+  const zoneId = bru.getVar('sec11ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '11-alerts/20-create-consumer2-env: Missing sec11ZoneId. ' +
+      'Step 04-setup-zone must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '11-alerts/20-create-consumer2-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  
+  const data = res.getBody();
+  bru.setVar('sec11Consumer2EnvId', data.id);
+  bru.setVar('sec11Consumer2SessionToken', data.sessionToken);
+  bru.setVar('sec11Consumer2SharedSecret', data.sharedSecret);
+  console.log('✓ Consumer 2 environment created: ' + data.id);
+}
+
+tests {
+  test("Consumer 2 environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody();
+    expect(data.id).to.exist;
+    expect(data.sessionToken).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+  Creates a second BROKERED consumer environment for the directed alert delivery test.
+  
+  ## Rationale
+  Two consumers are needed to verify that directed alerts are delivered ONLY to the
+  environment that originated the referenced message (the provider). Consumer 2 subscribes
+  to the same services but should NOT receive a directed alert created by Consumer 1
+  that references a message from the Provider.
+  
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec11Consumer2EnvId`, `sec11Consumer2SessionToken`, `sec11Consumer2SharedSecret` stored
+}

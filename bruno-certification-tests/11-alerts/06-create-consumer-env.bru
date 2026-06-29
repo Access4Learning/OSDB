@@ -1,0 +1,83 @@
+meta {
+  name: 06 Create Consumer Environment
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "CertConsumer-Alerts-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec11ZoneId}}"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Admin' });
+
+  const zoneId = bru.getVar('sec11ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '11-alerts/06-create-consumer-env: Missing sec11ZoneId. ' +
+      'Step 04-setup-zone must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '11-alerts/06-create-consumer-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec11ConsumerEnvId', data.id);
+  bru.setVar('sec11ConsumerSessionToken', data.sessionToken);
+  bru.setVar('sec11ConsumerSharedSecret', data.sharedSecret);
+  console.log('✓ Consumer environment created: ' + data.id);
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.sessionToken: isDefined
+}
+
+tests {
+  test("Consumer environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody();
+    expect(data.id).to.exist;
+    expect(data.sessionToken).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+  Creates a BROKERED consumer environment for alert ownership tests.
+
+  ## Rationale
+  A non-admin consumer environment is needed to verify ownership filtering — consumers
+  should only see their own alerts while admin sees all.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec11ConsumerEnvId`, `sec11ConsumerSessionToken`, `sec11ConsumerSharedSecret` stored
+}
+

@@ -1,0 +1,88 @@
+meta {
+  name: 09 Create Subscription
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec09DomainId}}/{{sec09SolutionId}}/subscriptions/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{sec09QueueId}}",
+      "aclEntryId": "{{sec09SubscribeAclId}}",
+      "messageType": "EVENT"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Consumer' });
+
+  const queueId = bru.getVar('sec09QueueId');
+  const aclId = bru.getVar('sec09SubscribeAclId');
+  const eventsUrl = bru.getVar('sec09ProviderEventsUrl');
+  const queuesUrl = bru.getVar('sec09ConsumerQueuesUrl');
+  if (!queueId || !aclId) {
+    throw new Error(
+      '09-queue-count-validation/09: Missing sec09QueueId or sec09SubscribeAclId.'
+    );
+  }
+  if (!eventsUrl || !queuesUrl) {
+    throw new Error(
+      '09-queue-count-validation/09: Missing infrastructure URLs. ' +
+      'Run 08b and 08c first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '09-queue-count-validation/09 FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec09SubscriptionId', data.subscription.id);
+  console.log('Subscription created: ' + data.subscription.id);
+}
+
+tests {
+  test("Subscription created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Subscription references correct queue", function() {
+    expect(res.getBody().subscription.queueId).to.equal(bru.getVar('sec09QueueId'));
+  });
+
+  test("Provider events URL stored", function() {
+    expect(bru.getVar('sec09ProviderEventsUrl')).to.be.a('string').and.not.be.empty;
+  });
+
+  test("Consumer queues URL stored", function() {
+    expect(bru.getVar('sec09ConsumerQueuesUrl')).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+  Creates subscription binding consumer's queue to provider events.
+
+  ## Expected Result
+  - HTTP 201 -> `sec09SubscriptionId` stored
+}

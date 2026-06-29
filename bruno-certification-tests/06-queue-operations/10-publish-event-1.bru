@@ -1,0 +1,82 @@
+meta {
+  name: 07 Publish Event 1
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{sec06ProviderEventsUrl}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceName: CertQueueObjects
+  serviceType: OBJECT
+  eventAction: CREATE
+  messageType: EVENT
+  zoneId: {{sec06ZoneId}}
+  contextId: DEFAULT
+}
+
+body:json {
+  {
+    "certQueueObject": {
+      "refId": "{{$randomUUID}}",
+      "localId": "cert-queue-event-1",
+      "sequence": 1,
+      "name": "Queue Test Event 1",
+      "description": "First event for queue operations testing"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Provider' });
+
+  const eventsUrl = bru.getVar('sec06ProviderEventsUrl');
+  if (!eventsUrl) {
+    throw new Error(
+      '06-queue-operations/07-publish-event-1: Missing sec06ProviderEventsUrl. ' +
+      'Ensure step 06-create-subscription completed successfully.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 202 && status !== 204) {
+    throw new Error(
+      '06-queue-operations/07-publish-event-1 FAILED: expected 202 or 204, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  console.log('✓ Event 1 published (status ' + status + ')');
+}
+
+tests {
+  test("Event 1 accepted by broker", function() {
+    const status = res.getStatus();
+    expect([202, 204]).to.include(status);
+  });
+}
+
+docs {
+  ## Summary
+
+  Publishes the first of three test events to fill the consumer's queue.
+
+  ## Rationale
+
+  Multiple events must be in the queue to properly test the Get Next and Pop pattern,
+  including FIFO ordering and ack-and-advance behavior. This is event 1 of 3.
+
+  ## Expected Result
+
+  - HTTP 202 Accepted or 204 No Content
+}

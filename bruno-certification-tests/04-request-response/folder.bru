@@ -1,0 +1,99 @@
+meta {
+  name: 04-request-response
+  seq: 5
+}
+
+docs {
+  # Request/Response Choreography Tests
+
+  ## Concept Overview
+
+  SIF 3.7 defines three request/response choreographies that determine how a consumer's
+  request reaches a provider and how the provider's response returns to the consumer.
+  The broker acts as intermediary, routing requests based on the `requestType` header.
+
+  ### Choreography 1: IMMEDIATE/IMMEDIATE
+
+  The consumer sends a request with `requestType: IMMEDIATE`. The broker forwards the
+  request synchronously to the registered provider's endpoint URL. The provider processes
+  the request and returns a response directly. The broker relays the provider's response
+  back to the consumer in the same HTTP transaction.
+
+  ```
+  Consumer â”€â”€GETâ”€â”€â–º Broker â”€â”€GETâ”€â”€â–º Provider
+  Consumer â—„â”€â”€200â”€â”€ Broker â—„â”€â”€200â”€â”€ Provider
+  ```
+
+  **Use when:** The provider can respond quickly (< 30s) and the consumer needs the
+  result immediately.
+
+  ### Choreography 2: DELAYED/IMMEDIATE
+
+  The consumer sends a request with `requestType: DELAYED` and a `queueId` header.
+  The broker accepts the request (202) and forwards it to the provider synchronously.
+  The provider responds immediately, but instead of returning the response to the
+  consumer, the broker enqueues it into the consumer's queue.
+
+  ```
+  Consumer â”€â”€GETâ”€â”€â–º Broker â”€â”€GETâ”€â”€â–º Provider
+  Consumer â—„â”€â”€202â”€â”€ Broker â—„â”€â”€200â”€â”€ Provider
+                    Broker â”€â”€enqueueâ”€â”€â–º Consumer Queue
+  Consumer â”€â”€pollâ”€â”€â–º Consumer Queue â”€â”€200â”€â”€â–º Consumer
+  ```
+
+  **Use when:** The consumer wants to decouple request submission from response
+  processing (fire-and-forget with later retrieval).
+
+  ### Choreography 3: DELAYED/DELAYED
+
+  The consumer sends a request with `requestType: DELAYED` and a `queueId` header.
+  The broker accepts the request (202) and enqueues it to the provider's queue.
+  The provider polls its queue, processes the request, and submits the response
+  via the Responses Connector. The broker then delivers the response to the
+  consumer's queue.
+
+  ```
+  Consumer â”€â”€GETâ”€â”€â–º Broker â”€â”€202â”€â”€â–º Consumer
+                    Broker â”€â”€enqueueâ”€â”€â–º Provider Queue
+  Provider â—„â”€â”€pollâ”€â”€ Provider Queue
+  Provider â”€â”€POSTâ”€â”€â–º Responses Connector â”€â”€enqueueâ”€â”€â–º Consumer Queue
+  Consumer â”€â”€pollâ”€â”€â–º Consumer Queue â”€â”€200â”€â”€â–º Consumer
+  ```
+
+  **Use when:** The provider needs extended processing time (batch operations, complex
+  queries, external system calls).
+
+  ## Test Purpose
+
+  Verify that the broker correctly implements all three choreographies:
+  - IMMEDIATE requests are forwarded synchronously and the response returned
+  - DELAYED requests return 202 and the response appears in the consumer's queue
+  - Query parameters are preserved across all choreographies
+  - Missing providers return 404
+  - Missing queueId on DELAYED requests returns an error
+
+  ## Prerequisites
+
+  - This section is self-contained (creates its own domain/solution)
+  - An external provider endpoint must be running at the URL configured in
+    `immediateProviderEndpointUrl` (environment variable)
+  - The provider must serve the service name configured in `immediateProviderServiceName`
+
+  ## Expected Behavior
+
+  - Setup creates a zone, provider env (DIRECT), consumer env (BROKERED), ACLs, and queue
+  - Provider is registered with IMMEDIATE support pointing to the external endpoint
+  - IMMEDIATE requests return 200 with provider response body
+  - DELAYED requests return 202; polling the queue yields the response
+  - Requests for unregistered services return 404
+  - DELAYED requests without queueId return an error response
+  - Teardown removes all section-specific resources
+
+  ## SIF Specification Reference
+
+  - SIF 3.7 Â§6.3 â€“ Request/Response Choreographies
+  - SIF 3.7 Â§6.3.1 â€“ IMMEDIATE/IMMEDIATE
+  - SIF 3.7 Â§6.3.2 â€“ DELAYED/IMMEDIATE
+  - SIF 3.7 Â§6.3.3 â€“ DELAYED/DELAYED
+  - SIF 3.7 Â§9.3.1 â€“ Queue Get Next and Pop
+}

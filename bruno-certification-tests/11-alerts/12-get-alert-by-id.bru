@@ -1,0 +1,73 @@
+meta {
+  name: 12 Get Alert By ID
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/alerts/{{sec11AlertId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Admin' });
+
+  const alertId = bru.getVar('sec11AlertId');
+  if (!alertId) {
+    throw new Error(
+      '11-alerts/12-get-alert-by-id: Missing sec11AlertId. ' +
+      'Step 10-create-alert must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '11-alerts/12-get-alert-by-id FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  console.log('✓ Alert retrieved by ID: ' + bru.getVar('sec11AlertId'));
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Alert retrieved with status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response contains correct alert data", function() {
+    const data = res.getBody();
+    const alert = data.alert || data;
+    expect(alert.reporter).to.equal("CertTestReporter");
+    expect(alert.exchange).to.equal("REQUEST");
+    expect(alert.level).to.equal("WARNING");
+  });
+}
+
+docs {
+  ## Summary
+  Retrieves a specific alert by its ID.
+
+  ## Rationale
+  Verifies that GET /alerts/{id} returns the correct alert with all fields intact.
+
+  ## Expected Result
+  - HTTP 200 OK
+  - Response contains the alert with matching reporter, exchange, and level fields
+}
+

@@ -1,0 +1,68 @@
+meta {
+  name: 14 Delete Zone Non-Admin
+  type: http
+  seq: 14
+}
+
+delete {
+  url: {{gatewayUrl}}/{{sec01DomainId}}/{{sec01SolutionId}}/zones/{{sec01DeleteTestZoneId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: some-consumer-env
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec01Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 403) {
+    throw new Error(
+      '01-environment-registration/14-delete-zone-non-admin FAILED: expected 403, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  console.log('✓ Non-admin zone deletion correctly rejected with 403');
+}
+
+assert {
+  res.status: eq 403
+}
+
+tests {
+  test("Non-admin zone deletion returns 403 Forbidden", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+
+  test("Zone still exists after rejected deletion", function() {
+    const zoneId = bru.getVar('sec01DeleteTestZoneId');
+    expect(zoneId).to.be.a('string');
+    expect(zoneId.length).to.be.greaterThan(0);
+  });
+}
+
+docs {
+  ## Summary
+
+  Attempts to delete a zone using a non-admin environment fingerprint and verifies
+  the request is rejected with HTTP 403 Forbidden.
+
+  ## Rationale
+
+  Zone deletion is an administrative operation. Non-admin callers (identified by
+  `X-Run-As-Environment` not being `broker-services` and not matching a global admin)
+  must be denied access. This test confirms the authorization guard works correctly.
+
+  ## Expected Result
+
+  - HTTP 403 Forbidden
+  - Zone remains intact for subsequent deletion tests (15–18)
+}

@@ -1,0 +1,65 @@
+meta {
+  name: 99 Teardown
+  type: http
+  seq: 99
+  tags: [
+    teardown
+  ]
+}
+
+delete {
+  url: {{gatewayUrl}}/domains/{{sec14DomainId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 200 || status === 204) {
+    console.log('✓ Domain deleted (cascade removes all resources): ' + bru.getVar('sec14DomainId'));
+  } else if (status === 404) {
+    console.log('✓ Domain already deleted (404)');
+  } else {
+    console.error('⚠ Unexpected status ' + status + ' — continuing');
+  }
+  
+  // Clear section variables
+  bru.setVar('sec14DomainId', null);
+  bru.setVar('sec14DomainName', null);
+  bru.setVar('sec14SolutionId', null);
+  bru.setVar('sec14SolutionName', null);
+  bru.setVar('sec14ZoneId', null);
+  bru.setVar('sec14AdminEnvironmentId', null);
+  bru.setVar('sec14AdminSessionToken', null);
+  bru.setVar('sec14AdminSharedSecret', null);
+  bru.setVar('sec14ProviderEnvId', null);
+  bru.setVar('sec14ProviderSessionToken', null);
+  bru.setVar('sec14ProviderSharedSecret', null);
+  bru.setVar('sec14ConsumerEnvId', null);
+  bru.setVar('sec14ConsumerSessionToken', null);
+  bru.setVar('sec14ConsumerSharedSecret', null);
+  bru.setVar('sec14ProviderXqueryAclId', null);
+  bru.setVar('sec14ConsumerQueryAclId', null);
+  bru.setVar('sec14ContextServiceUuid', null);
+  bru.setVar('sec14ProviderRegistrationId', null);
+}
+
+docs {
+  ## Summary
+  Deletes the test domain, which cascade-deletes the solution and all resources
+  within it (environments, ACLs, zones, xQueryTemplates, provider registrations).
+  
+  ## Expected Result
+  - HTTP 200/204: Domain and all child resources deleted
+  - HTTP 404: Already cleaned up (idempotent)
+}

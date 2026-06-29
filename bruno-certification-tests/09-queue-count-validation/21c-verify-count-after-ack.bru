@@ -1,0 +1,51 @@
+meta {
+  name: 21c Verify Count After Ack
+  type: http
+  seq: 23
+}
+
+get {
+  url: {{sec09ConsumerQueuesUrl}}/{{sec09QueueId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Consumer' });
+}
+
+script:post-response {
+  const count = res.getBody().queue.messageCount;
+  bru.setVar('sec09CountAfterFirstAck', count);
+  console.log('✓ Queue messageCount after first ack: ' + count);
+  console.log('  Expected: 2');
+}
+
+tests {
+  test("Queue stats returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("After ack, queue count decreased to 2", function() {
+    const count = res.getBody().queue.messageCount;
+    expect(count).to.equal(2);
+  });
+}
+
+docs {
+  ## Summary
+  Verifies queue messageCount is 2 after acknowledging one of 3 messages.
+
+  ## Expected Result
+  - HTTP 200 with messageCount = 2
+}

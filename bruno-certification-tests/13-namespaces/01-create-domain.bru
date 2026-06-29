@@ -1,0 +1,83 @@
+meta {
+  name: 01 Create Domain
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{gatewayUrl}}/domains
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "domainId": "{{sec13DomainName}}",
+    "description": "SIF certification domain for section 13 (namespaces)"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+
+  const now = new Date();
+  const ts = now.getFullYear().toString()
+    + String(now.getMonth() + 1).padStart(2, '0')
+    + String(now.getDate()).padStart(2, '0')
+    + '-'
+    + String(now.getHours()).padStart(2, '0')
+    + String(now.getMinutes()).padStart(2, '0')
+    + String(now.getSeconds()).padStart(2, '0')
+    + String(now.getMilliseconds()).padStart(3, '0');
+  const domainName = 'cert-sec13-' + ts;
+  bru.setVar('sec13DomainName', domainName);
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '13-namespaces/01-create-domain FAILED: expected 200-201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  const domainId = data.domainId || bru.getVar('sec13DomainName');
+  bru.setVar('sec13DomainId', domainId);
+  console.log('✓ Domain created: ' + domainId);
+}
+
+assert {
+  res.status: in [200, 201]
+}
+
+tests {
+  test("Domain created successfully", function() {
+    expect(res.getStatus()).to.be.oneOf([200, 201]);
+  });
+
+  test("Domain ID stored", function() {
+    expect(bru.getVar('sec13DomainId')).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+  Creates a uniquely-named domain for the namespaces test section.
+
+  ## Rationale
+  Each certification section operates in its own domain for complete isolation.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec13DomainId` variable stored for subsequent steps
+}
+

@@ -1,0 +1,69 @@
+meta {
+  name: 04 Setup Zone
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/zones
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+body:json {
+  {
+    "zoneId": "NamedQueryTestZone-{{$timestamp}}",
+    "description": "Zone for named query support certification tests"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec14Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '14-named-query-support/04-setup-zone FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec14ZoneId', data.zoneId || data.id);
+  console.log('✓ Section 14 zone created: ' + bru.getVar('sec14ZoneId'));
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Zone created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response contains zone identifier", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('zoneId');
+  });
+}
+
+docs {
+  ## Summary
+  Creates a dedicated zone for named query support tests.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec14ZoneId` variable stored for subsequent steps
+}
+

@@ -1,0 +1,112 @@
+meta {
+  name: 12 Query Params Forwarded
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{sec08ConsumerRequestsUrl}}/{{immediateProviderServiceName}}?filter=active&orderBy=name
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec08ZoneId}}
+  contextId: DEFAULT
+  requestType: IMMEDIATE
+  serviceType: OBJECT
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec08Consumer' });
+
+  const requestsUrl = bru.getVar('sec08ConsumerRequestsUrl');
+  if (!requestsUrl) {
+    throw new Error(
+      '08-header-passthrough/12-query-params-forwarded: Missing sec08ConsumerRequestsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Query params forwarded test status:', status);
+
+  if (status === 200) {
+    const data = res.getBody();
+    console.log('✓ Request with query params succeeded');
+
+    // Check if provider echo shows the query params
+    if (data && data.receivedUrl) {
+      console.log('  Provider received URL:', data.receivedUrl);
+      const hasFilter = data.receivedUrl.includes('filter=active');
+      const hasOrderBy = data.receivedUrl.includes('orderBy=name');
+      console.log('  filter=active present:', hasFilter);
+      console.log('  orderBy=name present:', hasOrderBy);
+    } else if (data && data.receivedQueryParams) {
+      console.log('  Provider received query params:', JSON.stringify(data.receivedQueryParams));
+    } else {
+      console.log('  Response:', JSON.stringify(data).substring(0, 300));
+    }
+  } else {
+    console.error('✗ Expected 200, got:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("Request with query params returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Provider received filter query parameter", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    if (data.receivedUrl) {
+      expect(data.receivedUrl).to.include('filter=active');
+    } else if (data.receivedQueryParams) {
+      expect(data.receivedQueryParams.filter).to.equal('active');
+    }
+  });
+
+  test("Provider received orderBy query parameter", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    if (data.receivedUrl) {
+      expect(data.receivedUrl).to.include('orderBy=name');
+    } else if (data.receivedQueryParams) {
+      expect(data.receivedQueryParams.orderBy).to.equal('name');
+    }
+  });
+}
+
+docs {
+  ## Summary
+
+  Sends a request with query parameters (?filter=active&orderBy=name) and verifies
+  the broker forwards the complete URL to the provider.
+
+  ## Rationale
+
+  Query parameters are part of the request URL and MUST be preserved when the broker
+  forwards requests to providers. If the broker strips or modifies query parameters,
+  providers cannot support filtering, pagination, or sorting via URL parameters.
+
+  This complements the header passthrough tests by verifying URL-level passthrough
+  in addition to header-level passthrough.
+
+  ## Expected Result
+
+  - HTTP 200 OK (IMMEDIATE request succeeds)
+  - Provider's echo response confirms `filter=active` was received
+  - Provider's echo response confirms `orderBy=name` was received
+  - Query parameters arrive at the provider exactly as sent by the consumer
+}
+

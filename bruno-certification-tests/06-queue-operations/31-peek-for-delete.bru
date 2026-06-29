@@ -1,0 +1,92 @@
+meta {
+  name: 31 Peek For Delete
+  type: http
+  seq: 32
+}
+
+get {
+  url: {{sec06ConsumerQueuesUrl}}/{{sec06QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+
+  const queuesUrl = bru.getVar('sec06ConsumerQueuesUrl');
+  const queueId = bru.getVar('sec06QueueId');
+  if (!queuesUrl || !queueId) {
+    throw new Error(
+      '06-queue-operations/31-peek-for-delete: Missing queue URL or ID. ' +
+      'Ensure setup steps completed successfully.'
+    );
+  }
+
+  // Allow time for event to be routed to queue after purge + publish
+  await new Promise(resolve => setTimeout(resolve, 2000));
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 200) {
+    const messageId = res.getHeader('messageid');
+    if (messageId) {
+      bru.setVar('sec06DeleteTargetMessageId', messageId);
+      console.log('✓ Peeked message for delete test');
+      console.log('  Message ID (stored as sec06DeleteTargetMessageId): ' + messageId);
+    } else {
+      throw new Error('31-peek-for-delete: 200 response but no messageid header');
+    }
+
+    const body = res.getBody();
+    console.log('  Payload: ' + JSON.stringify(body, null, 2));
+  } else {
+    console.error('Unexpected status: ' + status + '. Expected 200 with message.');
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Peek returns 200 OK with message", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response has messageid header", function() {
+    const messageId = res.getHeader('messageid');
+    expect(messageId).to.exist;
+    expect(messageId).to.be.a('string').and.not.be.empty;
+  });
+
+  test("Response body contains event payload", function() {
+    const body = res.getBody();
+    expect(body).to.exist;
+    // We delete whatever message is at the head — content doesn't matter for delete test
+    expect(body).to.have.property('certQueueObject');
+  });
+}
+
+docs {
+  ## Summary
+
+  Peeks the message (GET without deleteMessageId) to obtain its messageId for the DELETE test.
+
+  ## Rationale
+
+  Before we can test the DELETE /{queueId}/messages/{messageId} endpoint, we need to know
+  the messageId of a message currently in the queue. This peek retrieves it without removing it.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Body contains the delete test event (cert-queue-delete-test)
+  - `messageid` response header stored as `sec06DeleteTargetMessageId`
+}

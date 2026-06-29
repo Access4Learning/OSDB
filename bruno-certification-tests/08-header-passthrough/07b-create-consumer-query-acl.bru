@@ -1,0 +1,69 @@
+meta {
+  name: 07b Create Consumer QUERY ACL
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec08DomainId}}/{{sec08SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec08ConsumerEnvId}}",
+    "serviceName": "{{immediateProviderServiceName}}",
+    "zoneId": "{{sec08ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "QUERY",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec08Admin' });
+
+  const consumerEnvId = bru.getVar('sec08ConsumerEnvId');
+  if (!consumerEnvId) {
+    throw new Error('07b-create-consumer-query-acl: Missing sec08ConsumerEnvId.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '08-header-passthrough/07b: Failed to create QUERY ACL, got ' +
+      status + ': ' + JSON.stringify(res.getBody())
+    );
+  }
+  bru.setVar('sec08QueryAclId', res.getBody().id);
+  console.log('✓ Created QUERY ACL:', res.getBody().id);
+}
+
+tests {
+  test("Consumer QUERY ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  ## Summary
+  Creates QUERY ACL for consumer environment.
+
+  ## Expected Result
+  - HTTP 201 → `sec08QueryAclId` stored
+}

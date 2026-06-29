@@ -1,0 +1,76 @@
+meta {
+  name: 12 Delete Operation
+  type: http
+  seq: 15
+}
+
+delete {
+  url: {{sec07ConsumerServicesUrl}}/{{sec07ServiceName}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec07ZoneId}}
+  contextId: DEFAULT
+  requestType: DELAYED
+  queueId: {{sec07ConsumerQueueId}}
+  serviceName: {{sec07ServiceName}}
+}
+
+assert {
+  res.status: eq 202
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec07Consumer' });
+
+  const servicesUrl = bru.getVar('sec07ConsumerServicesUrl');
+  const queueId = bru.getVar('sec07ConsumerQueueId');
+  const serviceName = bru.getVar('sec07ServiceName');
+  if (!servicesUrl || !queueId || !serviceName) {
+    throw new Error(
+      '07-service-operations/12-delete-operation: Missing sec07ConsumerServicesUrl, ' +
+      'sec07ConsumerQueueId, or sec07ServiceName. Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('DELETE service operation response status:', status);
+
+  if (status === 202) {
+    console.log('✓ DELETE operation accepted (202)');
+  } else {
+    console.error('✗ Expected 202, got:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("DELETE service operation returns 202 Accepted", function() {
+    expect(res.getStatus()).to.equal(202);
+  });
+}
+
+docs {
+  ## Summary
+
+  Sends a DELETE service operation to the Services Connector with
+  requestType=DELAYED and a valid queueId.
+
+  ## Rationale
+
+  The DELETE operation verifies that the broker accepts a functional service
+  deletion request via DELETE and routes it asynchronously. The broker must
+  return 202 Accepted, confirming the delete operation has been enqueued
+  for the provider.
+
+  ## Expected Result
+
+  - HTTP 202 Accepted
+  - Delete operation enqueued to provider's queue for processing
+}

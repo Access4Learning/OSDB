@@ -1,0 +1,76 @@
+meta {
+  name: 13 Create Zone for Deletion
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec01DomainId}}/{{sec01SolutionId}}/zones
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+body:json {
+  {
+    "zoneId": "delete-test-zone",
+    "description": "Disposable zone for deletion certification tests"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec01Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '01-environment-registration/13-create-zone-for-deletion FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec01DeleteTestZoneId', data.zoneId || data.id);
+  console.log('✓ Deletion test zone created: ' + bru.getVar('sec01DeleteTestZoneId'));
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Deletion test zone created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response contains zone identifier", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('zoneId');
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a disposable zone specifically for zone deletion certification tests.
+
+  ## Rationale
+
+  The primary zone (`sec01ZoneId`) is needed by teardown and other tests, so a
+  separate zone is created here to be deleted in subsequent deletion test steps.
+  Using a fixed zoneId (`delete-test-zone`) keeps the test idempotent.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - `sec01DeleteTestZoneId` variable stored for use by deletion tests (14–18)
+}

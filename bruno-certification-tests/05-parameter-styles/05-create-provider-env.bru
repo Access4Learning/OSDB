@@ -1,0 +1,91 @@
+meta {
+  name: 05 Create Provider Environment
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec05DomainId}}/{{sec05SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "CertParamsProvider-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec05ZoneId}}"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.sessionToken: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec05Admin' });
+
+  const zoneId = bru.getVar('sec05ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '05-parameter-styles/02-create-provider-env: Missing sec05ZoneId. ' +
+      'Run 01-setup-zone first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '05-parameter-styles/02-create-provider-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec05ProviderEnvId', data.id);
+  bru.setVar('sec05ProviderSessionToken', data.sessionToken);
+  bru.setVar('sec05ProviderSharedSecret', data.sharedSecret);
+
+  // Extract eventsConnector URL from infrastructure services
+  if (data.infrastructureServices && data.infrastructureServices.infrastructureService) {
+    const services = data.infrastructureServices.infrastructureService;
+
+    const eventsConn = services.find(s => s.name === 'eventsConnector');
+    if (eventsConn) {
+      bru.setVar('sec05ProviderEventsUrl', eventsConn.value);
+      console.log('  Events Connector URL:', eventsConn.value);
+    }
+  }
+
+  console.log('âœ“ Created provider environment (DIRECT):', data.id);
+}
+
+docs {
+  ## Summary
+
+  Creates a DIRECT provider environment for parameter styles tests.
+
+  ## Rationale
+
+  A DIRECT provider environment represents an application that publishes events
+  and handles requests synchronously. The provider's Events Connector URL is
+  extracted for publishing events with both header-based and matrix parameters.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Provider environment ID, session token, and shared secret stored
+  - Events Connector URL stored in `sec05ProviderEventsUrl`
+  - `sec05ProviderEnvId`, `sec05ProviderSessionToken`, `sec05ProviderSharedSecret` set
+}

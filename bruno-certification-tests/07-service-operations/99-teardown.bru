@@ -1,0 +1,50 @@
+meta {
+  name: 99 Teardown
+  type: http
+  seq: 99
+}
+
+delete {
+  url: {{gatewayUrl}}/domains/{{sec07DomainId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 200 || status === 204) {
+    console.log('Domain deleted (cascade removes all resources): ' + bru.getVar('sec07DomainId'));
+  } else if (status === 404) {
+    console.log('Domain already deleted (404)');
+  } else {
+    console.error('Unexpected status ' + status + ' - continuing');
+  }
+
+  // Clear section variables
+  bru.setVar('sec07DomainId', null);
+  bru.setVar('sec07DomainName', null);
+  bru.setVar('sec07SolutionId', null);
+  bru.setVar('sec07SolutionName', null);
+  bru.setVar('sec07AdminEnvironmentId', null);
+  bru.setVar('sec07AdminSessionToken', null);
+  bru.setVar('sec07AdminSharedSecret', null);
+}
+
+docs {
+  ## Summary
+  Deletes the test domain, which cascade-deletes the solution and all resources within it.
+
+  ## Expected Result
+  - HTTP 200/204: Domain and all child resources deleted
+  - HTTP 404: Already cleaned up
+}

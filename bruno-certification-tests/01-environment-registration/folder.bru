@@ -1,0 +1,69 @@
+meta {
+  name: 01 Environment Registration
+  seq: 2
+}
+
+docs {
+  # Environment Registration
+
+  ## Concept Overview
+
+  In SIF 3.7, an **environment** represents a registered application instance within a
+  solution. When an application registers with the broker, it receives credentials
+  (sessionToken + sharedSecret) and a set of **infrastructure service** URLs that define
+  how it communicates with the broker.
+
+  There are two primary environment types:
+
+  - **DIRECT**: The broker forwards requests directly to the provider's endpoint.
+    Used by providers that serve real-time responses.
+  - **BROKERED**: All communication passes through the broker's connectors.
+    Used by consumers and providers that use queue-based messaging.
+
+  A compliant broker returns these infrastructure services for a BROKERED environment:
+
+  | Service Name | Purpose |
+  |---|---|
+  | `environment` | Environment self-management endpoint |
+  | `provisionRequests` | Provision request management |
+  | `requestsConnector` | Submit and receive synchronous/asynchronous requests |
+  | `eventsConnector` | Publish and receive events |
+  | `queues` | Queue management (create, list, delete) |
+  | `subscriptions` | Subscription management |
+  | `servicesConnector` | Functional service operations |
+  | `responsesConnector` | Submit asynchronous (delayed) responses |
+
+  A compliant 200 response to GET /environments/{id} includes:
+  - `id` â€” the environment UUID
+  - `type` â€” DIRECT or BROKERED
+  - `defaultZone` â€” the zone this environment is registered in
+  - `authenticationMethod` â€” e.g., SIF_HMACSHA256
+  - `consumerName` â€” the registered application name
+  - `infrastructureServices.infrastructureService` â€” array of {name, value} objects
+
+  ## Test Purpose
+
+  Verify that:
+  1. Environments can be registered with different types (DIRECT, BROKERED)
+  2. GET /environments/{id} returns the expected structure
+  3. BROKERED environments include all 8 required infrastructure services
+  4. Each infrastructure service has a non-blank URL value
+
+  ## Prerequisites
+
+  - This section is self-contained (creates its own domain/solution)
+  - `sec01DomainId`, `sec01SolutionId`, `sec01AdminSessionToken`, `sec01AdminSharedSecret`
+    variables are set
+
+  ## Expected Behavior
+
+  - Zone created â†’ environments registered â†’ ACLs granted
+  - GET on each environment returns 200 with full infrastructure service list
+  - Teardown deletes ACLs, environments, and zone without errors
+
+  ## SIF Specification Reference
+
+  - SIF 3.3 Infrastructure Â§4.2 â€” Environment Registration
+  - SIF 3.7 Infrastructure â€” Infrastructure Services
+  - SIF 3.3 Infrastructure Â§4.3 â€” Infrastructure Service URLs
+}

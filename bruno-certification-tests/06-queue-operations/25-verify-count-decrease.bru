@@ -1,0 +1,83 @@
+meta {
+  name: 25 Verify Count Decrease
+  type: http
+  seq: 31
+}
+
+get {
+  url: {{sec06ConsumerQueuesUrl}}/{{sec06QueueId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+
+  const queuesUrl = bru.getVar('sec06ConsumerQueuesUrl');
+  const queueId = bru.getVar('sec06QueueId');
+  const initialCount = bru.getVar('sec06InitialCount');
+  if (!queuesUrl || !queueId) {
+    throw new Error(
+      '06-queue-operations/25-verify-count-decrease: Missing queue URL or ID.'
+    );
+  }
+  if (initialCount === undefined || initialCount === null) {
+    throw new Error(
+      '06-queue-operations/25-verify-count-decrease: Missing sec06InitialCount. ' +
+      'Run 25c-get-initial-count first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 200) {
+    const data = res.getBody().queue;
+    const currentCount = data.messageCount || data.count || 0;
+    const initialCount = bru.getVar('sec06InitialCount');
+    console.log('✓ Queue stats after ack:');
+    console.log('  Initial count: ' + initialCount);
+    console.log('  Current count: ' + currentCount);
+    console.log('  Decrease: ' + (initialCount - currentCount));
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Queue stats returns 200 OK", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Message count decreased by 1 after ack", function() {
+    const data = res.getBody().queue;
+    const currentCount = data.messageCount || data.count || 0;
+    const initialCount = bru.getVar('sec06InitialCount');
+    expect(currentCount).to.equal(initialCount - 1);
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that acknowledging a message decreases the queue's reported message count by 1.
+
+  ## Rationale
+
+  SIF §9.3.1 specifies that acknowledged messages are removed from the count.
+  Steps 25a-25e published 2 events, recorded the count, and acked one message.
+  This step verifies the count decreased by exactly 1.
+
+  ## Expected Result
+
+  - HTTP 200 OK from queue stats endpoint
+  - `messageCount` field is exactly 1 less than the initial count
+}

@@ -1,0 +1,107 @@
+meta {
+  name: 10c Register xQuery Provider
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/provider-registrations
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec14ProviderEnvId}}",
+    "contextServiceUuid": "{{sec14ContextServiceUuid}}",
+    "endpoint": "{{immediateProviderEndpointUrl}}/StudentSnapshot",
+    "serviceType": "XQUERYTEMPLATE",
+    "supportedRequestTypes": [
+      {
+        "requestType": "IMMEDIATE",
+        "operations": ["QUERY"]
+      }
+    ]
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec14Admin' });
+
+  const providerEnvId = bru.getVar('sec14ProviderEnvId');
+  const contextServiceUuid = bru.getVar('sec14ContextServiceUuid');
+  if (!providerEnvId || !contextServiceUuid) {
+    throw new Error(
+      '14-named-query-support/10c-register-xquery-provider: Missing sec14ProviderEnvId or sec14ContextServiceUuid. ' +
+      'Steps 05 and 10b must run successfully first.'
+    );
+  }
+
+  const endpointUrl = bru.getEnvVar('immediateProviderEndpointUrl');
+  if (!endpointUrl) {
+    throw new Error(
+      '14-named-query-support/10c-register-xquery-provider: Missing environment variable "immediateProviderEndpointUrl". ' +
+      'Set it in your environment file.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '14-named-query-support/10c-register-xquery-provider FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec14ProviderRegistrationId', data.id);
+  console.log('✓ Provider registered for StudentSnapshot xQuery: ' + data.id);
+  console.log('  Endpoint: ' + data.endpoint);
+  console.log('  ServiceType: XQUERYTEMPLATE');
+}
+
+tests {
+  test("Provider registration for XQUERYTEMPLATE created", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody();
+    expect(data.id).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+  Registers the provider to serve the "StudentSnapshot" Named Query via
+  POST /provider-registrations with serviceType=XQUERYTEMPLATE.
+
+  ## Rationale
+  Per the decoupled architecture (xquery-provider-registration-fix), template catalog
+  management and provider registration are separate operations. After the admin creates
+  the template in step 10, the provider separately registers to serve it here.
+
+  The provider specifies:
+  - contextServiceUuid: obtained from available-options in step 10b
+  - endpoint: the URL where the provider handles query requests
+  - serviceType: XQUERYTEMPLATE
+  - supportedRequestTypes: IMMEDIATE with QUERY operation
+
+  This enables the requests-connector to route consumer queries (step 13) to this
+  provider's endpoint.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec14ProviderRegistrationId` stored for cleanup
+}

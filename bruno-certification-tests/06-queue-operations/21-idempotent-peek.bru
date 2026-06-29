@@ -1,0 +1,86 @@
+meta {
+  name: 21 Idempotent Peek
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{sec06ConsumerQueuesUrl}}/{{sec06QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+
+  const firstMessageId = bru.getVar('sec06FirstMessageId');
+  if (!firstMessageId) {
+    throw new Error(
+      '06-queue-operations/11-idempotent-peek: Missing sec06FirstMessageId. ' +
+      'Run 10-peek-first-message first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 200) {
+    const messageId = res.getHeader('messageid');
+    const firstMessageId = bru.getVar('sec06FirstMessageId');
+    console.log('âœ“ Idempotent peek returned same message');
+    console.log('  Expected Message ID: ' + firstMessageId);
+    console.log('  Actual Message ID:   ' + messageId);
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Second peek returns 200 OK", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Same messageid header returned (idempotent)", function() {
+    const messageId = res.getHeader('messageid');
+    const firstMessageId = bru.getVar('sec06FirstMessageId');
+    expect(messageId).to.equal(firstMessageId);
+  });
+
+  test("Same message payload returned", function() {
+    const body = res.getBody();
+    expect(body).to.have.property('certQueueObject');
+    expect(body.certQueueObject.localId).to.equal('cert-queue-event-1');
+    expect(body.certQueueObject.sequence).to.equal(1);
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that consecutive GETs without an acknowledgment return the same message
+  (idempotent peek behavior).
+
+  ## Rationale
+
+  SIF Â§9.3.1 requires that calling GET on a queue without deleteMessageId multiple
+  times returns the same message each time. This ensures that network failures or
+  retries during message retrieval do not cause message loss â€” the message stays at
+  the head of the queue until explicitly acknowledged.
+
+  This is a critical reliability property: the consumer can safely retry failed
+  reads without advancing past messages.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Same `messageid` header as the previous peek (sec06FirstMessageId)
+  - Same message payload (cert-queue-event-1, sequence=1)
+}

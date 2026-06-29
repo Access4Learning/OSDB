@@ -1,0 +1,74 @@
+meta {
+  name: 08 Publish Event 2
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{sec06ProviderEventsUrl}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceName: CertQueueObjects
+  serviceType: OBJECT
+  eventAction: CREATE
+  messageType: EVENT
+  zoneId: {{sec06ZoneId}}
+  contextId: DEFAULT
+}
+
+body:json {
+  {
+    "certQueueObject": {
+      "refId": "{{$randomUUID}}",
+      "localId": "cert-queue-event-2",
+      "sequence": 2,
+      "name": "Queue Test Event 2",
+      "description": "Second event for queue operations testing"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Provider' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 202 && status !== 204) {
+    throw new Error(
+      '06-queue-operations/08-publish-event-2 FAILED: expected 202 or 204, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  console.log('✓ Event 2 published (status ' + status + ')');
+}
+
+tests {
+  test("Event 2 accepted by broker", function() {
+    const status = res.getStatus();
+    expect([202, 204]).to.include(status);
+  });
+}
+
+docs {
+  ## Summary
+
+  Publishes the second of three test events to fill the consumer's queue.
+
+  ## Rationale
+
+  Multiple events in the queue are needed to verify FIFO ordering and the ack-and-advance
+  behavior where acknowledging one message returns the next. This is event 2 of 3.
+
+  ## Expected Result
+
+  - HTTP 202 Accepted or 204 No Content
+}

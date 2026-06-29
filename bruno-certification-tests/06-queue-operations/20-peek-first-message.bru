@@ -1,0 +1,107 @@
+meta {
+  name: 20 Peek First Message
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{sec06ConsumerQueuesUrl}}/{{sec06QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+
+  const queuesUrl = bru.getVar('sec06ConsumerQueuesUrl');
+  const queueId = bru.getVar('sec06QueueId');
+  if (!queuesUrl || !queueId) {
+    throw new Error(
+      '06-queue-operations/10-peek-first-message: Missing queue URL or ID. ' +
+      'Ensure setup steps completed successfully.'
+    );
+  }
+
+  const eventsPublished = bru.getVar('sec06EventsPublished');
+  if (!eventsPublished) {
+    throw new Error(
+      '06-queue-operations/10-peek-first-message: Events not published. ' +
+      'Run steps 07-09 first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 200) {
+    const messageId = res.getHeader('messageid');
+    if (messageId) {
+      bru.setVar('sec06FirstMessageId', messageId);
+      console.log('âœ“ First message peeked successfully');
+      console.log('  Message ID: ' + messageId);
+    }
+
+    const body = res.getBody();
+    console.log('  Payload: ' + JSON.stringify(body, null, 2));
+  } else {
+    console.error('Unexpected status: ' + status + '. Expected 200 with first message.');
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Peek returns 200 OK", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response has messageid header", function() {
+    const messageId = res.getHeader('messageid');
+    expect(messageId).to.exist;
+    expect(messageId).to.be.a('string').and.not.be.empty;
+  });
+
+  test("Response body contains event payload", function() {
+    const body = res.getBody();
+    expect(body).to.exist;
+    expect(body).to.have.property('certQueueObject');
+  });
+
+  test("First message is Event 1 (FIFO order)", function() {
+    const body = res.getBody();
+    expect(body.certQueueObject.localId).to.equal('cert-queue-event-1');
+    expect(body.certQueueObject.sequence).to.equal(1);
+  });
+}
+
+docs {
+  ## Summary
+
+  Peeks at the first message in the queue without acknowledging it (no deleteMessageId).
+
+  ## Rationale
+
+  The SIF Get Next and Pop pattern (Â§9.3.1) specifies that a GET without deleteMessageId
+  retrieves the oldest undelivered message in FIFO order without removing it. The broker
+  must return:
+  - HTTP 200 with the message payload in the body
+  - A `messageid` response header identifying the delivered message
+
+  This test verifies FIFO ordering by confirming that Event 1 (sequence=1) is returned
+  first, since it was published before Events 2 and 3.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Body contains the first published event (cert-queue-event-1, sequence=1)
+  - `messageid` response header is present and non-empty
+  - `sec06FirstMessageId` stored for idempotent peek and ack-and-advance tests
+}

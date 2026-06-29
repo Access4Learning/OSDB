@@ -1,0 +1,90 @@
+meta {
+  name: 39 Consumer 2 Receives TestObjects Event
+  type: http
+  seq: 36
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/queues/{{sec11Consumer2QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Consumer2' });
+  
+  const queueId = bru.getVar('sec11Consumer2QueueId');
+  if (!queueId) {
+    throw new Error(
+      '11-alerts/39: Missing sec11Consumer2QueueId. Step 29 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '11-alerts/39 FAILED: expected 200, got ' + status + '. ' +
+      'Consumer 2 queue should have the TestObjects event.'
+    );
+  }
+  
+  const messageId = res.getHeader('messageid');
+  if (messageId) {
+    bru.setVar('sec11Consumer2EventMsgId', messageId);
+    console.log('✓ Consumer 2 received TestObjects event');
+    console.log('  messageid: ' + messageId);
+  }
+  
+  const serviceName = res.getHeader('servicename');
+  console.log('  serviceName: ' + serviceName);
+}
+
+tests {
+  test("Consumer 2 receives event (200 OK)", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has servicename=TestObjects", function() {
+    const serviceName = res.getHeader('servicename');
+    expect(serviceName).to.equal('TestObjects');
+  });
+  
+  test("Response body contains Updated Test Object", function() {
+    const body = res.getBody();
+    expect(JSON.stringify(body)).to.include('Updated Test Object');
+  });
+  
+  test("Response has messageid header", function() {
+    const messageId = res.getHeader('messageid');
+    expect(messageId).to.exist;
+    expect(messageId).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+  Verifies that Consumer 2 also receives the TestObjects UPDATE event.
+  
+  ## Rationale — Broadcast Event Delivery
+  Both consumers subscribed to TestObjects events. The broker must fan out the event
+  to ALL matching subscribers. This confirms the second copy arrived, proving broadcast
+  delivery works correctly before we test directed alert delivery (which is selective).
+  
+  ## Expected Result
+  - HTTP 200 with event payload
+  - `servicename` header = TestObjects
+  - Body contains "Updated Test Object"
+  - `sec11Consumer2EventMsgId` stored from messageid header
+}

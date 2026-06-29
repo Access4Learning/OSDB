@@ -1,0 +1,89 @@
+meta {
+  name: 10 Header-Based Events
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{sec05ProviderEventsUrl}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceName: {{sec05ServiceName}}
+  serviceType: OBJECT
+  eventAction: CREATE
+  messageType: EVENT
+  zoneId: {{sec05ZoneId}}
+  contextId: DEFAULT
+}
+
+body:json {
+  {
+    "certParamObject": {
+      "refId": "{{$randomUUID}}",
+      "localId": "cert-header-event-{{$timestamp}}",
+      "name": "Header Parameter Event",
+      "description": "Event published with header-based zoneId and contextId"
+    }
+  }
+}
+
+assert {
+  res.status: in [202, 204]
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec05Provider' });
+
+  const eventsUrl = bru.getVar('sec05ProviderEventsUrl');
+  if (!eventsUrl) {
+    throw new Error(
+      '05-parameter-styles/10-header-events: Missing sec05ProviderEventsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 202 && status !== 204) {
+    throw new Error(
+      '05-parameter-styles/10-header-events FAILED: expected 202 or 204, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  console.log('✓ Header-based event published successfully (status ' + status + ')');
+}
+
+tests {
+  test("Event with header-based parameters accepted by broker", function() {
+    const status = res.getStatus();
+    expect([202, 204]).to.include(status);
+  });
+}
+
+docs {
+  ## Summary
+
+  Publishes an event using header-based zoneId and contextId parameters.
+
+  ## Rationale
+
+  Header-based parameters are the current SIF 3.7 standard. The broker must accept
+  events where zone and context are specified as HTTP headers (`zoneId`, `contextId`)
+  and route the event to the correct subscribers in that zone/context scope.
+
+  This test establishes the baseline behavior that matrix parameter tests compare against.
+
+  ## Expected Result
+
+  - HTTP 202 Accepted or 204 No Content
+  - Event is accepted and routed based on the zoneId/contextId headers
+}

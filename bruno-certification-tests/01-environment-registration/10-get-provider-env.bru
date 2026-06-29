@@ -1,0 +1,100 @@
+meta {
+  name: 10 Get Provider Environment
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec01DomainId}}/{{sec01SolutionId}}/environments/{{sec01ProviderEnvId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec01Admin' });
+
+  const envId = bru.getVar('sec01ProviderEnvId');
+  if (!envId) {
+    throw new Error(
+      '01-environment-registration/10-get-provider-env: Missing sec01ProviderEnvId. ' +
+      'Setup steps must run successfully first.'
+    );
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isDefined
+  res.body.type: isDefined
+  res.body.infrastructureServices: isDefined
+}
+
+tests {
+  test("Provider environment returned with 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response contains required environment fields", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('type');
+    expect(data).to.have.property('defaultZone');
+    expect(data).to.have.property('authenticationMethod');
+    expect(data).to.have.property('infrastructureServices');
+  });
+
+  test("Environment ID matches requested ID", function() {
+    const data = res.getBody();
+    const expectedId = bru.getVar('sec01ProviderEnvId');
+    expect(data.id).to.equal(expectedId);
+  });
+
+  test("Environment type is BROKERED", function() {
+    const data = res.getBody();
+    expect(data.type).to.equal('BROKERED');
+  });
+
+  test("Infrastructure services list is non-empty", function() {
+    const data = res.getBody();
+    expect(data.infrastructureServices).to.have.property('infrastructureService');
+    expect(data.infrastructureServices.infrastructureService).to.be.an('array');
+    expect(data.infrastructureServices.infrastructureService.length).to.be.greaterThan(0);
+  });
+
+  test("Each infrastructure service has name and value", function() {
+    const data = res.getBody();
+    const services = data.infrastructureServices.infrastructureService;
+    services.forEach(function(svc) {
+      expect(svc).to.have.property('name');
+      expect(svc).to.have.property('value');
+      expect(svc.name).to.be.a('string').and.not.be.empty;
+      expect(svc.value).to.be.a('string').and.not.be.empty;
+    });
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that a GET request for the provider environment returns the expected
+  structure with infrastructure services.
+
+  ## Rationale
+
+  SIF §4.2 requires that registered environments be retrievable via GET and include
+  infrastructure service URLs. A BROKERED provider receives infrastructure
+  service entries that allow it to interact with the broker (e.g., events connector
+  for publishing events).
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Body contains: `id`, `type` (BROKERED), `defaultZone`, `authenticationMethod`,
+    `infrastructureServices.infrastructureService` (non-empty array of {name, value})
+}

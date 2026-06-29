@@ -1,0 +1,82 @@
+meta {
+  name: 10 Immediate Request
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{sec04ConsumerRequestsUrl}}/{{immediateProviderServiceName}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec04ZoneId}}
+  contextId: DEFAULT
+  requestType: IMMEDIATE
+  serviceType: OBJECT
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Consumer' });
+
+  const requestsUrl = bru.getVar('sec04ConsumerRequestsUrl');
+  if (!requestsUrl) {
+    throw new Error(
+      '04-request-response/10-immediate-request: Missing sec04ConsumerRequestsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('IMMEDIATE request response status:', status);
+
+  if (status === 200) {
+    const data = res.getBody();
+    console.log('✓ Received provider response body');
+    console.log('  Response:', JSON.stringify(data).substring(0, 200));
+  } else {
+    console.error('✗ Expected 200, got:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("IMMEDIATE request returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response contains provider data", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    expect(data).to.not.be.null;
+  });
+}
+
+docs {
+  ## Summary
+
+  Sends an IMMEDIATE GET request via the Requests Connector and verifies the
+  provider's response is returned synchronously.
+
+  ## Rationale
+
+  The IMMEDIATE/IMMEDIATE choreography is the simplest SIF request pattern.
+  The broker must forward the request to the registered provider and return
+  the response in the same HTTP transaction. This verifies end-to-end request
+  routing works correctly.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Response body contains data from the provider endpoint
+  - No queueing or asynchronous processing involved
+}

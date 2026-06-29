@@ -1,0 +1,84 @@
+meta {
+  name: 12 Get Named Query
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/xquerys/{{sec14QueryToken}}
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec14Provider' });
+
+  const queryToken = bru.getVar('sec14QueryToken');
+  if (!queryToken) {
+    throw new Error(
+      '14-named-query-support/12-get-named-query: Missing sec14QueryToken. ' +
+      'Step 10-register-named-query must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '14-named-query-support/12-get-named-query FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  console.log('✓ Retrieved Named Query Template: token=' + data.xquery.id + ', type=' + data.xquery.type);
+}
+
+assert {
+  res.status: eq 200
+  res.body.xquery.id: eq StudentSnapshot
+  res.body.xquery.type: eq SINGULAR
+  res.body.xquery.status: eq APPROVED
+}
+
+tests {
+  test("Named Query Template retrieved by token with all fields", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    expect(data.xquery).to.exist;
+    expect(data.xquery.id).to.equal("StudentSnapshot");
+    expect(data.xquery.type).to.equal("SINGULAR");
+    expect(data.xquery.status).to.equal("APPROVED");
+    expect(data.xquery.description).to.equal("Returns a snapshot of student data filtered by parameters");
+    expect(data.xquery.script).to.exist;
+    expect(data.xquery.parameters).to.be.an("array").with.lengthOf(2);
+    expect(data.xquery.parameters[0].name).to.equal("grade");
+    expect(data.xquery.parameters[0].required).to.equal(true);
+    expect(data.xquery.parameters[1].name).to.equal("schoolYear");
+    expect(data.xquery.parameters[1].defaultValue).to.equal("2024");
+    expect(data.xquery.returnType).to.equal("http://www.sifassociation.org/datamodel/na/4.x/StudentPersonal");
+  });
+}
+
+docs {
+  ## Summary
+  Retrieves a single Named Query Template by its queryToken.
+
+  ## Rationale
+  Per requirement 1.3, GET /{domain}/{solution}/xquerys/{queryToken} returns the
+  specific template. This verifies all fields (description, script, parameters,
+  returnType) are preserved from creation.
+
+  ## Expected Result
+  - HTTP 200 OK
+  - Response body contains `xquery` envelope with full template data
+  - All fields match what was submitted in step 10
+}

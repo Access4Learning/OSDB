@@ -1,0 +1,97 @@
+meta {
+  name: 37 Consumer 1 Receives TestObjects Event
+  type: http
+  seq: 34
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/queues/{{sec11Consumer1QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Consumer' });
+  
+  const queueId = bru.getVar('sec11Consumer1QueueId');
+  if (!queueId) {
+    throw new Error(
+      '11-alerts/37: Missing sec11Consumer1QueueId. Step 28 must run first.'
+    );
+  }
+  
+  // Brief delay to allow broker to process and deliver the event
+  const start = Date.now();
+  while (Date.now() - start < 1000) { /* busy wait 1s */ }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '11-alerts/37 FAILED: expected 200, got ' + status + '. ' +
+      'Consumer 1 queue should have the TestObjects event.'
+    );
+  }
+  
+  const messageId = res.getHeader('messageid');
+  if (messageId) {
+    bru.setVar('sec11Consumer1EventMsgId', messageId);
+    console.log('✓ Consumer 1 received TestObjects event');
+    console.log('  messageid: ' + messageId);
+  }
+  
+  const serviceName = res.getHeader('servicename');
+  console.log('  serviceName: ' + serviceName);
+}
+
+tests {
+  test("Consumer 1 receives event (200 OK)", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has servicename=TestObjects", function() {
+    const serviceName = res.getHeader('servicename');
+    expect(serviceName).to.equal('TestObjects');
+  });
+  
+  test("Response body contains Updated Test Object", function() {
+    const body = res.getBody();
+    expect(JSON.stringify(body)).to.include('Updated Test Object');
+  });
+  
+  test("Response has messageid header", function() {
+    const messageId = res.getHeader('messageid');
+    expect(messageId).to.exist;
+    expect(messageId).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+  Verifies that Consumer 1 receives the TestObjects UPDATE event in its queue.
+  
+  ## Rationale — Broadcast Event Delivery
+  The Provider published a TestObjects UPDATE event. Both Consumer 1 and Consumer 2
+  have matching subscriptions, so the broker must fan out the event to both queues.
+  This step confirms Consumer 1's copy arrived correctly.
+  
+  The delivered message has a `messageid` header assigned by the broker. This is stored
+  for the ACK step that follows.
+  
+  ## Expected Result
+  - HTTP 200 with event payload
+  - `servicename` header = TestObjects
+  - Body contains "Updated Test Object"
+  - `sec11Consumer1EventMsgId` stored from messageid header
+}

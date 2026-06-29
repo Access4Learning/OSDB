@@ -1,0 +1,76 @@
+meta {
+  name: 04 Setup Zone
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec01DomainId}}/{{sec01SolutionId}}/zones
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+body:json {
+  {
+    "zoneId": "EnvRegTestZone-{{$timestamp}}",
+    "description": "Zone for environment registration certification tests"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec01Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '01-environment-registration/01-setup-zone FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec01ZoneId', data.zoneId || data.id);
+  console.log('✓ Section 01 zone created: ' + bru.getVar('sec01ZoneId'));
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Zone created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response contains zone identifier", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('zoneId');
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a dedicated zone for environment registration tests.
+
+  ## Rationale
+
+  Each certification test section operates in its own zone to ensure complete isolation
+  from other test sections. The zone is created with a timestamp suffix to avoid
+  collisions across parallel runs.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - `sec01ZoneId` variable stored for use by subsequent setup and teardown steps
+}

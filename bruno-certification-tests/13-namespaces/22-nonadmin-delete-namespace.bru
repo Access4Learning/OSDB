@@ -1,0 +1,54 @@
+meta {
+  name: 22 Non-Admin Delete Namespace
+  type: http
+  seq: 22
+}
+
+delete {
+  url: {{gatewayUrl}}/{{sec13DomainId}}/{{sec13SolutionId}}/namespaces/00000000-0000-0000-0000-000000000000
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec13Consumer' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 204) {
+    throw new Error(
+      '13-namespaces/22-nonadmin-delete-namespace FAILED: expected 403, got 204. ' +
+      'Non-admin should not be able to delete namespaces.'
+    );
+  }
+  console.log('✓ Non-admin delete correctly rejected with status: ' + status);
+}
+
+assert {
+  res.status: eq 403
+}
+
+tests {
+  test("Non-admin delete rejected with 403", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+}
+
+docs {
+  ## Summary
+  Attempts to delete a namespace as a non-admin consumer.
+
+  ## Rationale
+  Namespace management is admin-only. Non-admin environments should receive 403 Forbidden.
+
+  ## Expected Result
+  - HTTP 403 Forbidden
+}
+

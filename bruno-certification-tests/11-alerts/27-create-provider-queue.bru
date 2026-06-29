@@ -1,0 +1,85 @@
+meta {
+  name: 27 Create Provider Queue
+  type: http
+  seq: 24
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "cert-alerts-provider-q",
+      "ownerId": "{{sec11ProviderEnvId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.queue.id: isDefined
+  res.body.queue.ownerId: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Provider' });
+  
+  const providerEnvId = bru.getVar('sec11ProviderEnvId');
+  if (!providerEnvId) {
+    throw new Error(
+      '11-alerts/27: Missing sec11ProviderEnvId. Step 05 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '11-alerts/27 FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  
+  const data = res.getBody();
+  bru.setVar('sec11ProviderQueueId', data.queue.id);
+  console.log('✓ Provider queue created: ' + data.queue.id);
+}
+
+tests {
+  test("Provider queue created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().queue.id).to.exist;
+  });
+  
+  test("Queue owned by Provider", function() {
+    expect(res.getBody().queue.ownerId).to.equal(bru.getVar('sec11ProviderEnvId'));
+  });
+}
+
+docs {
+  ## Summary
+  Creates a message queue owned by the Provider environment.
+  
+  ## Rationale
+  The Provider needs a queue to receive directed alert notifications. When Consumer 1
+  creates an alert referencing a message that originated from the Provider, the alert
+  event will be delivered to this queue.
+  
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec11ProviderQueueId` stored
+}

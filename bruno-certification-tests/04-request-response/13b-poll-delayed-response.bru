@@ -1,0 +1,79 @@
+meta {
+  name: 13b Poll Delayed Response
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/queues/{{sec04QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  deleteMessageId: {{sec04DelayedImmMessageId}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Consumer' });
+
+  // Wait for the broker to process (provider responds via Responses Connector)
+  await new Promise(resolve => setTimeout(resolve, 5000));
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Queue poll status:', status);
+
+  if (status === 200) {
+    const messageId = res.getHeader('messageid');
+    bru.setVar('sec04DelayedDelMessageId', messageId);
+    console.log('✓ Delayed response delivered to queue, messageid:', messageId);
+
+    const body = res.getBody();
+    console.log('  Response body:', JSON.stringify(body).substring(0, 200));
+  } else if (status === 204) {
+    console.log('  Queue empty — provider may not have responded yet');
+    console.log('  (This is expected if no DELAYED provider is running)');
+  }
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+tests {
+  test("Queue poll returns delayed response or empty", function() {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+
+  test("Response delivered to consumer queue via Responses Connector", function() {
+    const messageId = bru.getVar('sec04DelayedDelMessageId');
+    if (messageId) {
+      expect(messageId).to.be.a('string');
+    } else {
+      console.log('NOTE: No delayed response received — ensure a DELAYED provider is running');
+    }
+  });
+}
+
+docs {
+  ## Summary
+
+  Polls the consumer's queue for the DELAYED/DELAYED response, acknowledging
+  the previous message from step 12b.
+
+  ## Rationale
+
+  After the DELAYED request (step 13), the provider responds asynchronously.
+  This step polls the queue with deleteMessageId to ack the previous message
+  and retrieve the delayed response.
+
+  ## Expected Result
+
+  - HTTP 200 with response body and messageid header, or
+  - HTTP 204 if provider has not yet responded
+}

@@ -1,0 +1,99 @@
+meta {
+  name: 10 Create Alert
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/alerts/alert
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "alert": {
+      "reporter": "CertTestReporter",
+      "exchange": "REQUEST",
+      "level": "WARNING",
+      "description": "Certification test alert created by provider"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Provider' });
+
+  const providerToken = bru.getVar('sec11ProviderSessionToken');
+  if (!providerToken) {
+    throw new Error(
+      '11-alerts/10-create-alert: Missing sec11ProviderSessionToken. ' +
+      'Step 05-create-provider-env must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '11-alerts/10-create-alert FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec11AlertId', data.alert.id);
+  console.log('✓ Alert created: ' + bru.getVar('sec11AlertId'));
+}
+
+assert {
+  res.status: eq 201
+  res.body.alert: isDefined
+  res.body.alert.id: isDefined
+}
+
+tests {
+  test("Alert created with status 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response wrapped under 'alert' key", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('alert');
+  });
+
+  test("Response contains alert ID", function() {
+    const data = res.getBody();
+    expect(data.alert.id).to.exist;
+  });
+
+  test("Response contains reporter field", function() {
+    const data = res.getBody();
+    expect(data.alert.reporter).to.equal("CertTestReporter");
+  });
+}
+
+docs {
+  ## Summary
+  Creates an alert via the alerts utility service using the provider environment.
+
+  ## Rationale
+  Verifies that the alerts POST endpoint works correctly when all required fields
+  (reporter, exchange, level) are provided. Uses the provider environment so that
+  the alert is owned by an environment in the test domain and gets cascade-deleted
+  on teardown.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - Response body contains alert ID and submitted fields
+  - `sec11AlertId` stored for subsequent retrieval tests
+}
+

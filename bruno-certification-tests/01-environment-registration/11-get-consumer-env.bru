@@ -1,0 +1,112 @@
+meta {
+  name: 11 Get Consumer Environment
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec01DomainId}}/{{sec01SolutionId}}/environments/{{sec01ConsumerEnvId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec01Admin' });
+
+  const envId = bru.getVar('sec01ConsumerEnvId');
+  if (!envId) {
+    throw new Error(
+      '01-environment-registration/11-get-consumer-env: Missing sec01ConsumerEnvId. ' +
+      'Setup steps must run successfully first.'
+    );
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isDefined
+  res.body.type: isDefined
+  res.body.infrastructureServices: isDefined
+}
+
+tests {
+  test("Consumer environment returned with 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response contains required environment fields", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('type');
+    expect(data).to.have.property('defaultZone');
+    expect(data).to.have.property('authenticationMethod');
+    expect(data).to.have.property('infrastructureServices');
+  });
+
+  test("Environment ID matches requested ID", function() {
+    const data = res.getBody();
+    const expectedId = bru.getVar('sec01ConsumerEnvId');
+    expect(data.id).to.equal(expectedId);
+  });
+
+  test("Environment type is BROKERED", function() {
+    const data = res.getBody();
+    expect(data.type).to.equal('BROKERED');
+  });
+
+  test("Infrastructure services list is non-empty", function() {
+    const data = res.getBody();
+    expect(data.infrastructureServices).to.have.property('infrastructureService');
+    expect(data.infrastructureServices.infrastructureService).to.be.an('array');
+    expect(data.infrastructureServices.infrastructureService.length).to.be.greaterThan(0);
+  });
+
+  test("Each infrastructure service has name and value", function() {
+    const data = res.getBody();
+    const services = data.infrastructureServices.infrastructureService;
+    services.forEach(function(svc) {
+      expect(svc).to.have.property('name');
+      expect(svc).to.have.property('value');
+      expect(svc.name).to.be.a('string').and.not.be.empty;
+      expect(svc.value).to.be.a('string').and.not.be.empty;
+    });
+  });
+
+  test("BROKERED environment includes core connector services", function() {
+    const data = res.getBody();
+    const services = data.infrastructureServices.infrastructureService;
+    const serviceNames = services.map(s => s.name);
+
+    expect(serviceNames).to.include('eventsConnector');
+    expect(serviceNames).to.include('requestsConnector');
+    expect(serviceNames).to.include('queues');
+    expect(serviceNames).to.include('subscriptions');
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that a GET request for the consumer environment returns the expected
+  structure with infrastructure services including the core connector URLs.
+
+  ## Rationale
+
+  SIF §4.2 requires consumer environments to receive infrastructure service URLs for
+  all broker connectors they can interact with. A BROKERED consumer must at minimum
+  have access to eventsConnector, requestsConnector, queues, and subscriptions
+  endpoints to participate in the SIF message exchange.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Body contains: `id`, `type` (BROKERED), `defaultZone`, `authenticationMethod`,
+    `infrastructureServices.infrastructureService` (non-empty array of {name, value})
+  - Services include at least: eventsConnector, requestsConnector, queues, subscriptions
+}

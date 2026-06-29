@@ -1,0 +1,89 @@
+meta {
+  name: 07 Create Queue 2
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec03DomainId}}/{{sec03SolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "cert-sec03-queue2-{{sec03Queue2Ts}}",
+      "ownerId": "{{sec03Consumer2EnvId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.queue.id: isDefined
+  res.body.queue.name: isDefined
+  res.body.queue.ownerId: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec03Consumer2' });
+
+  const consumer2EnvId = bru.getVar('sec03Consumer2EnvId');
+  if (!consumer2EnvId) {
+    throw new Error('sec03Consumer2EnvId not set. Run 04-create-consumer2-env first.');
+  }
+
+  bru.setVar('sec03Queue2Ts', Date.now().toString());
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '03-event-publishing/10-create-queue2 FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec03Queue2Id', data.queue.id);
+  console.log('✓ Queue 2 created for Consumer 2: ' + data.queue.id + ' (' + data.queue.name + ')');
+}
+
+tests {
+  test("Queue 2 created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Queue owned by Consumer 2", function() {
+    const data = res.getBody();
+    expect(data.queue.ownerId).to.equal(bru.getVar('sec03Consumer2EnvId'));
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a queue owned by Consumer 2 (the unsubscribed consumer).
+
+  ## Rationale
+
+  Consumer 2 has a queue but will NOT be subscribed to the provider's event stream.
+  This allows verification that the broker does not deliver events to consumers who
+  merely have a queue but lack a matching subscription.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - `sec03Queue2Id` stored for polling the empty queue in the test phase
+}

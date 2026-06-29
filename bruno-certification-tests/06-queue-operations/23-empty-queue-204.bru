@@ -1,0 +1,73 @@
+meta {
+  name: 23 Empty Queue 204
+  type: http
+  seq: 24
+}
+
+get {
+  url: {{sec06ConsumerQueuesUrl}}/{{sec06QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  deleteMessageId: {{sec06ThirdMessageId}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+
+  const thirdMessageId = bru.getVar('sec06ThirdMessageId');
+  if (!thirdMessageId) {
+    throw new Error(
+      '06-queue-operations/23-empty-queue-204: Missing sec06ThirdMessageId. ' +
+      'Run 22b-ack-message-2 first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 204) {
+    console.log('✓ Queue is now empty (204 No Content)');
+    console.log('  All 3 messages have been acknowledged and consumed');
+  } else {
+    console.error('Unexpected status: ' + status + '. Expected 204 (empty queue).');
+  }
+}
+
+assert {
+  res.status: eq 204
+}
+
+tests {
+  test("Empty queue returns 204 No Content", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+
+  test("No response body on empty queue", function() {
+    const body = res.getBody();
+    const isEmpty = !body || (typeof body === 'string' && body.trim() === '') || 
+                    (typeof body === 'object' && Object.keys(body).length === 0);
+    expect(isEmpty).to.be.true;
+  });
+}
+
+docs {
+  ## Summary
+
+  Acknowledges the last message and verifies that an empty queue returns 204.
+
+  ## Rationale
+
+  SIF §9.3.1 specifies that when no messages remain after acknowledgment,
+  the broker must return 204 No Content with no body.
+
+  ## Expected Result
+
+  - HTTP 204 No Content
+  - No response body
+}

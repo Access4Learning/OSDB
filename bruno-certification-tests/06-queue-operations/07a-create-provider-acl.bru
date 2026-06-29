@@ -1,0 +1,75 @@
+meta {
+  name: 07a Create Provider ACL
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec06DomainId}}/{{sec06SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec06ProviderEnvId}}",
+    "serviceName": "CertQueueObjects",
+    "zoneId": "{{sec06ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "PROVIDE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Admin' });
+
+  const providerEnvId = bru.getVar('sec06ProviderEnvId');
+  const consumerEnvId = bru.getVar('sec06ConsumerEnvId');
+  const zoneId = bru.getVar('sec06ZoneId');
+  if (!providerEnvId || !consumerEnvId || !zoneId) {
+    throw new Error(
+      '06-queue-operations/07a-create-provider-acl: Missing setup variables. ' +
+      'Ensure steps 01-06 completed successfully.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error('Failed to create PROVIDE ACL: status ' + status);
+  }
+
+  bru.setVar('sec06ProvideAclId', res.getBody().id);
+  bru.setVar('sec06ContextId', 'DEFAULT');
+  console.log('✓ PROVIDE ACL created: ' + res.getBody().id);
+}
+
+tests {
+  test("Provider PROVIDE ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates PROVIDE ACL for the provider environment.
+
+  ## Expected Result
+
+  - HTTP 201 → `sec06ProvideAclId` stored
+}

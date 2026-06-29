@@ -1,0 +1,71 @@
+meta {
+  name: 45 Consumer 2 Queue Still Empty
+  type: http
+  seq: 42
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/queues/{{sec11Consumer2QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 204
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Consumer2' });
+  
+  const queueId = bru.getVar('sec11Consumer2QueueId');
+  if (!queueId) {
+    throw new Error(
+      '11-alerts/45: Missing sec11Consumer2QueueId. Step 29 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 204) {
+    console.log('✓ Consumer 2 queue is empty — directed alert NOT delivered to non-source');
+  } else {
+    console.error(
+      'UNEXPECTED: Consumer 2 received a message (status ' + status + '). ' +
+      'Directed alerts should ONLY go to the source environment (Provider).'
+    );
+  }
+}
+
+tests {
+  test("Consumer 2 queue empty (204) — no directed alert for non-source", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  ## Summary
+  Verifies that Consumer 2's queue is still empty — it did NOT receive the directed alert.
+  
+  ## Rationale — Directed Alert Exclusion (Non-Source)
+  Consumer 2 is a bystander. Even though Consumer 2 has:
+  - A valid SUBSCRIBE ACL for alerts
+  - An active subscription for alert events
+  - A queue ready to receive messages
+  
+  The directed alert is NOT delivered to Consumer 2 because it was NOT the environment
+  that sent the referenced message. Directed alerts go ONLY to the sourceEnvironmentId
+  resolved from the messageID — in this case, the Provider.
+  
+  This confirms the broker's directed delivery logic is selective: it does not broadcast
+  alerts when a messageID reference is present.
+  
+  ## Expected Result
+  - HTTP 204 No Content (queue empty — no alert delivered to Consumer 2)
+}

@@ -1,0 +1,50 @@
+meta {
+  name: 22c Ack Third Message
+  type: http
+  seq: 26
+}
+
+get {
+  url: {{sec09ConsumerQueuesUrl}}/{{sec09QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  deleteMessageId: {{sec09ThirdMessageId}}
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Consumer' });
+
+  const thirdId = bru.getVar('sec09ThirdMessageId');
+  if (!thirdId) {
+    throw new Error('22c: Missing sec09ThirdMessageId. Run step 22a first.');
+  }
+}
+
+script:post-response {
+  console.log('✓ Acked message 3 (status ' + res.getStatus() + ')');
+  console.log('=== All messages acknowledged — verifying final count ===');
+}
+
+tests {
+  test("Ack third message succeeds", function() {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+}
+
+docs {
+  ## Summary
+  Acknowledges the third and last message.
+
+  ## Expected Result
+  - HTTP 204 (queue empty) or 200 (unexpected additional message)
+}

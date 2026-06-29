@@ -1,0 +1,123 @@
+meta {
+  name: 12 Verify Infrastructure Services
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec01DomainId}}/{{sec01SolutionId}}/environments/{{sec01ConsumerEnvId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec01Admin' });
+
+  const envId = bru.getVar('sec01ConsumerEnvId');
+  if (!envId) {
+    throw new Error(
+      '01-environment-registration/12-verify-infra-services: Missing sec01ConsumerEnvId. ' +
+      'Setup steps must run successfully first.'
+    );
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.infrastructureServices: isDefined
+}
+
+tests {
+  test("Consumer environment returned with 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("BROKERED environment has exactly 8 infrastructure services", function() {
+    const data = res.getBody();
+    const services = data.infrastructureServices.infrastructureService;
+    expect(services).to.be.an('array');
+    expect(services).to.have.lengthOf(8);
+  });
+
+  test("All 8 required service names are present", function() {
+    const data = res.getBody();
+    const services = data.infrastructureServices.infrastructureService;
+    const serviceNames = services.map(s => s.name);
+
+    const requiredServices = [
+      'environment',
+      'provisionRequests',
+      'requestsConnector',
+      'eventsConnector',
+      'queues',
+      'subscriptions',
+      'servicesConnector',
+      'responsesConnector'
+    ];
+
+    requiredServices.forEach(function(expected) {
+      expect(serviceNames, 'Missing service: ' + expected).to.include(expected);
+    });
+  });
+
+  test("Each infrastructure service has a non-blank URL value", function() {
+    const data = res.getBody();
+    const services = data.infrastructureServices.infrastructureService;
+
+    services.forEach(function(svc) {
+      expect(svc.value, svc.name + ' should have a non-blank URL')
+        .to.be.a('string')
+        .and.to.have.length.greaterThan(0);
+    });
+  });
+
+  test("Service URLs contain expected path patterns", function() {
+    const data = res.getBody();
+    const services = data.infrastructureServices.infrastructureService;
+
+    // Each URL should be a valid-looking HTTP(S) URL
+    services.forEach(function(svc) {
+      expect(svc.value, svc.name + ' should be an HTTP URL')
+        .to.match(/^https?:\/\//);
+    });
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that a BROKERED consumer environment includes exactly 8 infrastructure
+  services with the correct names and non-blank URL values.
+
+  ## Rationale
+
+  SIF 3.7 defines a specific set of infrastructure services that a compliant broker
+  must provide to BROKERED environments. These 8 services cover all communication
+  patterns: self-management (environment, provisionRequests), request/response
+  (requestsConnector, responsesConnector), event publishing (eventsConnector),
+  queue management (queues), subscription management (subscriptions), and functional
+  service operations (servicesConnector).
+
+  A broker that omits any of these services would prevent applications from using
+  certain SIF message exchange patterns, breaking interoperability.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Exactly 8 infrastructure service entries:
+    1. environment
+    2. provisionRequests
+    3. requestsConnector
+    4. eventsConnector
+    5. queues
+    6. subscriptions
+    7. servicesConnector
+    8. responsesConnector
+  - Each entry has a non-blank URL value starting with http:// or https://
+}

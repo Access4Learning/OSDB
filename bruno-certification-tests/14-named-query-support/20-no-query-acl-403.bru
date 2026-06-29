@@ -1,0 +1,76 @@
+meta {
+  name: 20 No Query ACL 403
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/requests/UnauthorizedQuery
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceType: XQUERYTEMPLATE
+  zoneId: {{sec14ZoneId}}
+  contextId: DEFAULT
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec14Consumer' });
+
+  const consumerEnvId = bru.getVar('sec14ConsumerEnvId');
+  if (!consumerEnvId) {
+    throw new Error(
+      '14-named-query-support/20-no-query-acl-403: Missing sec14ConsumerEnvId. ' +
+      'Step 06-create-consumer-env must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 403) {
+    throw new Error(
+      '14-named-query-support/20-no-query-acl-403 FAILED: expected 403, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  console.log('✓ Consumer correctly denied access (403) for query token without ACL');
+}
+
+assert {
+  res.status: eq 403
+}
+
+tests {
+  test("Consumer without QUERY ACL gets 403 Forbidden", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+
+  test("Error response contains message", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('message');
+    expect(data.message).to.be.a('string');
+    expect(data.message.length).to.be.greaterThan(0);
+  });
+}
+
+docs {
+  ## Summary
+  Verifies that a consumer WITHOUT a QUERY ACL entry for a specific queryToken
+  is rejected with HTTP 403 Forbidden when attempting to invoke that query.
+
+  ## Rationale
+  Per requirements 4.1 and 4.2, the gateway enforces QUERY access type using
+  the queryToken as the service name. The consumer in step 08 was granted QUERY
+  access only for "StudentSnapshot". Invoking "UnauthorizedQuery" (for which no
+  ACL exists) must be rejected.
+
+  ## Expected Result
+  - HTTP 403 Forbidden
+  - Error response body with message explaining access denied
+}

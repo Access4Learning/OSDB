@@ -1,0 +1,75 @@
+docs {
+  # SIF 3.7 Certification Test Suite
+  
+  ## Suite Overview
+  
+  This collection certifies any SIF 3.7 compliant broker by exercising the specification's
+  core behaviors: environment registration, subscription management, event distribution,
+  request/response choreographies, queue operations, service operations, header passthrough,
+  and security enforcement.
+  
+  The suite is **standalone and portable** — it contains no references outside its own
+  directory tree and can be distributed independently of any broker implementation.
+  
+  Each test section is **fully self-contained**: it creates its own domain and solution,
+  sets up infrastructure (zones, environments, ACLs, queues, subscriptions), exercises
+  SIF behaviors, asserts compliance, and tears down by deleting the domain (which
+  cascade-deletes all resources).
+  
+  ## Execution Order
+  
+  Each section can be run independently. Within a section, files are numbered and
+  must run sequentially:
+  
+  | # | Folder | Purpose |
+  |---|--------|---------|
+  | 01 | environment-registration | Verify env GET + infrastructure services |
+  | 02 | subscription-management | CRUD lifecycle for subscriptions |
+  | 03 | event-publishing | Provider → broker → subscriber delivery |
+  | 04 | request-response | IMMEDIATE, DELAYED/IMMEDIATE, DELAYED/DELAYED |
+  | 05 | parameter-styles | Header vs matrix parameter routing |
+  | 06 | queue-operations | Get Next and Pop (§9.3.1) |
+  | 07 | service-operations | Functional service CRUD via broker |
+  | 08 | header-passthrough | Custom header forwarding |
+  | 09 | queue-count-validation | Queue statistics accuracy |
+  | 10 | security-enforcement | ACL enforcement + 403 responses |
+  
+  Each section follows this internal structure:
+  - 01-create-domain: Creates a timestamped domain
+  - 02-create-solution: Creates a solution in the domain
+  - 03-get-admin-environment: Retrieves broker-services env + admin credentials
+  - 04+ setup: Section-specific infrastructure (zones, environments, ACLs, queues)
+  - 10+ tests: SIF behavior verification
+  - 99-teardown: Deletes the domain (cascade-deletes everything)
+  
+  ## SIF Glossary
+  
+  - **Broker**: SIF 3.7 middleware routing messages between providers and consumers
+  - **Domain**: Top-level tenant boundary. NOTE: a Domain is NOT a defined SIF architectural component. The OSDB uses it as an extension for large scale implementations that have been found to be useful through past experiences...for example, there might a State Domain, with Prod/Stage/Dev solutions.
+  - **Solution**: Operating structure within a domain (contains zones, environments)
+  - **Zone**: Organizational unit within a solution (e.g., district, school)
+  - **Context**: Sub-unit within a zone
+  - **Environment**: Registered application instance with credentials and access rights
+  - **Provider**: Environment that publishes events or responds to requests
+  - **Consumer**: Environment that subscribes to events or sends requests 
+  - NOTE: Providers and Consumers are NOT mutually exclusive. An environment may be both a Provider AND a Consumer.
+  - **ACL Entry**: Access control binding (environment + service + access type)
+  - **Queue**: Message queue owned by a consumer for receiving events/responses
+  - **Subscription**: Binding between a consumer queue and a service event stream
+  - **HMAC Auth**: SIF authentication using session token + shared secret + timestamp
+  - **Infrastructure Services**: Connector URLs returned in environment registration (eventsConnector, requestsConnector, queues, subscriptions, servicesConnector, responsesConnector, environment, provisionRequests)
+  - **Choreography**: Request/response pattern (IMMEDIATE/IMMEDIATE, DELAYED/IMMEDIATE, DELAYED/DELAYED)
+  - **Matrix Parameter**: Deprecated SIF URL parameter style (`;zoneId=xxx;contextId=yyy`)
+  - **Get Next and Pop**: Queue retrieval pattern where consumer peeks next message and optionally acknowledges the previous one
+  
+  ## Quick Start
+  
+  1. Copy `.env.example` to `.env` and fill in admin credentials
+  2. Install dependencies: `npm install`
+  3. Select or create an environment file in `environments/`
+  4. Run: `bru run --env local`
+  
+  For single-section runs: `bru run 03-event-publishing --env local`
+  
+  See README.md for full setup instructions and CONTRIBUTING.md for adding tests.
+}

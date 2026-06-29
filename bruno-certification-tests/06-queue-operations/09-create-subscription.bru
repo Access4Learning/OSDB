@@ -1,0 +1,107 @@
+meta {
+  name: 09 Create Subscription
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec06DomainId}}/{{sec06SolutionId}}/subscriptions/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{sec06QueueId}}",
+      "aclEntryId": "{{sec06SubscribeAclId}}",
+      "messageType": "EVENT"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+
+  const queueId = bru.getVar('sec06QueueId');
+  const aclId = bru.getVar('sec06SubscribeAclId');
+  const eventsUrl = bru.getVar('sec06ProviderEventsUrl');
+  const queuesUrl = bru.getVar('sec06ConsumerQueuesUrl');
+  if (!queueId || !aclId) {
+    throw new Error(
+      '06-queue-operations/09-create-subscription: Missing sec06QueueId or sec06SubscribeAclId. ' +
+      'Ensure steps 04-08 completed successfully.'
+    );
+  }
+  if (!eventsUrl || !queuesUrl) {
+    throw new Error(
+      '06-queue-operations/09-create-subscription: Missing infrastructure URLs. ' +
+      'Run 08b-get-provider-infra and 08c-get-consumer-infra first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '06-queue-operations/09-create-subscription FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec06SubscriptionId', data.subscription.id);
+  console.log('Subscription created: ' + data.subscription.id);
+  console.log('  Queue: ' + data.subscription.queueId);
+  console.log('  Message Type: ' + data.subscription.messageType);
+}
+
+tests {
+  test("Subscription created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Subscription references correct queue", function() {
+    const data = res.getBody();
+    expect(data.subscription.queueId).to.equal(bru.getVar('sec06QueueId'));
+  });
+
+  test("Subscription message type is EVENT", function() {
+    const data = res.getBody();
+    expect(data.subscription.messageType).to.equal('EVENT');
+  });
+
+  test("Provider events URL is stored", function() {
+    const eventsUrl = bru.getVar('sec06ProviderEventsUrl');
+    expect(eventsUrl).to.be.a('string').and.not.be.empty;
+  });
+
+  test("Consumer queues URL is stored", function() {
+    const queuesUrl = bru.getVar('sec06ConsumerQueuesUrl');
+    expect(queuesUrl).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a subscription binding the consumer's queue to the provider's event stream.
+
+  ## Rationale
+
+  A subscription tells the broker to deliver CertQueueObjects events to this queue.
+  Infrastructure URLs were resolved in previous steps (08b, 08c).
+
+  ## Expected Result
+
+  - HTTP 201 Created with subscription id, queueId, messageType
+  - `sec06SubscriptionId` stored for teardown
+}

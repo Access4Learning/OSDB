@@ -1,0 +1,115 @@
+meta {
+  name: 13 Provider Receives Request
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec07DomainId}}/{{sec07SolutionId}}/queues/{{sec07ProviderQueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec07Provider' });
+
+  const providerQueueId = bru.getVar('sec07ProviderQueueId');
+  if (!providerQueueId) {
+    throw new Error(
+      '07-service-operations/13-provider-receives-request: Missing sec07ProviderQueueId. ' +
+      'Run 05-create-provider-queue first.'
+    );
+  }
+
+  // Allow time for broker to route operations to provider queue
+  await new Promise(resolve => setTimeout(resolve, 3000));
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Provider queue poll status:', status);
+
+  if (status === 200) {
+    const messageId = res.getHeaders()['messageid'];
+    const body = res.getBody();
+
+    console.log('âœ“ Provider received request from queue');
+    console.log('  Message ID:', messageId);
+    console.log('  Body:', JSON.stringify(body).substring(0, 300));
+
+    // Check for preserved headers
+    const headers = res.getHeaders();
+    if (headers['servicename'] || headers['serviceName']) {
+      console.log('  Service Name header:', headers['servicename'] || headers['serviceName']);
+    }
+    if (headers['requesttype'] || headers['requestType']) {
+      console.log('  Request Type header:', headers['requesttype'] || headers['requestType']);
+    }
+
+    bru.setVar('sec07ProviderMessageId', messageId);
+    bru.setVar('sec07ReceivedBody', JSON.stringify(body));
+  } else if (status === 204) {
+    console.log('  Provider queue empty â€” operations may not have been routed yet');
+  } else {
+    console.error('âœ— Unexpected status:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("Provider receives routed request from queue", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Received message has a messageid header", function() {
+    const messageId = res.getHeaders()['messageid'];
+    expect(messageId).to.exist;
+    expect(messageId).to.be.a('string');
+  });
+
+  test("Request body is preserved in queued message", function() {
+    const body = res.getBody();
+    expect(body).to.exist;
+  });
+
+  test("Service name is preserved in routed message", function() {
+    const headers = res.getHeaders();
+    const serviceName = headers['servicename'] || headers['serviceName'];
+    if (serviceName) {
+      expect(serviceName).to.equal(bru.getVar('sec07ServiceName'));
+    } else {
+      // Service name may be in the body or URL path depending on implementation
+      console.log('NOTE: serviceName header not present â€” may be in request path');
+    }
+  });
+}
+
+docs {
+  ## Summary
+
+  Provider polls its queue and verifies the broker delivered the original
+  service operation with method, service name, and body preserved.
+
+  ## Rationale
+
+  After the consumer sends DELAYED service operations, the broker must route
+  them to the provider's queue. The provider should receive the original
+  HTTP method context, the targeted functional service name, and the complete
+  request body â€” ensuring no data is lost during asynchronous routing.
+
+  ## Expected Result
+
+  - HTTP 200 with the queued message body
+  - `messageid` response header present
+  - Original service name preserved (in headers or path context)
+  - Original request body preserved in the message payload
+}

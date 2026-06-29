@@ -1,0 +1,68 @@
+meta {
+  name: 17 Delete Zone Success
+  type: http
+  seq: 17
+}
+
+delete {
+  url: {{gatewayUrl}}/{{sec01DomainId}}/{{sec01SolutionId}}/zones/{{sec01DeleteTestZoneId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec01Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 204) {
+    throw new Error(
+      '01-environment-registration/17-delete-zone-success FAILED: expected 204, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  console.log('✓ Zone deleted successfully: ' + bru.getVar('sec01DeleteTestZoneId'));
+}
+
+assert {
+  res.status: eq 204
+}
+
+tests {
+  test("Admin zone deletion returns 204 No Content", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+
+  test("Response body is empty for 204", function() {
+    const body = res.getBody();
+    expect(body === null || body === undefined || body === '').to.be.true;
+  });
+}
+
+docs {
+  ## Summary
+
+  Deletes the disposable test zone created in step 13 using admin credentials
+  (`X-Run-As-Environment: broker-services`) and verifies HTTP 204 No Content.
+
+  ## Rationale
+
+  This is the happy-path zone deletion test. An admin caller deleting a non-protected,
+  existing zone should succeed with 204 No Content and an empty response body.
+  The zone was created specifically for this purpose in step 13.
+
+  ## Expected Result
+
+  - HTTP 204 No Content
+  - Empty response body
+  - Zone `sec01DeleteTestZoneId` is removed (verified in step 18)
+}

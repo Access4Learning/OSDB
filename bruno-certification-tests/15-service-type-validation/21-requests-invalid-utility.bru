@@ -1,0 +1,94 @@
+meta {
+  name: 21 Requests Invalid UTILITY
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{sec15ConsumerRequestsUrl}}/StudentPersonals
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec15ZoneId}}
+  contextId: DEFAULT
+  requestType: IMMEDIATE
+  serviceType: UTILITY
+}
+
+assert {
+  res.status: eq 400
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec15Consumer' });
+
+  const requestsUrl = bru.getVar('sec15ConsumerRequestsUrl');
+  if (!requestsUrl) {
+    throw new Error(
+      '15-service-type-validation/21-requests-invalid-utility: Missing sec15ConsumerRequestsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 400) {
+    throw new Error(
+      '15-service-type-validation/21-requests-invalid-utility: Expected 400, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const body = res.getBody();
+  console.log('Received 400 response for serviceType: UTILITY on /requests path');
+  console.log('  Error code:', body.code);
+  console.log('  Description:', body.description);
+}
+
+tests {
+  test("Returns 400 for serviceType UTILITY on /requests path", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+
+  test("Error response contains invalid value", function() {
+    const body = res.getBody();
+    expect(body.description).to.contain('UTILITY');
+  });
+
+  test("Error response contains valid values for /requests path", function() {
+    const body = res.getBody();
+    expect(body.description).to.contain('OBJECT');
+    expect(body.description).to.contain('SERVICEPATH');
+    expect(body.description).to.contain('XQUERYTEMPLATE');
+  });
+
+  test("Error response contains path info", function() {
+    const body = res.getBody();
+    expect(body.description).to.contain('/requests');
+  });
+}
+
+docs {
+  ## Summary
+  Verifies that GET `/requests/StudentPersonals` with `serviceType: UTILITY`
+  is rejected with HTTP 400.
+
+  ## Rationale
+  UTILITY is only valid for utility paths (`/zones`, `/providers`, etc.).
+  The ServiceTypeValidationFilter must reject it on `/requests/*` paths.
+
+  ## SIF Reference
+  SIF 3.3 §5.1 — serviceType must match URL path pattern.
+
+  ## Expected Result
+  - HTTP 400 Bad Request
+  - Error body contains "UTILITY" (the invalid value)
+  - Error body lists valid values: OBJECT, SERVICEPATH, XQUERYTEMPLATE
+  - Error body references /requests path pattern
+}

@@ -1,0 +1,70 @@
+meta {
+  name: 05 Create Provider Environment
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec15DomainId}}/{{sec15SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "CertSvcTypeProvider-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec15ZoneId}}"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.sessionToken: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec15Admin' });
+
+  const zoneId = bru.getVar('sec15ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '15-service-type-validation/05-create-provider-env: Missing sec15ZoneId. ' +
+      'Run 04-setup-zone first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '15-service-type-validation/05-create-provider-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec15ProviderEnvId', data.id);
+  bru.setVar('sec15ProviderSessionToken', data.sessionToken);
+  bru.setVar('sec15ProviderSharedSecret', data.sharedSecret);
+  console.log('Created provider environment (BROKERED):', data.id);
+}
+
+docs {
+  ## Summary
+  Creates a BROKERED provider environment for service-type-validation tests.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - Provider environment ID, session token, and shared secret stored
+  - `sec15ProviderEnvId`, `sec15ProviderSessionToken`, `sec15ProviderSharedSecret` set
+}

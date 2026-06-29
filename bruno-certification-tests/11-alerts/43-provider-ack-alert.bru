@@ -1,0 +1,63 @@
+meta {
+  name: 43 Provider ACK Alert
+  type: http
+  seq: 40
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/queues/{{sec11ProviderQueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  deleteMessageId: {{sec11ProviderAlertMsgId}}
+}
+
+assert {
+  res.status: eq 204
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Provider' });
+  
+  const msgId = bru.getVar('sec11ProviderAlertMsgId');
+  if (!msgId) {
+    throw new Error(
+      '11-alerts/43: Missing sec11ProviderAlertMsgId. Step 42 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 204) {
+    throw new Error(
+      '11-alerts/43: Expected 204 (queue empty after ACK), got ' + status + '.'
+    );
+  }
+  
+  console.log('✓ Provider ACKed alert — queue now empty');
+}
+
+tests {
+  test("Provider queue empty after ACK (204 No Content)", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  ## Summary
+  Provider acknowledges (deletes) the directed alert and verifies the queue is empty.
+  
+  ## Rationale
+  The Provider received exactly one message (the directed alert). After ACKing it,
+  the queue should be empty (204). This confirms no duplicate or extra messages were
+  delivered.
+  
+  ## Expected Result
+  - HTTP 204 No Content (queue empty)
+}

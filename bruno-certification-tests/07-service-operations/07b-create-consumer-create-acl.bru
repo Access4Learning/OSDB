@@ -1,0 +1,61 @@
+meta {
+  name: 07b Create Consumer CREATE ACL
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec07DomainId}}/{{sec07SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec07ConsumerEnvId}}",
+    "serviceName": "CertFunctionalService",
+    "zoneId": "{{sec07ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "CREATE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec07Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '07-service-operations/07b: Failed to create CREATE ACL, got ' +
+      status + ': ' + JSON.stringify(res.getBody())
+    );
+  }
+  bru.setVar('sec07CreateAclId', res.getBody().id);
+  console.log('✓ Created CREATE ACL:', res.getBody().id);
+}
+
+tests {
+  test("Consumer CREATE ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  ## Summary
+  Creates CREATE ACL for consumer (allows POST operations on CertFunctionalService).
+}

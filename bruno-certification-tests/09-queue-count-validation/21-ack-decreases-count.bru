@@ -1,0 +1,68 @@
+meta {
+  name: 21 Peek First Message
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{sec09ConsumerQueuesUrl}}/{{sec09QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Consumer' });
+
+  const queuesUrl = bru.getVar('sec09ConsumerQueuesUrl');
+  const queueId = bru.getVar('sec09QueueId');
+  if (!queuesUrl || !queueId) {
+    throw new Error(
+      '09-queue-count-validation/21: Missing queue URL or ID.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error('Expected 200 (peek), got ' + status);
+  }
+
+  const messageId = res.getHeader('messageid');
+  if (!messageId) {
+    throw new Error('No messageid header in response.');
+  }
+  bru.setVar('sec09FirstMessageId', messageId);
+  console.log('✓ Peeked first message: ' + messageId);
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Peek returns first message (200)", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response has messageid header", function() {
+    const messageId = res.getHeader('messageid');
+    expect(messageId).to.exist;
+    expect(messageId).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+  Peeks the first message to get its messageid for acknowledgment.
+
+  ## Expected Result
+  - HTTP 200 with messageid header
+  - `sec09FirstMessageId` stored
+}

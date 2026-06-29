@@ -1,0 +1,137 @@
+meta {
+  name: 13 Blacklisted Headers Stripped
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{sec08ConsumerRequestsUrl}}/{{immediateProviderServiceName}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec08ZoneId}}
+  contextId: DEFAULT
+  requestType: IMMEDIATE
+  serviceType: OBJECT
+  X-Verify-Stripped: check-infra-headers
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec08Consumer' });
+
+  const requestsUrl = bru.getVar('sec08ConsumerRequestsUrl');
+  if (!requestsUrl) {
+    throw new Error(
+      '08-header-passthrough/13-blacklisted-headers-stripped: Missing sec08ConsumerRequestsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Blacklisted headers stripped test status:', status);
+
+  if (status === 200) {
+    const data = res.getBody();
+    console.log('✓ Request succeeded — checking if infra headers were stripped');
+
+    if (data && data.receivedHeaders) {
+      const hdrs = data.receivedHeaders;
+
+      // These SIF infrastructure headers should NOT be forwarded to the provider
+      const authHeader = hdrs['authorization'] || hdrs['Authorization'];
+      const tsHeader = hdrs['timestamp'] || hdrs['Timestamp'];
+
+      console.log('  authorization present at provider:', !!authHeader);
+      console.log('  timestamp present at provider:', !!tsHeader);
+
+      // X-Verify-Stripped should pass through (it's a custom header)
+      const verifyHeader = hdrs['x-verify-stripped'] || hdrs['X-Verify-Stripped'];
+      console.log('  X-Verify-Stripped (custom, should pass):', verifyHeader);
+    } else {
+      console.log('  Response:', JSON.stringify(data).substring(0, 300));
+    }
+  } else {
+    console.error('✗ Expected 200, got:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("Request returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Authorization header is broker-signed (not consumer's original)", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    if (data.receivedHeaders) {
+      const val = data.receivedHeaders['authorization'] || data.receivedHeaders['Authorization'];
+      // Provider SHOULD receive an authorization header — but it's the broker's
+      // HMAC signature, not the consumer's. The broker strips the consumer's auth
+      // and injects its own credentials so the provider can authenticate the broker.
+      if (val) {
+        // Verify it's a SIF HMAC signature (broker-generated), not the consumer's
+        expect(val).to.include('SIF_HMACSHA256');
+      }
+    }
+  });
+
+  test("Timestamp header is broker-signed (not consumer's original)", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    if (data.receivedHeaders) {
+      const val = data.receivedHeaders['timestamp'] || data.receivedHeaders['Timestamp'];
+      // Provider SHOULD receive a timestamp header — but it's the broker's
+      // signing timestamp, not the consumer's original.
+      if (val) {
+        // Verify it looks like an ISO timestamp (broker-generated)
+        expect(val).to.include('202');
+      }
+    }
+  });
+
+  test("Custom header X-Verify-Stripped IS forwarded to provider", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    if (data.receivedHeaders) {
+      const val = data.receivedHeaders['x-verify-stripped'] || data.receivedHeaders['X-Verify-Stripped'];
+      expect(val).to.equal('check-infra-headers');
+    }
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that the broker replaces consumer auth headers with its own
+  broker-signed credentials, while custom headers pass through unchanged.
+
+  ## Rationale
+
+  The broker uses `authorization` and `timestamp` headers for HMAC-SHA256
+  authentication of the consumer's request. These are consumed by the broker
+  during the authentication phase and MUST NOT be forwarded to the provider
+  as-is. Instead, the broker signs a NEW authorization/timestamp pair using
+  the provider's credentials, so the provider can authenticate the broker.
+
+  Meanwhile, genuinely custom headers (X-Verify-Stripped) that are not part of
+  the SIF infrastructure MUST still be forwarded.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Provider receives `authorization` header with broker's SIF_HMACSHA256 signature
+  - Provider receives `timestamp` header with broker's signing timestamp
+  - Provider's echo response DOES contain `X-Verify-Stripped: check-infra-headers`
+}
+

@@ -1,0 +1,86 @@
+meta {
+  name: 11 List Alerts
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/alerts
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '11-alerts/11-list-alerts FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  console.log('✓ Alerts listed successfully');
+
+  // Parse collection wrapper
+  let alerts = [];
+  if (data && data.alerts && data.alerts.alert && Array.isArray(data.alerts.alert)) {
+    alerts = data.alerts.alert;
+  } else if (data && data.alerts && Array.isArray(data.alerts)) {
+    alerts = data.alerts;
+  }
+
+  console.log('  Found ' + alerts.length + ' alert(s)');
+  bru.setVar('sec11AlertCount', alerts.length);
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Alerts list returned with status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response has SIF collection wrapper", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('alerts');
+  });
+
+  test("Collection contains at least one alert", function() {
+    const data = res.getBody();
+    let alerts = [];
+    if (data.alerts && data.alerts.alert && Array.isArray(data.alerts.alert)) {
+      alerts = data.alerts.alert;
+    } else if (data.alerts && Array.isArray(data.alerts)) {
+      alerts = data.alerts;
+    }
+    expect(alerts.length).to.be.greaterThan(0);
+  });
+}
+
+docs {
+  ## Summary
+  Lists all alerts (admin sees all).
+
+  ## Rationale
+  Verifies that GET /alerts returns the SIF collection wrapper format
+  `{ "alerts": { "alert": [...] } }` and contains the alert created in step 10.
+
+  ## Expected Result
+  - HTTP 200 OK
+  - Response wrapped in `{ "alerts": { "alert": [...] } }`
+  - At least one alert present (created in previous step)
+}
+

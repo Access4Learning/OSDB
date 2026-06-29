@@ -1,0 +1,92 @@
+meta {
+  name: 13 Non-Admin Create Context
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec10DomainId}}/{{sec10SolutionId}}/zones/{{sec10ZoneId}}/contexts
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "contextId": "UnauthorizedContext-{{$timestamp}}",
+    "description": "This context creation should be rejected"
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.message: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  // Authenticate as the non-admin provider environment
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec10Provider' });
+
+  const zoneId = bru.getVar('sec10ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '10-security-enforcement/13-non-admin-create-context: Missing sec10ZoneId.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Non-admin (provider) attempted context creation â†’ status: ' + status);
+
+  if (status === 403) {
+    console.log('âœ“ Correctly rejected: non-admin cannot create contexts');
+    const body = res.getBody();
+    bru.setVar('sec10NonAdminCreateContextBody', JSON.stringify(body));
+  } else {
+    console.error('âœ— Expected 403, got: ' + status);
+  }
+}
+
+tests {
+  test("Context creation rejected with 403 Forbidden", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+
+  test("Error response contains message field", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('message');
+    expect(data.message).to.be.a('string');
+    expect(data.message.length).to.be.greaterThan(0);
+  });
+
+  test("Only admin environments can create contexts", function() {
+    // A DIRECT (non-admin) environment should never be able to create contexts
+    expect(res.getStatus()).to.equal(403);
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that a non-admin environment (type DIRECT) cannot create a context
+  within a zone.
+
+  ## Rationale
+
+  Context management is an administrative operation restricted to the Admin Environment.
+  Non-admin environments (DIRECT or BROKERED) should not be able to create contexts
+  within zones regardless of their ACL grants. The broker must return 403 when a
+  non-admin environment attempts context creation.
+
+  ## Expected Result
+
+  - HTTP 403 Forbidden
+  - Response body contains `message` field indicating admin-only restriction
+}

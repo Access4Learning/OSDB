@@ -1,0 +1,70 @@
+meta {
+  name: 03 Event Publishing
+  seq: 4
+}
+
+docs {
+  # Event Publishing and Consumption
+
+  ## Concept Overview
+
+  SIF event distribution follows a **provider-to-broker-to-consumer** model:
+
+  1. A **Provider** publishes an event to the broker's Events Connector endpoint
+  2. The **Broker** inspects the event's routing headers (serviceName, zoneId, contextId)
+     and identifies all consumers with active subscriptions matching those parameters
+  3. The Broker **enqueues** a copy of the event payload into each matching consumer's queue
+  4. Each **Consumer** polls their queue to retrieve delivered events at their own pace
+
+  This decoupled architecture means:
+  - Providers do not need to know which consumers exist
+  - Consumers receive events asynchronously via their queues
+  - The broker handles fan-out distribution based on subscription bindings
+  - Consumers who are not subscribed to a given service/zone/context receive nothing
+
+  ## Required SIF Event Headers
+
+  When publishing an event, the provider MUST include these HTTP headers:
+  - `serviceName` â€” The SIF service object name (e.g., "StudentPersonals")
+  - `serviceType` â€” Always "OBJECT" for data object events
+  - `eventAction` â€” One of: CREATE, UPDATE, DELETE
+  - `messageType` â€” Always "EVENT" for event messages
+  - `zoneId` â€” The zone where the event occurred
+  - `contextId` â€” The context within the zone (typically "DEFAULT")
+
+  ## Event Delivery Guarantees
+
+  - Events are delivered to ALL consumers with matching subscriptions
+  - Events include a `messageid` response header for acknowledgment
+  - Consumers retrieve events via the queue's GET /messages endpoint
+  - The original event payload and routing headers are preserved on delivery
+
+  ## Test Purpose
+
+  Verify that:
+  1. A provider can publish events via the Events Connector (202/204 accepted)
+  2. Subscribed consumers receive the event in their queue
+  3. Unsubscribed consumers do NOT receive events
+  4. Delivered events preserve the original routing headers
+
+  ## Prerequisites
+
+  - This section is self-contained (creates its own domain/solution)
+  - `sec03AdminSessionToken`, `sec03AdminSharedSecret`, and `sec03AdminEnvironmentId`
+    must be stored in Bruno collection variables
+
+  ## Expected Behavior
+
+  - Setup creates: 1 zone, 1 provider env, 2 consumer envs, ACLs, 2 queues, 1 subscription
+  - Provider publishes event â†’ 202 or 204
+  - Consumer 1 (subscribed) retrieves event from queue â†’ 200 with payload
+  - Consumer 2 (not subscribed to this service) gets empty queue â†’ 204
+  - Delivered event headers match original routing headers
+  - Teardown removes all resources created by this section
+
+  ## SIF Specification Reference
+
+  - SIF 3.7 Â§7: Event Distribution
+  - SIF 3.7 Â§7.2: Event Publishing via Events Connector
+  - SIF 3.7 Â§9.3.1: Queue Message Retrieval (Get Next and Pop)
+}

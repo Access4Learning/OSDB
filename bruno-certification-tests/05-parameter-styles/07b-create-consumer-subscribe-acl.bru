@@ -1,0 +1,71 @@
+meta {
+  name: 07b Create Consumer SUBSCRIBE ACL
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec05DomainId}}/{{sec05SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec05ConsumerEnvId}}",
+    "serviceName": "{{immediateProviderServiceName}}",
+    "zoneId": "{{sec05ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "SUBSCRIBE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec05Admin' });
+
+  const consumerEnvId = bru.getVar('sec05ConsumerEnvId');
+  if (!consumerEnvId) {
+    throw new Error('07b-create-consumer-subscribe-acl: Missing sec05ConsumerEnvId.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '05-parameter-styles/07b: Failed to create SUBSCRIBE ACL, got ' +
+      status + ': ' + JSON.stringify(res.getBody())
+    );
+  }
+  bru.setVar('sec05SubscribeAclId', res.getBody().id);
+  console.log('✓ Created SUBSCRIBE ACL:', res.getBody().id);
+}
+
+tests {
+  test("Consumer SUBSCRIBE ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates SUBSCRIBE ACL for the consumer environment.
+
+  ## Expected Result
+
+  - HTTP 201 Created → `sec05SubscribeAclId` stored
+}

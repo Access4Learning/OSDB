@@ -1,0 +1,67 @@
+meta {
+  name: 14 Delete Named Query
+  type: http
+  seq: 14
+}
+
+delete {
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/xquerys/{{sec14QueryToken}}
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec14Admin' });
+
+  const queryToken = bru.getVar('sec14QueryToken');
+  if (!queryToken) {
+    throw new Error(
+      '14-named-query-support/14-delete-named-query: Missing sec14QueryToken. ' +
+      'Step 10-register-named-query must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 204) {
+    throw new Error(
+      '14-named-query-support/14-delete-named-query FAILED: expected 204, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  console.log('✓ Named Query Template deleted: token=' + bru.getVar('sec14QueryToken'));
+}
+
+assert {
+  res.status: eq 204
+}
+
+tests {
+  test("Named Query Template deleted successfully", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  ## Summary
+  Deletes the Named Query Template "StudentSnapshot" using admin credentials.
+
+  ## Rationale
+  Per the decoupled architecture, template catalog management (create/delete) is an
+  admin operation. Deletion removes only the catalog entry — provider registrations
+  are NOT cascaded (they survive template deletion per the xquery-provider-registration-fix).
+
+  ## Expected Result
+  - HTTP 204 No Content
+  - Template catalog entry removed
+  - Provider registration (step 10c) is NOT affected
+}

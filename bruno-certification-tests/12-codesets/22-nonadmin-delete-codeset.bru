@@ -1,0 +1,54 @@
+meta {
+  name: 22 Non-Admin Delete Code Set
+  type: http
+  seq: 22
+}
+
+delete {
+  url: {{gatewayUrl}}/{{sec12DomainId}}/{{sec12SolutionId}}/codeSets/nonexistent-id
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec12Consumer' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 204) {
+    throw new Error(
+      '12-codesets/22-nonadmin-delete-codeset FAILED: expected 403, got 204. ' +
+      'Non-admin should not be able to delete code sets.'
+    );
+  }
+  console.log('✓ Non-admin delete correctly rejected with status: ' + status);
+}
+
+assert {
+  res.status: eq 403
+}
+
+tests {
+  test("Non-admin delete rejected with 403", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+}
+
+docs {
+  ## Summary
+  Attempts to delete a code set as a non-admin consumer.
+
+  ## Rationale
+  Code set management is admin-only. Non-admin environments should receive 403 Forbidden.
+
+  ## Expected Result
+  - HTTP 403 Forbidden
+}
+

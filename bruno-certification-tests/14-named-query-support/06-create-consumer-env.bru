@@ -1,0 +1,83 @@
+meta {
+  name: 06 Create Consumer Environment
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "CertConsumer-NamedQuery-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec14ZoneId}}"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec14Admin' });
+
+  const zoneId = bru.getVar('sec14ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '14-named-query-support/06-create-consumer-env: Missing sec14ZoneId. ' +
+      'Step 04-setup-zone must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '14-named-query-support/06-create-consumer-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec14ConsumerEnvId', data.id);
+  bru.setVar('sec14ConsumerSessionToken', data.sessionToken);
+  bru.setVar('sec14ConsumerSharedSecret', data.sharedSecret);
+  console.log('✓ Consumer environment created: ' + data.id);
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.sessionToken: isDefined
+}
+
+tests {
+  test("Consumer environment created with type BROKERED", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody();
+    expect(data.id).to.exist;
+    expect(data.sessionToken).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+  Registers a consumer environment with type BROKERED for named query support tests.
+
+  ## Rationale
+  The consumer invokes Named Queries via GET /requests/{queryToken} with
+  serviceType: XQUERYTEMPLATE header. BROKERED type routes through the broker.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec14ConsumerEnvId`, `sec14ConsumerSessionToken`, `sec14ConsumerSharedSecret` stored
+}
+

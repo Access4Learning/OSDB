@@ -1,0 +1,81 @@
+meta {
+  name: 11 Header-Based Requests
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{sec05ConsumerRequestsUrl}}/{{sec05ServiceName}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec05ZoneId}}
+  contextId: DEFAULT
+  requestType: IMMEDIATE
+  serviceType: OBJECT
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec05Consumer' });
+
+  const requestsUrl = bru.getVar('sec05ConsumerRequestsUrl');
+  if (!requestsUrl) {
+    throw new Error(
+      '05-parameter-styles/11-header-requests: Missing sec05ConsumerRequestsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Header-based IMMEDIATE request response status:', status);
+
+  if (status === 200) {
+    const data = res.getBody();
+    console.log('✓ Received provider response with header-based params');
+    console.log('  Response:', JSON.stringify(data).substring(0, 200));
+  } else {
+    console.error('✗ Expected 200, got:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("IMMEDIATE request with header-based params returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response contains provider data", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    expect(data).to.not.be.null;
+  });
+}
+
+docs {
+  ## Summary
+
+  Sends a GET request via the Requests Connector with zoneId and contextId as HTTP headers.
+
+  ## Rationale
+
+  Verifies that the broker correctly routes requests when zone and context are specified
+  as HTTP headers (the current SIF 3.7 standard approach). The broker must extract these
+  headers, identify the registered provider in the given zone/context, and forward the
+  request appropriately.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Response body contains data from the provider endpoint
+  - Request was routed based on zoneId/contextId headers
+}

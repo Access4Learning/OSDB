@@ -1,0 +1,88 @@
+meta {
+  name: 08 Create Consumer Query ACL
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec14ConsumerEnvId}}",
+    "serviceName": "StudentSnapshot",
+    "zoneId": "{{sec14ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "QUERY",
+    "accessLevel": "APPROVED"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec14Admin' });
+
+  const consumerEnvId = bru.getVar('sec14ConsumerEnvId');
+  if (!consumerEnvId) {
+    throw new Error(
+      '14-named-query-support/08-create-consumer-query-acl: Missing sec14ConsumerEnvId. ' +
+      'Step 06-create-consumer-env must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '14-named-query-support/08-create-consumer-query-acl FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec14ConsumerQueryAclId', data.id);
+  console.log('✓ Consumer QUERY ACL for StudentSnapshot created: ' + data.id);
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+tests {
+  test("Consumer QUERY ACL for named query token created", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody();
+    expect(data.id).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+  Creates an ACL entry granting the consumer QUERY access for the "StudentSnapshot"
+  named query token.
+
+  ## Rationale
+  Per requirements 4.1 and 4.2, the gateway enforces QUERY access type using the
+  queryToken as the service name. The consumer must have an ACL entry with
+  accessType=QUERY and serviceName matching the queryToken that will be registered
+  by the provider in later steps.
+
+  The serviceName here ("StudentSnapshot") must match the queryToken used when
+  registering the Named Query Template in step 10.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec14ConsumerQueryAclId` stored for teardown
+}
+

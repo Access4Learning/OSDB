@@ -1,0 +1,75 @@
+meta {
+  name: 12 Get Code Set By ID
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec12DomainId}}/{{sec12SolutionId}}/codeSets/{{sec12CodeSetId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec12Admin' });
+
+  const codeSetId = bru.getVar('sec12CodeSetId');
+  if (!codeSetId) {
+    throw new Error(
+      '12-codesets/12-get-codeset-by-id: Missing sec12CodeSetId. ' +
+      'Step 10-create-codeset must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '12-codesets/12-get-codeset-by-id FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  console.log('✓ Code set retrieved by ID: ' + bru.getVar('sec12CodeSetId'));
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Code set retrieved with status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response contains code set data", function() {
+    const data = res.getBody();
+    const codeSet = data.codeSet || data;
+    expect(codeSet.id).to.equal(bru.getVar('sec12CodeSetId'));
+    // Code set stores items under codeItems.codeItem (SIF collection format)
+    if (codeSet.codeItems && codeSet.codeItems.codeItem) {
+      expect(codeSet.codeItems.codeItem).to.be.an('array');
+    }
+  });
+}
+
+docs {
+  ## Summary
+  Retrieves a specific code set by its ID.
+
+  ## Rationale
+  Verifies that GET /codeSets/{id} returns the correct code set.
+
+  ## Expected Result
+  - HTTP 200 OK
+  - Response contains the code set with matching ID and values
+}
+

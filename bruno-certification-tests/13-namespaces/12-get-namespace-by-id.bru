@@ -1,0 +1,72 @@
+meta {
+  name: 12 Get Namespace By ID
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec13DomainId}}/{{sec13SolutionId}}/namespaces/{{sec13NamespaceId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec13Admin' });
+
+  const namespaceId = bru.getVar('sec13NamespaceId');
+  if (!namespaceId) {
+    throw new Error(
+      '13-namespaces/12-get-namespace-by-id: Missing sec13NamespaceId. ' +
+      'Step 10-create-namespace must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '13-namespaces/12-get-namespace-by-id FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  console.log('✓ Namespace retrieved by ID: ' + bru.getVar('sec13NamespaceId'));
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Namespace retrieved with status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response contains correct namespace data", function() {
+    const data = res.getBody();
+    const ns = data.namespace || data;
+    expect(ns.id).to.equal(bru.getVar('sec13NamespaceId'));
+    expect(ns.uri).to.include("sifassociation.org/cert/test");
+  });
+}
+
+docs {
+  ## Summary
+  Retrieves a specific namespace by its ID.
+
+  ## Rationale
+  Verifies that GET /namespaces/{id} returns the correct namespace.
+
+  ## Expected Result
+  - HTTP 200 OK
+  - Response contains the namespace with matching ID and URI
+}
+

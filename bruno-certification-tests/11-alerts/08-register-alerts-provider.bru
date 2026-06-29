@@ -1,0 +1,82 @@
+meta {
+  name: 08 Register Alerts Provider
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/provider-registrations
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec11ProviderEnvId}}",
+    "contextServiceUuid": "{{sec11ContextServiceUuid}}",
+    "endpoint": "http://localhost:8080/internal/alerts",
+    "serviceType": "UTILITY",
+    "supportedRequestTypes": [
+      {
+        "requestType": "IMMEDIATE",
+        "operations": ["CREATE", "QUERY"]
+      }
+    ]
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Admin' });
+
+  const providerEnvId = bru.getVar('sec11ProviderEnvId');
+  const contextServiceUuid = bru.getVar('sec11ContextServiceUuid');
+  if (!providerEnvId || !contextServiceUuid) {
+    throw new Error(
+      '11-alerts/08: Missing sec11ProviderEnvId or sec11ContextServiceUuid. ' +
+      'Run previous setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201 && status !== 409) {
+    throw new Error(
+      '11-alerts/08 FAILED: expected 201 or 409, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  if (status === 201) {
+    bru.setVar('sec11ProviderRegistrationId', res.getBody().id);
+    console.log('✓ Alerts provider registered: ' + res.getBody().id);
+  } else {
+    console.log('✓ Alerts provider already registered (409 — auto-created during solution setup)');
+  }
+}
+
+assert {
+  res.status: in [201, 409]
+}
+
+tests {
+  test("Alerts provider registered successfully", function() {
+    const status = res.getStatus();
+    expect([201, 409]).to.include(status);
+  });
+}
+
+docs {
+  ## Summary
+  Registers a provider for the "alerts" utility service.
+
+  ## Expected Result
+  - HTTP 201 → `sec11ProviderRegistrationId` stored
+}

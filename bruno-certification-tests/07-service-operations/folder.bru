@@ -1,0 +1,78 @@
+meta {
+  name: 07-service-operations
+  seq: 8
+}
+
+docs {
+  # Service Operations Tests
+
+  ## Concept Overview
+
+  SIF 3.7 defines functional services as named service endpoints that support
+  CRUD operations (Create, Update, Delete) routed through the broker. Unlike
+  data object requests handled via the Requests Connector, functional service
+  operations use the **Services Connector** endpoint.
+
+  A consumer sends POST (create), PUT (update), or DELETE operations to the
+  Services Connector with a `requestType: DELAYED` header and a `queueId`.
+  The broker accepts the operation (202) and routes it to the provider's queue.
+  The provider polls its queue to receive the operation.
+
+  ### DELAYED Service Operation Flow
+
+  ```
+  Consumer â”€â”€POSTâ”€â”€â–º Services Connector (Broker)
+  Consumer â—„â”€â”€202â”€â”€â”€ Services Connector
+                     Broker â”€â”€enqueueâ”€â”€â–º Provider Queue
+  Provider â—„â”€â”€pollâ”€â”€ Provider Queue
+  Provider receives: original method, service name, request body
+  ```
+
+  ### Supported Operations
+
+  - **CREATE (POST)**: Consumer sends a POST with a request body describing
+    the resource to create. Broker accepts (202) and routes to provider.
+  - **UPDATE (PUT)**: Consumer sends a PUT with the updated resource body.
+    Broker accepts (202) and routes to provider.
+  - **DELETE (DELETE)**: Consumer sends a DELETE for a specific resource.
+    Broker accepts (202) and routes to provider.
+
+  ### Required Headers
+
+  All DELAYED service operations MUST include:
+  - `requestType: DELAYED` â€” indicates asynchronous handling
+  - `queueId: <consumer-queue-id>` â€” identifies where responses will be delivered
+  - `zoneId` and `contextId` â€” routing context
+  - `serviceName` â€” the functional service being targeted
+
+  If `requestType` is DELAYED but `queueId` is missing (or vice versa), the
+  broker MUST reject the request with a 400 error.
+
+  ## Test Purpose
+
+  Verify that the broker correctly routes functional service CRUD operations:
+  - POST (create), PUT (update), DELETE operations accepted with 202
+  - Provider receives the routed request via its queue
+  - Original HTTP method, service name, and request body are preserved
+  - Missing required headers (requestType/queueId) result in 400
+
+  ## Prerequisites
+
+  - This section is self-contained (creates its own domain/solution)
+  - No external provider endpoint needed (DELAYED/DELAYED pattern via queues)
+
+  ## Expected Behavior
+
+  - Setup creates a zone, provider env, consumer env, ACLs, and queues
+  - Consumer sends POST/PUT/DELETE to Services Connector with DELAYED + queueId
+  - Broker returns 202 for each valid operation
+  - Provider polls its queue and receives the forwarded request
+  - Requests without required headers are rejected with 400
+  - Teardown removes all section-specific resources
+
+  ## SIF Specification Reference
+
+  - SIF 3.7 Â§7 â€“ Functional Services
+  - SIF 3.7 Â§7.2 â€“ Service Operations via Broker
+  - SIF 3.7 Â§6.3.3 â€“ DELAYED/DELAYED Choreography
+}

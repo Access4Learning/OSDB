@@ -1,0 +1,85 @@
+meta {
+  name: 34 Create Consumer 2 Subscription for alerts
+  type: http
+  seq: 31
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/subscriptions/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{sec11Consumer2QueueId}}",
+      "aclEntryId": "{{sec11Consumer2AlertSubAclId}}",
+      "messageType": "EVENT"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.subscription.id: isDefined
+  res.body.subscription.queueId: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Consumer2' });
+  
+  const queueId = bru.getVar('sec11Consumer2QueueId');
+  const aclId = bru.getVar('sec11Consumer2AlertSubAclId');
+  if (!queueId || !aclId) {
+    throw new Error(
+      '11-alerts/34: Missing sec11Consumer2QueueId or sec11Consumer2AlertSubAclId. ' +
+      'Steps 29 and 26 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '11-alerts/34 FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  
+  const data = res.getBody().subscription;
+  bru.setVar('sec11Consumer2AlertSubId', data.id);
+  console.log('✓ Consumer 2 alert subscription created: ' + data.id);
+}
+
+tests {
+  test("Consumer 2 alert subscription created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().subscription.id).to.exist;
+  });
+  
+  test("Subscription references Consumer 2 queue", function() {
+    expect(res.getBody().subscription.queueId).to.equal(bru.getVar('sec11Consumer2QueueId'));
+  });
+}
+
+docs {
+  ## Summary
+  Creates a subscription binding Consumer 2's queue to alert events.
+  
+  ## Rationale
+  Consumer 2 subscribes to alert events. Despite having SUBSCRIBE permission and an
+  active subscription, Consumer 2 should NOT receive the directed alert because it was
+  not the source of the referenced message.
+  
+  ## Expected Result
+  - HTTP 201 → `sec11Consumer2AlertSubId` stored
+}

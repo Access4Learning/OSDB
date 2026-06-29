@@ -1,0 +1,79 @@
+meta {
+  name: 09 Get Provider Options
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec15DomainId}}/{{sec15SolutionId}}/provider-registrations/available-options?environmentId={{sec15ProviderEnvId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec15Admin' });
+
+  const providerEnvId = bru.getVar('sec15ProviderEnvId');
+  if (!providerEnvId) {
+    throw new Error('15-service-type-validation/09-get-provider-options: Missing sec15ProviderEnvId.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  const data = res.getBody();
+
+  if (status !== 200 || !data || data.length === 0) {
+    throw new Error(
+      '15-service-type-validation/09-get-provider-options: No available provider options found. ' +
+      'Ensure PROVIDE ACL was created. Status: ' + status + ', Data: ' + JSON.stringify(data)
+    );
+  }
+
+  const option = data.find(o => o.serviceName === 'StudentPersonals');
+  if (!option) {
+    throw new Error(
+      '15-service-type-validation/09-get-provider-options: No available option for service "StudentPersonals". ' +
+      'Available: ' + data.map(o => o.serviceName).join(', ')
+    );
+  }
+
+  bru.setVar('sec15ContextServiceUuid', option.contextServiceUuid);
+  console.log('Found contextServiceUuid for StudentPersonals: ' + option.contextServiceUuid);
+}
+
+tests {
+  test("Provider options returned", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    expect(data).to.be.an('array').and.not.be.empty;
+  });
+
+  test("contextServiceUuid stored", function() {
+    const uuid = bru.getVar('sec15ContextServiceUuid');
+    expect(uuid).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+  Fetches available provider registration options to obtain the contextServiceUuid.
+
+  ## Rationale
+  Before registering a provider, we need the contextServiceUuid that the broker assigned
+  when the PROVIDE ACL was created.
+
+  ## Expected Result
+  - HTTP 200 with array of available options
+  - `sec15ContextServiceUuid` stored for provider registration
+}

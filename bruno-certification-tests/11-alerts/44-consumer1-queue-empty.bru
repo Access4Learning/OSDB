@@ -1,0 +1,68 @@
+meta {
+  name: 44 Consumer 1 Queue Still Empty
+  type: http
+  seq: 41
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/queues/{{sec11Consumer1QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 204
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Consumer' });
+  
+  const queueId = bru.getVar('sec11Consumer1QueueId');
+  if (!queueId) {
+    throw new Error(
+      '11-alerts/44: Missing sec11Consumer1QueueId. Step 28 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 204) {
+    console.log('✓ Consumer 1 queue is empty — directed alert NOT delivered to creator');
+  } else {
+    console.error(
+      'UNEXPECTED: Consumer 1 received a message (status ' + status + '). ' +
+      'Directed alerts should NOT be delivered back to the alert creator.'
+    );
+  }
+}
+
+tests {
+  test("Consumer 1 queue empty (204) — no directed alert for creator", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  ## Summary
+  Verifies that Consumer 1's queue is still empty — it did NOT receive the directed alert.
+  
+  ## Rationale — Directed Alert Exclusion (Creator)
+  Consumer 1 CREATED the alert. Even though Consumer 1 has:
+  - A valid SUBSCRIBE ACL for alerts
+  - An active subscription for alert events
+  - A queue ready to receive messages
+  
+  The directed alert is NOT delivered back to the creator. Directed alerts go ONLY to
+  the environment that SENT the referenced message (the Provider), not to the environment
+  that REPORTED the alert.
+  
+  ## Expected Result
+  - HTTP 204 No Content (queue empty — no alert delivered to Consumer 1)
+}

@@ -1,0 +1,98 @@
+meta {
+  name: 22 Requests Invalid Unrecognized
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{sec15ConsumerRequestsUrl}}/StudentPersonals
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec15ZoneId}}
+  contextId: DEFAULT
+  requestType: IMMEDIATE
+  serviceType: INVALID_VALUE
+}
+
+assert {
+  res.status: eq 400
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec15Consumer' });
+
+  const requestsUrl = bru.getVar('sec15ConsumerRequestsUrl');
+  if (!requestsUrl) {
+    throw new Error(
+      '15-service-type-validation/22-requests-invalid-unrecognized: Missing sec15ConsumerRequestsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 400) {
+    throw new Error(
+      '15-service-type-validation/22-requests-invalid-unrecognized: Expected 400, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const body = res.getBody();
+  console.log('Received 400 response for serviceType: INVALID_VALUE on /requests path');
+  console.log('  Error code:', body.code);
+  console.log('  Description:', body.description);
+}
+
+tests {
+  test("Returns 400 for unrecognized serviceType on /requests path", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+
+  test("Error response contains the invalid value", function() {
+    const body = res.getBody();
+    expect(body.description).to.contain('INVALID_VALUE');
+  });
+
+  test("Error response contains full SIF value list", function() {
+    const body = res.getBody();
+    expect(body.description).to.contain('OBJECT');
+    expect(body.description).to.contain('UTILITY');
+    expect(body.description).to.contain('FUNCTIONAL');
+    expect(body.description).to.contain('SERVICEPATH');
+    expect(body.description).to.contain('XQUERYTEMPLATE');
+    expect(body.description).to.contain('SERVICE');
+  });
+
+  test("Error response contains path info", function() {
+    const body = res.getBody();
+    expect(body.description).to.contain('/requests');
+  });
+}
+
+docs {
+  ## Summary
+  Verifies that GET `/requests/StudentPersonals` with `serviceType: INVALID_VALUE`
+  (a completely unrecognized value) is rejected with HTTP 400.
+
+  ## Rationale
+  INVALID_VALUE is not one of the six valid SIF serviceType values. The filter
+  should reject with error code SVC_TYPE_002 and include the full list of valid
+  SIF service types in the response.
+
+  ## SIF Reference
+  SIF 3.3 §5.1 — serviceType must be a recognized SIF value.
+
+  ## Expected Result
+  - HTTP 400 Bad Request
+  - Error body contains "INVALID_VALUE" (the unrecognized value)
+  - Error body lists ALL six valid SIF types: OBJECT, UTILITY, FUNCTIONAL, SERVICEPATH, XQUERYTEMPLATE, SERVICE
+  - Error body references /requests path pattern
+}

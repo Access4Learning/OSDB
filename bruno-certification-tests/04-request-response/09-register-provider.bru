@@ -1,0 +1,93 @@
+meta {
+  name: 09 Register Provider
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/provider-registrations
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec04ProviderEnvId}}",
+    "contextServiceUuid": "{{sec04ContextServiceUuid}}",
+    "endpoint": "{{immediateProviderEndpointUrl}}/{{immediateProviderServiceName}}",
+    "serviceType": "OBJECT",
+    "supportedRequestTypes": [
+      {
+        "requestType": "IMMEDIATE",
+        "operations": ["CREATE", "QUERY", "UPDATE", "DELETE"]
+      }
+    ]
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Admin' });
+
+  const providerEnvId = bru.getVar('sec04ProviderEnvId');
+  const zoneId = bru.getVar('sec04ZoneId');
+  const contextServiceUuid = bru.getVar('sec04ContextServiceUuid');
+  if (!providerEnvId || !zoneId || !contextServiceUuid) {
+    throw new Error(
+      '04-request-response/09-register-provider: Missing sec04ProviderEnvId, sec04ZoneId, or sec04ContextServiceUuid. ' +
+      'Run previous setup steps first.'
+    );
+  }
+
+  const endpointUrl = bru.getEnvVar('immediateProviderEndpointUrl');
+  const serviceName = bru.getEnvVar('immediateProviderServiceName');
+  if (!endpointUrl || !serviceName) {
+    throw new Error(
+      '04-request-response/09-register-provider: Missing environment variables. ' +
+      'Set immediateProviderEndpointUrl and immediateProviderServiceName in your environment file.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '04-request-response/09-register-provider FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec04ProviderRegistrationId', data.id);
+  console.log('✓ Registered provider:', data.id);
+  console.log('  Service:', data.serviceName);
+  console.log('  Endpoint:', data.endpoint);
+}
+
+docs {
+  ## Summary
+
+  Registers the external provider for IMMEDIATE request handling.
+
+  ## Rationale
+
+  The provider registration tells the broker where to forward IMMEDIATE requests.
+  The contextServiceUuid was obtained from the previous step (08b-get-provider-options).
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Provider registration ID stored in `sec04ProviderRegistrationId`
+}

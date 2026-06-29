@@ -1,0 +1,81 @@
+meta {
+  name: 08 Create Queue
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec09DomainId}}/{{sec09SolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "cert-sec09-queue-{{sec09QueueTs}}",
+      "ownerId": "{{sec09ConsumerEnvId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Consumer' });
+
+  const consumerEnvId = bru.getVar('sec09ConsumerEnvId');
+  if (!consumerEnvId) {
+    throw new Error('sec09ConsumerEnvId not set. Run 03-create-consumer-env first.');
+  }
+
+  bru.setVar('sec09QueueTs', Date.now().toString());
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '09-queue-count-validation/05-create-queue FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec09QueueId', data.queue.id);
+  console.log('Queue created: ' + data.queue.id + ' (' + data.queue.name + ')');
+}
+
+tests {
+  test("Queue created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Queue owned by consumer", function() {
+    const data = res.getBody();
+    expect(data.queue.ownerId).to.equal(bru.getVar('sec09ConsumerEnvId'));
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a queue owned by the consumer environment for receiving event messages.
+
+  ## Rationale
+
+  This queue will receive the N=3 events published during setup. Its messageCount
+  field is the primary target of all assertions in this test section.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - `sec09QueueId` stored for subscription creation and stats verification
+}

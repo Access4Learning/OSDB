@@ -1,0 +1,78 @@
+meta {
+  name: 22 Create Provider SUBSCRIBE ACL for alerts
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec11ProviderEnvId}}",
+    "serviceName": "alerts",
+    "zoneId": "{{sec11ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "SUBSCRIBE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Admin' });
+  
+  const providerEnvId = bru.getVar('sec11ProviderEnvId');
+  if (!providerEnvId) {
+    throw new Error(
+      '11-alerts/22: Missing sec11ProviderEnvId. Step 05 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '11-alerts/22 FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  
+  bru.setVar('sec11ProviderAlertSubAclId', res.getBody().id);
+  console.log('✓ Provider SUBSCRIBE ACL for alerts: ' + res.getBody().id);
+}
+
+tests {
+  test("Provider SUBSCRIBE ACL for alerts created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().id).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+  Creates a SUBSCRIBE ACL for alerts service on the Provider environment.
+  
+  ## Rationale
+  The Provider needs SUBSCRIBE access to the alerts service so it can receive
+  directed alert notifications. When Consumer 1 reports an error referencing a message
+  that originated from the Provider, the alert must be delivered to the Provider's queue.
+  
+  ## Expected Result
+  - HTTP 201 → `sec11ProviderAlertSubAclId` stored
+}

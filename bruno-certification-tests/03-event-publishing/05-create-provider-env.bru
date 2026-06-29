@@ -1,0 +1,86 @@
+meta {
+  name: 05 Create Provider Environment
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec03DomainId}}/{{sec03SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "sec03-provider-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec03ZoneId}}"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec03Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '03-event-publishing/02-create-provider-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec03ProviderEnvId', data.id);
+  bru.setVar('sec03ProviderSessionToken', data.sessionToken);
+  bru.setVar('sec03ProviderSharedSecret', data.sharedSecret);
+  console.log('âœ“ Provider environment created: ' + data.id);
+  console.log('  Application Name: ' + data.applicationName);
+  console.log('  Type: ' + data.type);
+}
+
+tests {
+  test("Provider environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response contains credentials", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('sessionToken');
+    expect(data).to.have.property('sharedSecret');
+  });
+
+  test("Environment type is BROKERED", function() {
+    const data = res.getBody();
+    expect(data.type).to.equal('BROKERED');
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a BROKERED-type provider environment that will publish events.
+
+  ## Rationale
+
+  BROKERED environments interact with the broker through its infrastructure services.
+  Providers use BROKERED registration to push events to the broker's Events
+  Connector. The provider's session credentials are stored for authenticating event
+  publication requests.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - `sec03ProviderEnvId` set to environment UUID
+  - `sec03ProviderSessionToken` stored for provider authentication
+  - `sec03ProviderSharedSecret` stored for provider authentication
+}

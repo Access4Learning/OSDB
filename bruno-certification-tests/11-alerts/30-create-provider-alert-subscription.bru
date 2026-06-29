@@ -1,0 +1,89 @@
+meta {
+  name: 30 Create Provider Subscription for alerts
+  type: http
+  seq: 27
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/subscriptions/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{sec11ProviderQueueId}}",
+      "aclEntryId": "{{sec11ProviderAlertSubAclId}}",
+      "messageType": "EVENT"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.subscription.id: isDefined
+  res.body.subscription.queueId: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Provider' });
+  
+  const queueId = bru.getVar('sec11ProviderQueueId');
+  const aclId = bru.getVar('sec11ProviderAlertSubAclId');
+  if (!queueId || !aclId) {
+    throw new Error(
+      '11-alerts/30: Missing sec11ProviderQueueId or sec11ProviderAlertSubAclId. ' +
+      'Steps 27 and 22 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '11-alerts/30 FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  
+  const data = res.getBody().subscription;
+  bru.setVar('sec11ProviderAlertSubId', data.id);
+  console.log('✓ Provider alert subscription created: ' + data.id);
+}
+
+tests {
+  test("Provider alert subscription created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().subscription.id).to.exist;
+  });
+  
+  test("Subscription references Provider queue", function() {
+    expect(res.getBody().subscription.queueId).to.equal(bru.getVar('sec11ProviderQueueId'));
+  });
+  
+  test("Subscription message type is EVENT", function() {
+    expect(res.getBody().subscription.messageType).to.equal('EVENT');
+  });
+}
+
+docs {
+  ## Summary
+  Creates a subscription binding the Provider's queue to alert events.
+  
+  ## Rationale
+  The Provider subscribes to alert events so it can receive directed alerts. When a
+  consumer reports an error about a message that originated from this Provider, the
+  alert will be delivered to this subscription's queue.
+  
+  ## Expected Result
+  - HTTP 201 → `sec11ProviderAlertSubId` stored
+}

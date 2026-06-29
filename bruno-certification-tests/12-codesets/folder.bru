@@ -1,0 +1,36 @@
+meta {
+  name: 12 Code Sets Registry
+  seq: 13
+}
+
+docs {
+  # Code Sets Registry
+
+  ## Concept Overview
+
+  In SIF 3.7, the **Code Sets** utility service allows administrators to manage
+  controlled vocabularies (code sets) within a solution. Code sets define allowed
+  values for various fields.
+
+  Code set management is admin-only for write operations (create, update, delete).
+  Read operations (list, get by ID) are available to all authenticated environments.
+
+  ## Test Purpose
+
+  Verify that:
+  1. Admin can create a code set (201)
+  2. Code sets can be listed with SIF collection wrapper (200)
+  3. A code set can be retrieved by ID (200)
+  4. Admin can update a code set (200)
+  5. Admin can delete a code set (204)
+  6. Non-admin create/update/delete returns 403
+
+  ## Prerequisites
+
+  - This section is self-contained (creates its own domain/solution)
+
+  ## SIF Specification Reference
+
+  - SIF 3.7 Infrastructure — Utility Services — Code Sets
+}
+

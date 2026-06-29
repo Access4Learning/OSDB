@@ -1,0 +1,80 @@
+meta {
+  name: 35 Get Provider Infrastructure URLs
+  type: http
+  seq: 32
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/environments/{{sec11ProviderEnvId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Admin' });
+  
+  const providerEnvId = bru.getVar('sec11ProviderEnvId');
+  if (!providerEnvId) {
+    throw new Error(
+      '11-alerts/35: Missing sec11ProviderEnvId. Step 05 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '11-alerts/35 FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  
+  const envData = res.getBody();
+  if (envData.infrastructureServices && envData.infrastructureServices.infrastructureService) {
+    const services = envData.infrastructureServices.infrastructureService;
+    const eventsConnector = services.find(s => s.name === 'eventsConnector');
+    if (eventsConnector) {
+      bru.setVar('sec11ProviderEventsUrl', eventsConnector.value);
+      console.log('✓ Provider eventsConnector URL: ' + eventsConnector.value);
+    } else {
+      throw new Error('eventsConnector not found in provider infrastructure services');
+    }
+  } else {
+    throw new Error('No infrastructure services found on provider environment');
+  }
+}
+
+tests {
+  test("Provider environment fetched", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Provider events URL stored", function() {
+    expect(bru.getVar('sec11ProviderEventsUrl')).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+  Fetches the Provider environment to extract the eventsConnector infrastructure URL.
+  
+  ## Rationale
+  The Provider needs the eventsConnector URL to publish events. This URL is assigned
+  by the broker when the environment is created and is the endpoint for posting SIF
+  event messages.
+  
+  ## Expected Result
+  - HTTP 200
+  - `sec11ProviderEventsUrl` stored from infrastructureServices
+}

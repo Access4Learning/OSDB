@@ -1,0 +1,80 @@
+meta {
+  name: 08 Create Consumer QUERY ACL
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec15DomainId}}/{{sec15SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec15ConsumerEnvId}}",
+    "serviceName": "StudentPersonals",
+    "zoneId": "{{sec15ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "QUERY",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec15Admin' });
+
+  const consumerEnvId = bru.getVar('sec15ConsumerEnvId');
+  const zoneId = bru.getVar('sec15ZoneId');
+  if (!consumerEnvId || !zoneId) {
+    throw new Error(
+      '15-service-type-validation/08-create-consumer-query-acl: Missing sec15ConsumerEnvId or sec15ZoneId. ' +
+      'Run previous setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '15-service-type-validation/08-create-consumer-query-acl: Failed to create QUERY ACL, got ' +
+      status + ': ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec15QueryAclId', data.id);
+  console.log('Created QUERY ACL:', data.id);
+}
+
+tests {
+  test("Consumer QUERY ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  ## Summary
+  Creates QUERY ACL entry for the consumer environment on StudentPersonals.
+
+  ## Rationale
+  The consumer needs QUERY access so that requests would normally succeed.
+  This proves that when negative tests get HTTP 400, it's specifically due to
+  the invalid serviceType header — not a missing ACL.
+
+  ## Expected Result
+  - QUERY ACL created for consumer environment → `sec15QueryAclId`
+}

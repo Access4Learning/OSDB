@@ -1,0 +1,85 @@
+meta {
+  name: 05 Create Provider Environment
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec06DomainId}}/{{sec06SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "sec06-provider-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec06ZoneId}}"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '06-queue-operations/02-create-provider-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec06ProviderEnvId', data.id);
+  bru.setVar('sec06ProviderSessionToken', data.sessionToken);
+  bru.setVar('sec06ProviderSharedSecret', data.sharedSecret);
+  console.log('âœ“ Provider environment created: ' + data.id);
+  console.log('  Application Name: ' + data.applicationName);
+  console.log('  Type: ' + data.type);
+}
+
+tests {
+  test("Provider environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response contains credentials", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('sessionToken');
+    expect(data).to.have.property('sharedSecret');
+  });
+
+  test("Environment type is BROKERED", function() {
+    const data = res.getBody();
+    expect(data.type).to.equal('BROKERED');
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a BROKERED-type provider environment that will publish events to fill the queue.
+
+  ## Rationale
+
+  BROKERED environments interact with the broker through its infrastructure services.
+  The provider will publish multiple events so that the consumer's queue has messages
+  for testing the Get Next and Pop pattern.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - `sec06ProviderEnvId` set to environment UUID
+  - `sec06ProviderSessionToken` stored for provider authentication
+  - `sec06ProviderSharedSecret` stored for provider authentication
+}

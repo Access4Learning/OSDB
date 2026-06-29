@@ -1,0 +1,56 @@
+meta {
+  name: 22 Verify Final Count Zero
+  type: http
+  seq: 27
+}
+
+get {
+  url: {{sec09ConsumerQueuesUrl}}/{{sec09QueueId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Consumer' });
+
+  const queuesUrl = bru.getVar('sec09ConsumerQueuesUrl');
+  const queueId = bru.getVar('sec09QueueId');
+  if (!queuesUrl || !queueId) {
+    throw new Error('22: Missing queue URL or ID.');
+  }
+}
+
+script:post-response {
+  const data = res.getBody().queue;
+  bru.setVar('sec09FinalCount', data.messageCount);
+  console.log('✓ Final queue messageCount: ' + data.messageCount);
+  console.log('  Expected: 0');
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Queue stats returned successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Final message count is 0 — all messages acknowledged", function() {
+    expect(res.getBody().queue.messageCount).to.equal(0);
+  });
+}
+
+docs {
+  ## Summary
+  Verifies all messages have been acked and queue count is 0.
+
+  ## Expected Result
+  - HTTP 200 with messageCount = 0
+}

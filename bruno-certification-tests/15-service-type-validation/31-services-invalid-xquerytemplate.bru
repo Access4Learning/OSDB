@@ -1,0 +1,97 @@
+meta {
+  name: 31 Services Invalid XQUERYTEMPLATE
+  type: http
+  seq: 31
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec15DomainId}}/{{sec15SolutionId}}/services/StudentLocator
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec15ZoneId}}
+  contextId: DEFAULT
+  serviceType: XQUERYTEMPLATE
+}
+
+body:json {
+  {
+    "operation": "locate",
+    "parameters": {
+      "studentId": "test-456"
+    }
+  }
+}
+
+assert {
+  res.status: eq 400
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec15Consumer' });
+
+  const zoneId = bru.getVar('sec15ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '15-service-type-validation/31-services-invalid-xquerytemplate: Missing sec15ZoneId. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 400) {
+    throw new Error(
+      '15-service-type-validation/31-services-invalid-xquerytemplate: Expected 400, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const body = res.getBody();
+  console.log('Received expected 400 for serviceType: XQUERYTEMPLATE on /services path');
+  console.log('  Error code:', body.code);
+  console.log('  Description:', body.description);
+}
+
+tests {
+  test("Returns HTTP 400 for XQUERYTEMPLATE on /services path", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+
+  test("Response contains error code", function() {
+    const body = res.getBody();
+    expect(body.code).to.be.a('string');
+    expect(body.code).to.not.be.empty;
+  });
+
+  test("Response description mentions valid values", function() {
+    const body = res.getBody();
+    expect(body.description).to.be.a('string');
+    expect(body.description).to.include('FUNCTIONAL');
+  });
+}
+
+docs {
+  ## Summary
+  Verifies that POST `/services/StudentLocator` with `serviceType: XQUERYTEMPLATE` returns HTTP 400.
+
+  ## Rationale
+  The `/services/*` path only accepts `serviceType: FUNCTIONAL`. Sending `XQUERYTEMPLATE`
+  (which is valid for `/requests/*`) must be rejected by the ServiceTypeValidationFilter
+  before reaching the services connector.
+
+  ## Expected Result
+  - HTTP 400
+  - Error response body with code and description containing valid values (FUNCTIONAL)
+
+  ## SIF Reference
+  - SIF 3.3 §5.1 — serviceType/path mapping
+  - Requirement 9.2
+}

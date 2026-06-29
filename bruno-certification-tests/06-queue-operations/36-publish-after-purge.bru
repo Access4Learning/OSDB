@@ -1,0 +1,86 @@
+meta {
+  name: 36 Publish After Purge
+  type: http
+  seq: 37
+}
+
+post {
+  url: {{sec06ProviderEventsUrl}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceName: CertQueueObjects
+  serviceType: OBJECT
+  eventAction: CREATE
+  messageType: EVENT
+  zoneId: {{sec06ZoneId}}
+  contextId: DEFAULT
+}
+
+body:json {
+  {
+    "certQueueObject": {
+      "refId": "{{$randomUUID}}",
+      "localId": "cert-queue-post-purge",
+      "sequence": 99,
+      "name": "Post-Purge Event",
+      "description": "Event published after purge to verify queue still functional"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Provider' });
+
+  const eventsUrl = bru.getVar('sec06ProviderEventsUrl');
+  if (!eventsUrl) {
+    throw new Error(
+      '06-queue-operations/36-publish-after-purge: Missing sec06ProviderEventsUrl.'
+    );
+  }
+
+  // Allow purge to complete before publishing
+  await new Promise(resolve => setTimeout(resolve, 2000));
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 202 || status === 204) {
+    console.log('✓ Post-purge event published (status ' + status + ')');
+  } else {
+    console.error('✗ Failed to publish after purge: ' + status);
+  }
+}
+
+assert {
+  res.status: in [202, 204]
+}
+
+tests {
+  test("Event accepted after purge (queue still functional)", function() {
+    const status = res.getStatus();
+    expect([202, 204]).to.include(status);
+  });
+}
+
+docs {
+  ## Summary
+
+  Publishes an event AFTER purging the queue to verify the queue remains functional.
+
+  ## Rationale
+
+  A purge removes all messages but must NOT destroy the queue infrastructure
+  (Redis stream, consumer group). This test verifies that publishing to a purged
+  queue still works — the event connector can still route events to the queue.
+
+  ## Expected Result
+
+  - HTTP 202 Accepted or 204 No Content
+}

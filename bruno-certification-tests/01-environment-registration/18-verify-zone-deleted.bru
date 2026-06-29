@@ -1,0 +1,75 @@
+meta {
+  name: 18 Verify Zone Deleted
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec01DomainId}}/{{sec01SolutionId}}/zones
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec01Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '01-environment-registration/18-verify-zone-deleted FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  console.log('✓ Zone list retrieved for deletion verification');
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Deleted zone is NOT in the response list", function() {
+    const body = res.getBody();
+    const zones = Array.isArray(body) ? body : (body.zones || body.data || []);
+    const deletedZoneId = bru.getVar('sec01DeleteTestZoneId');
+    const found = zones.some(z => z.zoneId === deletedZoneId || z.id === deletedZoneId);
+    expect(found).to.be.false;
+  });
+
+  test("Primary zone sec01ZoneId is still present (sibling isolation)", function() {
+    const body = res.getBody();
+    const zones = Array.isArray(body) ? body : (body.zones || body.data || []);
+    const primaryZoneId = bru.getVar('sec01ZoneId');
+    const found = zones.some(z => z.zoneId === primaryZoneId || z.id === primaryZoneId);
+    expect(found).to.be.true;
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that the zone deleted in step 17 no longer appears in the zones list,
+  and that the primary zone (`sec01ZoneId`) is still present (sibling isolation).
+
+  ## Rationale
+
+  After a successful DELETE (step 17), a GET on the zones collection must confirm
+  the deleted zone is gone. Additionally, the primary zone created in step 04
+  must remain unaffected — deletion of one zone must not cascade to siblings.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - `sec01DeleteTestZoneId` is NOT present in the zone list
+  - `sec01ZoneId` IS present in the zone list (sibling isolation confirmed)
+}

@@ -1,0 +1,94 @@
+meta {
+  name: 03 Get Admin Environment
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec02DomainId}}/{{sec02SolutionId}}/environments
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+
+  const domainId = bru.getVar('sec02DomainId');
+  const solutionId = bru.getVar('sec02SolutionId');
+  if (!domainId || !solutionId) {
+    throw new Error(
+      '02-subscription-management/03-get-admin-environment: Missing sec02DomainId or sec02SolutionId. ' +
+      'Steps 01 and 02 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '02-subscription-management/03-get-admin-environment FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  let envs = [];
+  if (Array.isArray(data)) {
+    envs = data;
+  } else if (data && data.environments && data.environments.environment && Array.isArray(data.environments.environment)) {
+    envs = data.environments.environment;
+  } else if (data && data.environment && Array.isArray(data.environment)) {
+    envs = data.environment;
+  } else if (data && data.environments && Array.isArray(data.environments)) {
+    envs = data.environments;
+  } else if (data && data.content && Array.isArray(data.content)) {
+    envs = data.content;
+  }
+
+  const brokerEnv = envs.find(e =>
+    (e.fingerprint && e.fingerprint === 'broker-services') ||
+    (e.consumerName && e.consumerName.startsWith('BROKER_SERVICES'))
+  );
+
+  if (!brokerEnv) {
+    throw new Error(
+      '02-subscription-management/03-get-admin-environment FAILED: No broker-services environment found. ' +
+      'Found ' + envs.length + ' environment(s).'
+    );
+  }
+
+  bru.setVar('sec02AdminEnvironmentId', brokerEnv.id);
+
+  const envPrefix = bru.getEnvVar('currentEnv');
+  const sessionTokenPath = '{{process.env.' + envPrefix + '-adminSessionToken}}';
+  const sharedSecretPath = '{{process.env.' + envPrefix + '-adminSharedSecret}}';
+  const adminSessionToken = bru.interpolate(sessionTokenPath);
+  const adminSharedSecret = bru.interpolate(sharedSecretPath);
+
+  if (!adminSessionToken || adminSessionToken === sessionTokenPath) {
+    throw new Error('Could not resolve admin session token from .env');
+  }
+  if (!adminSharedSecret || adminSharedSecret === sharedSecretPath) {
+    throw new Error('Could not resolve admin shared secret from .env');
+  }
+
+  bru.setVar('sec02AdminSessionToken', adminSessionToken);
+  bru.setVar('sec02AdminSharedSecret', adminSharedSecret);
+  console.log('Admin environment found: ' + brokerEnv.id);
+}
+
+docs {
+  ## Summary
+  Retrieves the broker-services environment and stores admin credentials for section 02.
+
+  ## Expected Result
+  - HTTP 200 OK
+  - sec02AdminEnvironmentId, sec02AdminSessionToken, sec02AdminSharedSecret stored
+}

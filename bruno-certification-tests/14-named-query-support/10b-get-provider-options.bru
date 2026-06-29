@@ -1,0 +1,79 @@
+meta {
+  name: 10b Get Provider Options
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/provider-registrations/available-options?environmentId={{sec14ProviderEnvId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec14Admin' });
+
+  const providerEnvId = bru.getVar('sec14ProviderEnvId');
+  if (!providerEnvId) {
+    throw new Error('14-named-query-support/10b-get-provider-options: Missing sec14ProviderEnvId.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  const data = res.getBody();
+
+  if (status !== 200 || !data || data.length === 0) {
+    throw new Error(
+      '14-named-query-support/10b-get-provider-options: No available provider options found. ' +
+      'Ensure PROVIDE ACL for StudentSnapshot was created in step 07. Status: ' + status + ', Data: ' + JSON.stringify(data)
+    );
+  }
+
+  const option = data.find(o => o.serviceName === 'StudentSnapshot');
+  if (!option) {
+    throw new Error(
+      '14-named-query-support/10b-get-provider-options: No available option for service "StudentSnapshot". ' +
+      'Available: ' + data.map(o => o.serviceName).join(', ')
+    );
+  }
+
+  bru.setVar('sec14ContextServiceUuid', option.contextServiceUuid);
+  console.log('✓ Found contextServiceUuid for StudentSnapshot: ' + option.contextServiceUuid);
+}
+
+tests {
+  test("Provider options returned with StudentSnapshot entry", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    expect(data).to.be.an('array').and.not.be.empty;
+    const option = data.find(o => o.serviceName === 'StudentSnapshot');
+    expect(option).to.exist;
+    expect(option.contextServiceUuid).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+  Fetches available provider registration options to obtain the contextServiceUuid
+  for the "StudentSnapshot" named query.
+
+  ## Rationale
+  Before registering a provider for a specific Named Query, we need the contextServiceUuid
+  that was created when the PROVIDE ACL was set up in step 07. The available-options
+  endpoint returns all services the environment can register as a provider for.
+
+  ## Expected Result
+  - HTTP 200 with array containing an entry for "StudentSnapshot"
+  - `sec14ContextServiceUuid` stored for provider registration
+}

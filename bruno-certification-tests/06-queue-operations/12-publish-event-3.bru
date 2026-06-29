@@ -1,0 +1,79 @@
+meta {
+  name: 09 Publish Event 3
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{sec06ProviderEventsUrl}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceName: CertQueueObjects
+  serviceType: OBJECT
+  eventAction: CREATE
+  messageType: EVENT
+  zoneId: {{sec06ZoneId}}
+  contextId: DEFAULT
+}
+
+body:json {
+  {
+    "certQueueObject": {
+      "refId": "{{$randomUUID}}",
+      "localId": "cert-queue-event-3",
+      "sequence": 3,
+      "name": "Queue Test Event 3",
+      "description": "Third event for queue operations testing"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Provider' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 202 && status !== 204) {
+    throw new Error(
+      '06-queue-operations/09-publish-event-3 FAILED: expected 202 or 204, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  console.log('✓ Event 3 published (status ' + status + ')');
+  bru.setVar('sec06EventsPublished', true);
+  bru.setVar('sec06ExpectedMessageCount', 3);
+}
+
+tests {
+  test("Event 3 accepted by broker", function() {
+    const status = res.getStatus();
+    expect([202, 204]).to.include(status);
+  });
+}
+
+docs {
+  ## Summary
+
+  Publishes the third and final test event to fill the consumer's queue.
+
+  ## Rationale
+
+  With 3 events in the queue, we can fully exercise the Get Next and Pop pattern:
+  peek first, verify idempotent peek, ack-and-advance through messages, and
+  verify the queue eventually becomes empty.
+
+  ## Expected Result
+
+  - HTTP 202 Accepted or 204 No Content
+  - `sec06EventsPublished` set to true
+  - `sec06ExpectedMessageCount` set to 3
+}

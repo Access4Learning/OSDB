@@ -1,0 +1,81 @@
+meta {
+  name: 05-parameter-styles
+  seq: 6
+}
+
+docs {
+  # Parameter Styles Tests
+
+  ## Concept Overview
+
+  SIF defines two mechanisms for passing zone and context identifiers on HTTP requests:
+
+  ### Header-Based Parameters (Current Standard)
+
+  The consumer includes `zoneId` and `contextId` as HTTP request headers:
+
+  ```
+  GET /connector/ServiceObjects HTTP/1.1
+  zoneId: my-zone
+  contextId: DEFAULT
+  ```
+
+  This is the preferred approach in SIF 3.7 and is used throughout the rest of this
+  certification suite. Headers are clean, visible in debugging tools, and don't affect
+  URL routing or caching.
+
+  ### Matrix Parameters (Deprecated)
+
+  The deprecated style appends zone and context as semicolon-delimited parameters
+  directly in the URL path:
+
+  ```
+  GET /connector/ServiceObjects;zoneId=my-zone;contextId=DEFAULT HTTP/1.1
+  ```
+
+  This style was used in earlier SIF versions and must still be supported by compliant
+  brokers for backward compatibility. A compliant broker extracts matrix parameters from
+  the URL and routes the request identically to the header-based approach.
+
+  ### Translation Approach
+
+  A translation layer (middleware, interceptor, or test helper) can convert between
+  the two styles:
+
+  - **Header â†’ Matrix**: Strip `zoneId`/`contextId` headers, append them to the URL path
+  - **Matrix â†’ Header**: Parse `;zoneId=xxx;contextId=yyy` from the URL, set as headers
+
+  This test section demonstrates both approaches and verifies the broker handles them
+  equivalently.
+
+  ## Test Purpose
+
+  Verify that the broker correctly routes requests regardless of whether zone/context
+  parameters are provided via:
+  1. HTTP headers (the current standard approach)
+  2. Matrix parameters in the URL (deprecated but required for backward compatibility)
+
+  Tests cover events, requests, and subscriptions with both parameter styles.
+
+  ## Prerequisites
+
+  - This section is self-contained (creates its own domain/solution)
+  - An external provider endpoint must be running at `immediateProviderEndpointUrl`
+  - The provider must serve the service name in `immediateProviderServiceName`
+
+  ## Expected Behavior
+
+  - Setup creates a zone, provider env (DIRECT), consumer env (BROKERED), ACLs, and queue
+  - Header-based tests pass zone/context as HTTP headers (standard approach)
+  - Matrix-based tests pass zone/context in the URL path with semicolons
+  - Both approaches produce identical routing behavior
+  - Translation demo shows how to convert between styles
+  - Teardown removes all section-specific resources
+
+  ## SIF Specification Reference
+
+  - SIF 3.7 Â§4.4 â€“ Request Parameters (header-based)
+  - SIF 3.3 Â§4.4 â€“ Matrix Parameter Style (deprecated)
+  - SIF 3.7 Â§6.2 â€“ Event Connector URL Parameters
+  - SIF 3.7 Â§6.3 â€“ Request Connector URL Parameters
+}

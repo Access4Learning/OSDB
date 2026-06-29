@@ -1,0 +1,78 @@
+meta {
+  name: 21 Create Provider PROVIDE ACL for TestObjects
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec11ProviderEnvId}}",
+    "serviceName": "TestObjects",
+    "zoneId": "{{sec11ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "PROVIDE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Admin' });
+  
+  const providerEnvId = bru.getVar('sec11ProviderEnvId');
+  if (!providerEnvId) {
+    throw new Error(
+      '11-alerts/21: Missing sec11ProviderEnvId. Step 05 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '11-alerts/21 FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  
+  bru.setVar('sec11ProviderTestObjAclId', res.getBody().id);
+  console.log('✓ Provider PROVIDE ACL for TestObjects: ' + res.getBody().id);
+}
+
+tests {
+  test("Provider PROVIDE ACL for TestObjects created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().id).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+  Creates a PROVIDE ACL for TestObjects service, allowing the Provider to publish events.
+  
+  ## Rationale
+  The Provider needs PROVIDE access to TestObjects so it can publish UPDATE events.
+  These events will be delivered to both consumers (who have SUBSCRIBE ACLs) and will
+  establish the messageId reference needed for the directed alert test.
+  
+  ## Expected Result
+  - HTTP 201 → `sec11ProviderTestObjAclId` stored
+}

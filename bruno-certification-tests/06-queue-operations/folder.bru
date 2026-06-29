@@ -1,0 +1,72 @@
+meta {
+  name: 06 Queue Operations
+  seq: 7
+}
+
+docs {
+  # Queue Operations â€” Get Next and Pop (Â§9.3.1)
+
+  ## Concept Overview
+
+  SIF message queues support a **Get Next and Pop** pattern for reliable message consumption.
+  The consumer retrieves messages one at a time using a two-phase approach:
+
+  1. **Peek (GET without deleteMessageId)**: Retrieves the oldest undelivered message in
+     FIFO order without removing it from the queue. This operation is **idempotent** â€” calling
+     it multiple times without an intervening acknowledgment returns the same message.
+
+  2. **Acknowledge and Advance (GET with deleteMessageId)**: Acknowledges receipt of a
+     previously delivered message (identified by `deleteMessageId`) and atomically retrieves
+     the next available message. The acknowledged message is permanently removed from the queue.
+
+  This two-phase design ensures:
+  - **At-least-once delivery**: A message is not removed until the consumer explicitly acknowledges it
+  - **Idempotent reads**: Network failures during peek do not cause message loss
+  - **Ordered processing**: Messages are delivered in FIFO order
+  - **Atomic advance**: Acknowledgment and next-message retrieval happen as one operation
+
+  ### Query Alternatives
+
+  | Scenario | Request | Response |
+  |----------|---------|----------|
+  | Peek (first message) | `GET /queues/{id}/messages` | 200 + body + `messageid` header |
+  | Idempotent re-peek | Same GET (no ack) | Same 200 + same `messageid` |
+  | Ack and advance | `GET /queues/{id}/messages?deleteMessageId={id}` | 200 + next message |
+  | Ack last message | `GET /queues/{id}/messages?deleteMessageId={id}` | 204 (queue empty) |
+  | Empty queue | `GET /queues/{id}/messages` | 204 (no body) |
+  | Invalid deleteMessageId | `GET /queues/{id}/messages?deleteMessageId=bogus` | 404 |
+
+  ## Test Purpose
+
+  Verify that:
+  1. GET without deleteMessageId returns the first message (peek) with 200 + messageid header
+  2. Consecutive peeks without ack are idempotent (return same message)
+  3. GET with valid deleteMessageId removes that message and returns the next one
+  4. GET on an empty queue returns 204 with no body
+  5. GET with a non-existent deleteMessageId returns 404
+  6. Queue message count decreases by 1 per acknowledgment
+
+  ## Prerequisites
+
+  - This section is self-contained (creates its own domain/solution)
+  - `sec06AdminSessionToken`, `sec06AdminSharedSecret`, and `sec06AdminEnvironmentId`
+    must be stored in Bruno collection variables
+
+  ## Expected Behavior
+
+  - Setup creates: 1 zone, 1 provider env, 1 consumer env, ACLs, 1 queue, 1 subscription,
+    then publishes 3 events so the queue contains multiple messages for testing
+  - Peek returns first message with messageid header â†’ 200
+  - Second peek returns same message (idempotent) â†’ 200
+  - Ack-and-advance removes first message, returns second â†’ 200
+  - After consuming all messages, queue returns empty â†’ 204
+  - Invalid deleteMessageId â†’ 404
+  - Queue stats show count decreasing by 1 per acknowledgment
+  - Teardown removes all resources created by this section
+
+  ## SIF Specification Reference
+
+  - SIF 3.7 Â§9.3.1: Queue Message Retrieval (Get Next and Pop)
+  - SIF 3.7 Â§9.3: Queue Operations
+  - SIF 3.7 Â§9: Message Queue Management
+}

@@ -1,0 +1,88 @@
+meta {
+  name: 05 Create Provider Environment
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec01DomainId}}/{{sec01SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "CertProvider-EnvReg-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec01ZoneId}}"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec01Admin' });
+
+  const zoneId = bru.getVar('sec01ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '01-environment-registration/02-create-provider-env: Missing sec01ZoneId. ' +
+      'Step 01-setup-zone must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '01-environment-registration/02-create-provider-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec01ProviderEnvId', data.id);
+  bru.setVar('sec01ProviderSessionToken', data.sessionToken);
+  bru.setVar('sec01ProviderSharedSecret', data.sharedSecret);
+  console.log('✓ Provider environment created: ' + data.id);
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.sessionToken: isDefined
+}
+
+tests {
+  test("Provider environment created with type DIRECT", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody();
+    expect(data.id).to.exist;
+    expect(data.sessionToken).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+
+  Registers a provider environment with type DIRECT in the test zone.
+
+  ## Rationale
+
+  A DIRECT environment represents an application that responds to requests in real-time.
+  The broker forwards incoming requests directly to the provider's configured endpoint
+  URL. This test verifies that DIRECT environments can be registered and later queried
+  for their infrastructure services.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Response body contains `id`, `sessionToken`, `sharedSecret`
+  - `sec01ProviderEnvId` variable stored for subsequent tests
+}

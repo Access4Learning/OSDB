@@ -1,0 +1,84 @@
+meta {
+  name: 12 Non-Admin Create Zone
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec10DomainId}}/{{sec10SolutionId}}/zones
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "zoneId": "UnauthorizedZone-{{$timestamp}}",
+    "description": "This zone creation should be rejected"
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.message: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  // Authenticate as the non-admin provider environment
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec10Provider' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Non-admin (provider) attempted zone creation â†’ status: ' + status);
+
+  if (status === 403) {
+    console.log('âœ“ Correctly rejected: non-admin cannot create zones');
+    const body = res.getBody();
+    bru.setVar('sec10NonAdminCreateZoneBody', JSON.stringify(body));
+  } else {
+    console.error('âœ— Expected 403, got: ' + status);
+  }
+}
+
+tests {
+  test("Zone creation rejected with 403 Forbidden", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+
+  test("Error response contains message field", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('message');
+    expect(data.message).to.be.a('string');
+    expect(data.message.length).to.be.greaterThan(0);
+  });
+
+  test("Only admin environments can create zones", function() {
+    // A DIRECT (non-admin) environment should never be able to create zones
+    expect(res.getStatus()).to.equal(403);
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that a non-admin environment (type DIRECT) cannot create a zone.
+
+  ## Rationale
+
+  Zone management is an administrative operation restricted to the Admin Environment.
+  Non-admin environments (DIRECT or BROKERED) should not be able to create zones
+  regardless of their ACL grants. The broker must return 403 when a non-admin
+  environment attempts zone creation.
+
+  ## Expected Result
+
+  - HTTP 403 Forbidden
+  - Response body contains `message` field indicating admin-only restriction
+}

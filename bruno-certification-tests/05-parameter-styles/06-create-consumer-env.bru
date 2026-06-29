@@ -1,0 +1,105 @@
+meta {
+  name: 06 Create Consumer Environment
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec05DomainId}}/{{sec05SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "CertParamsConsumer-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec05ZoneId}}"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.sessionToken: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec05Admin' });
+
+  const zoneId = bru.getVar('sec05ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '05-parameter-styles/03-create-consumer-env: Missing sec05ZoneId. ' +
+      'Run 01-setup-zone first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '05-parameter-styles/03-create-consumer-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec05ConsumerEnvId', data.id);
+  bru.setVar('sec05ConsumerSessionToken', data.sessionToken);
+  bru.setVar('sec05ConsumerSharedSecret', data.sharedSecret);
+
+  // Extract infrastructure service URLs
+  if (data.infrastructureServices && data.infrastructureServices.infrastructureService) {
+    const services = data.infrastructureServices.infrastructureService;
+
+    const requestsConn = services.find(s => s.name === 'requestsConnector');
+    if (requestsConn) {
+      bru.setVar('sec05ConsumerRequestsUrl', requestsConn.value);
+      console.log('  Requests Connector URL:', requestsConn.value);
+    }
+
+    const queuesConn = services.find(s => s.name === 'queues');
+    if (queuesConn) {
+      bru.setVar('sec05ConsumerQueuesUrl', queuesConn.value);
+      console.log('  Queues URL:', queuesConn.value);
+    }
+
+    const subsConn = services.find(s => s.name === 'subscriptions');
+    if (subsConn) {
+      bru.setVar('sec05ConsumerSubscriptionsUrl', subsConn.value);
+      console.log('  Subscriptions URL:', subsConn.value);
+    }
+  }
+
+  console.log('âœ“ Created consumer environment (BROKERED):', data.id);
+}
+
+docs {
+  ## Summary
+
+  Creates a BROKERED consumer environment for parameter styles tests.
+
+  ## Rationale
+
+  A BROKERED consumer environment sends requests and creates subscriptions via
+  the broker's connectors. The Requests Connector URL and Subscriptions URL are
+  extracted for testing both header-based and matrix parameter approaches.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Consumer environment ID, session token, shared secret stored
+  - Requests Connector URL stored in `sec05ConsumerRequestsUrl`
+  - Queues URL stored in `sec05ConsumerQueuesUrl`
+  - Subscriptions URL stored in `sec05ConsumerSubscriptionsUrl`
+  - `sec05ConsumerEnvId`, `sec05ConsumerSessionToken`, `sec05ConsumerSharedSecret` set
+}

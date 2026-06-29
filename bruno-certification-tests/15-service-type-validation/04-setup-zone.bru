@@ -1,0 +1,66 @@
+meta {
+  name: 04 Setup Zone
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec15DomainId}}/{{sec15SolutionId}}/zones
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+body:json {
+  {
+    "zoneId": "cert-svctype-{{$timestamp}}",
+    "description": "Zone for service-type-validation certification tests"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec15Admin' });
+
+  const domainId = bru.getVar('sec15DomainId');
+  const solutionId = bru.getVar('sec15SolutionId');
+  if (!domainId || !solutionId) {
+    throw new Error(
+      '15-service-type-validation/04-setup-zone: Missing sec15DomainId or sec15SolutionId. ' +
+      'Run steps 01-03 first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '15-service-type-validation/04-setup-zone FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec15ZoneId', data.zoneId || data.id);
+  console.log('Created zone:', bru.getVar('sec15ZoneId'));
+}
+
+docs {
+  ## Summary
+  Creates a dedicated zone for service-type-validation tests.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - Zone ID stored in `sec15ZoneId` Bruno variable
+}

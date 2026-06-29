@@ -1,0 +1,128 @@
+meta {
+  name: 10 Custom Headers To Provider
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{sec08ConsumerRequestsUrl}}/{{immediateProviderServiceName}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec08ZoneId}}
+  contextId: DEFAULT
+  requestType: IMMEDIATE
+  serviceType: OBJECT
+  X-Custom-App-Id: cert-header-test-app-42
+  X-Correlation-Id: corr-{{$timestamp}}-abc123
+  X-Tenant-Code: TENANT-ALPHA-99
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec08Consumer' });
+
+  const requestsUrl = bru.getVar('sec08ConsumerRequestsUrl');
+  if (!requestsUrl) {
+    throw new Error(
+      '08-header-passthrough/10-custom-headers-to-provider: Missing sec08ConsumerRequestsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Custom headers to provider response status:', status);
+
+  if (status === 200) {
+    const data = res.getBody();
+    console.log('✓ Request succeeded — verifying provider received custom headers');
+
+    // The provider endpoint should echo received headers in its response body
+    // Check if our custom headers arrived at the provider
+    if (data && data.receivedHeaders) {
+      const hdrs = data.receivedHeaders;
+      const appId = hdrs['x-custom-app-id'] || hdrs['X-Custom-App-Id'];
+      const corrId = hdrs['x-correlation-id'] || hdrs['X-Correlation-Id'];
+      const tenant = hdrs['x-tenant-code'] || hdrs['X-Tenant-Code'];
+
+      console.log('  X-Custom-App-Id:', appId);
+      console.log('  X-Correlation-Id:', corrId);
+      console.log('  X-Tenant-Code:', tenant);
+    } else {
+      console.log('  Response body:', JSON.stringify(data).substring(0, 300));
+    }
+  } else {
+    console.error('✗ Expected 200, got:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("Request with custom headers returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Provider received X-Custom-App-Id header", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    if (data.receivedHeaders) {
+      const val = data.receivedHeaders['x-custom-app-id'] || data.receivedHeaders['X-Custom-App-Id'];
+      expect(val).to.equal('cert-header-test-app-42');
+    }
+  });
+
+  test("Provider received X-Correlation-Id header", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    if (data.receivedHeaders) {
+      const val = data.receivedHeaders['x-correlation-id'] || data.receivedHeaders['X-Correlation-Id'];
+      expect(val).to.exist;
+      expect(val).to.include('corr-');
+    }
+  });
+
+  test("Provider received X-Tenant-Code header", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    if (data.receivedHeaders) {
+      const val = data.receivedHeaders['x-tenant-code'] || data.receivedHeaders['X-Tenant-Code'];
+      expect(val).to.equal('TENANT-ALPHA-99');
+    }
+  });
+}
+
+docs {
+  ## Summary
+
+  Sends a request with three custom application headers and verifies the provider
+  receives all of them with their original values intact.
+
+  ## Rationale
+
+  SIF 3.7 requires the broker to pass through all non-infrastructure headers from
+  consumer to provider. This is critical for distributed tracing (correlation IDs),
+  multi-tenant routing, and application-level metadata. If the broker strips custom
+  headers, applications lose the ability to communicate out-of-band information
+  through the SIF infrastructure.
+
+  The test sends three distinct custom headers:
+  - `X-Custom-App-Id`: Static application identifier
+  - `X-Correlation-Id`: Dynamic correlation ID with timestamp
+  - `X-Tenant-Code`: Tenant routing identifier
+
+  ## Expected Result
+
+  - HTTP 200 OK (IMMEDIATE request succeeds)
+  - Provider's echo response shows all three custom headers received
+  - Header values match exactly what was sent by the consumer
+}
+

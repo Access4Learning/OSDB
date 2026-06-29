@@ -1,0 +1,86 @@
+meta {
+  name: 08-header-passthrough
+  seq: 9
+}
+
+docs {
+  # Header Passthrough Tests
+
+  ## Concept Overview
+
+  SIF 3.7 brokers act as intermediaries between consumers and providers. While the broker
+  uses certain HTTP headers for routing, authentication, and message management (the
+  "infrastructure headers"), all other custom HTTP headers MUST be passed through
+  transparently in both directions:
+
+  - **Consumer â†’ Provider**: Custom request headers sent by the consumer are forwarded
+    to the provider's endpoint without modification.
+  - **Provider â†’ Consumer**: Custom response headers returned by the provider are
+    included in the response delivered to the consumer.
+
+  This behavior enables application-level concerns (correlation IDs, tenant identifiers,
+  processing metadata) to flow through the broker without requiring the broker to
+  understand their semantics.
+
+  ### Blacklisted Headers (NOT forwarded)
+
+  The following SIF infrastructure headers are consumed by the broker and NOT forwarded
+  to the provider:
+
+  - `authorization` â€“ HMAC-SHA256 signature for broker authentication
+  - `timestamp` â€“ Request timestamp for HMAC validation and replay prevention
+  - `sessionToken` â€“ Environment session identifier (if sent as header)
+  - `requestType` â€“ Choreography routing indicator (IMMEDIATE/DELAYED)
+  - `queueId` â€“ Queue identifier for DELAYED routing
+  - `zoneId` â€“ SIF zone routing parameter
+  - `contextId` â€“ SIF context routing parameter
+  - `serviceName` â€“ SIF service name routing parameter
+  - `serviceType` â€“ SIF service type indicator
+
+  ### Custom Header Use Cases
+
+  Custom headers enable rich application integration without broker modifications:
+
+  - **X-Correlation-Id**: Distributed tracing across consumer â†’ broker â†’ provider
+  - **X-Custom-App-Id**: Identify the originating application within a shared environment
+  - **X-Tenant-Code**: Multi-tenant provider routing within a single SIF environment
+  - **X-Response-Timestamp**: Provider processing timestamp for latency measurement
+  - **X-Processing-Duration**: Provider-reported processing time for monitoring
+
+  ### Query Parameter Forwarding
+
+  In addition to headers, the broker MUST forward the complete URL including query
+  parameters to the provider. Query strings like `?filter=active&orderBy=name` are
+  preserved in the forwarded request URL.
+
+  ## Test Purpose
+
+  Verify that the broker:
+  1. Forwards all non-blacklisted custom request headers to the provider
+  2. Forwards all custom response headers from the provider to the consumer
+  3. Preserves query parameters in the forwarded request URL
+  4. Does NOT forward blacklisted infrastructure headers to the provider
+
+  ## Prerequisites
+
+  - This section is self-contained (creates its own domain/solution)
+  - An external provider endpoint must be running at `immediateProviderEndpointUrl`
+    that echoes received headers and query parameters in its response body
+  - The provider must serve the service name configured in `immediateProviderServiceName`
+
+  ## Expected Behavior
+
+  - Setup creates a zone, provider env (DIRECT), consumer env (BROKERED), ACLs,
+    and registers the provider
+  - Custom headers sent by the consumer appear in the provider's received request
+  - Custom response headers from the provider appear in the consumer's response
+  - Query parameters are preserved in the forwarded URL
+  - Infrastructure headers (authorization, timestamp) are stripped before forwarding
+  - Teardown removes all section-specific resources
+
+  ## SIF Specification Reference
+
+  - SIF 3.7 Â§6.3 â€“ Request/Response Choreographies (header handling during routing)
+  - SIF 3.7 Â§6.2 â€“ HTTP Bindings (header conventions and infrastructure headers)
+}
+

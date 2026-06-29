@@ -1,0 +1,106 @@
+meta {
+  name: 11 Response Headers To Consumer
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{sec08ConsumerRequestsUrl}}/{{immediateProviderServiceName}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec08ZoneId}}
+  contextId: DEFAULT
+  requestType: IMMEDIATE
+  serviceType: OBJECT
+  X-Echo-Response-Headers: X-Response-Timestamp=2025-01-15T14:30:22Z,X-Processing-Duration=42ms
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec08Consumer' });
+
+  const requestsUrl = bru.getVar('sec08ConsumerRequestsUrl');
+  if (!requestsUrl) {
+    throw new Error(
+      '08-header-passthrough/11-response-headers-to-consumer: Missing sec08ConsumerRequestsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Response headers to consumer test status:', status);
+
+  if (status === 200) {
+    // Check if the provider's custom response headers were passed through to us
+    const respTimestamp = res.getHeader('X-Response-Timestamp') || res.getHeader('x-response-timestamp');
+    const procDuration = res.getHeader('X-Processing-Duration') || res.getHeader('x-processing-duration');
+
+    console.log('  X-Response-Timestamp:', respTimestamp);
+    console.log('  X-Processing-Duration:', procDuration);
+
+    if (respTimestamp && procDuration) {
+      console.log('✓ Provider response headers passed through to consumer');
+    } else {
+      console.log('  Note: Provider may not support X-Echo-Response-Headers directive');
+      console.log('  Available response headers:', JSON.stringify(res.getHeaders()));
+    }
+  } else {
+    console.error('✗ Expected 200, got:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("Request returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Consumer receives X-Response-Timestamp from provider", function() {
+    const val = res.getHeader('X-Response-Timestamp') || res.getHeader('x-response-timestamp');
+    expect(val).to.exist;
+    expect(val).to.equal('2025-01-15T14:30:22Z');
+  });
+
+  test("Consumer receives X-Processing-Duration from provider", function() {
+    const val = res.getHeader('X-Processing-Duration') || res.getHeader('x-processing-duration');
+    expect(val).to.exist;
+    expect(val).to.equal('42ms');
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that custom response headers returned by the provider are passed
+  through to the consumer without being stripped by the broker.
+
+  ## Rationale
+
+  SIF header passthrough works in both directions. When a provider includes
+  custom headers in its HTTP response, the broker MUST include them in the
+  response delivered to the consumer. This enables providers to communicate
+  processing metadata (timestamps, durations, trace IDs) back to consumers
+  without requiring those fields in the response body.
+
+  The test instructs the provider (via `X-Echo-Response-Headers` directive)
+  to return specific custom headers. The test then asserts that those headers
+  appear in the consumer's response from the broker.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Response includes `X-Response-Timestamp: 2025-01-15T14:30:22Z` header
+  - Response includes `X-Processing-Duration: 42ms` header
+  - Values match exactly what the provider returned
+}
+

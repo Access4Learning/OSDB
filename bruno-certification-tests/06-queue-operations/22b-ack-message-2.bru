@@ -1,0 +1,73 @@
+meta {
+  name: 22b Ack Message 2
+  type: http
+  seq: 23
+}
+
+get {
+  url: {{sec06ConsumerQueuesUrl}}/{{sec06QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  deleteMessageId: {{sec06SecondMessageId}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+
+  const secondMessageId = bru.getVar('sec06SecondMessageId');
+  if (!secondMessageId) {
+    throw new Error(
+      '06-queue-operations/22b-ack-message-2: Missing sec06SecondMessageId. ' +
+      'Run 12-ack-and-advance first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 200) {
+    const thirdMessageId = res.getHeader('messageid');
+    bru.setVar('sec06ThirdMessageId', thirdMessageId);
+    console.log('✓ Acked message 2, got message 3: ' + thirdMessageId);
+
+    // Verify it's event 3
+    const body = res.getBody();
+    if (body.certQueueObject && body.certQueueObject.sequence === 3) {
+      console.log('  Confirmed: Event 3 (sequence=3)');
+    }
+  } else {
+    throw new Error('Failed to ack message 2: status ' + status);
+  }
+}
+
+tests {
+  test("Ack message 2 returns message 3", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Third message ID stored", function() {
+    const thirdId = bru.getVar('sec06ThirdMessageId');
+    expect(thirdId).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+
+  Acknowledges message 2 and retrieves message 3 from the queue.
+
+  ## Expected Result
+
+  - HTTP 200 with message 3 body
+  - `sec06ThirdMessageId` stored for the next ack
+}

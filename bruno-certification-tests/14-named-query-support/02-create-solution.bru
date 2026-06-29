@@ -1,0 +1,88 @@
+meta {
+  name: 02 Create Solution
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec14DomainId}}/solutions
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "solutionId": "{{sec14SolutionName}}",
+    "description": "SIF certification solution for section 14 (named-query-support)"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+
+  const domainId = bru.getVar('sec14DomainId');
+  if (!domainId) {
+    throw new Error(
+      '14-named-query-support/02-create-solution: Missing sec14DomainId. ' +
+      'Step 01-create-domain must run successfully first.'
+    );
+  }
+
+  const now = new Date();
+  const ts = now.getFullYear().toString()
+    + String(now.getMonth() + 1).padStart(2, '0')
+    + String(now.getDate()).padStart(2, '0')
+    + '-'
+    + String(now.getHours()).padStart(2, '0')
+    + String(now.getMinutes()).padStart(2, '0')
+    + String(now.getSeconds()).padStart(2, '0')
+    + String(now.getMilliseconds()).padStart(3, '0');
+  const solutionName = 'cert-solution-' + ts;
+  bru.setVar('sec14SolutionName', solutionName);
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '14-named-query-support/02-create-solution FAILED: expected 200-201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  const solutionId = data.solutionId || bru.getVar('sec14SolutionName');
+  bru.setVar('sec14SolutionId', solutionId);
+  console.log('✓ Solution created: ' + solutionId + ' in domain: ' + bru.getVar('sec14DomainId'));
+}
+
+assert {
+  res.status: in [200, 201]
+}
+
+tests {
+  test("Solution created successfully", function() {
+    expect(res.getStatus()).to.be.oneOf([200, 201]);
+  });
+
+  test("Solution ID stored", function() {
+    expect(bru.getVar('sec14SolutionId')).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+  Creates a solution within the section 14 domain.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec14SolutionId` variable stored for subsequent steps
+}
+

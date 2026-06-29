@@ -1,0 +1,84 @@
+meta {
+  name: 11 List Code Sets
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec12DomainId}}/{{sec12SolutionId}}/codeSets
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec12Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '12-codesets/11-list-codesets FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  console.log('✓ Code sets listed successfully');
+
+  // Parse collection wrapper
+  let codeSets = [];
+  if (data && data.codeSets && data.codeSets.codeSet && Array.isArray(data.codeSets.codeSet)) {
+    codeSets = data.codeSets.codeSet;
+  } else if (data && data.codeSets && Array.isArray(data.codeSets)) {
+    codeSets = data.codeSets;
+  }
+  console.log('  Found ' + codeSets.length + ' code set(s)');
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Code sets list returned with status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response has SIF collection wrapper", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('codeSets');
+  });
+
+  test("Collection contains at least one code set", function() {
+    const data = res.getBody();
+    let codeSets = [];
+    if (data.codeSets && data.codeSets.codeSet && Array.isArray(data.codeSets.codeSet)) {
+      codeSets = data.codeSets.codeSet;
+    } else if (data.codeSets && Array.isArray(data.codeSets)) {
+      codeSets = data.codeSets;
+    }
+    expect(codeSets.length).to.be.greaterThan(0);
+  });
+}
+
+docs {
+  ## Summary
+  Lists all code sets in the solution.
+
+  ## Rationale
+  Verifies that GET /codeSets returns the SIF collection wrapper format
+  `{ "codeSets": { "codeSet": [...] } }`.
+
+  ## Expected Result
+  - HTTP 200 OK
+  - Response wrapped in `{ "codeSets": { "codeSet": [...] } }`
+  - At least one code set present
+}
+

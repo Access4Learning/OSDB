@@ -1,0 +1,78 @@
+meta {
+  name: 07 Create Provider PROVIDE ACL
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec02DomainId}}/{{sec02SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec02ProviderEnvId}}",
+    "serviceName": "StudentPersonal",
+    "zoneId": "{{sec02ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "PROVIDE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec02Admin' });
+
+  const providerEnvId = bru.getVar('sec02ProviderEnvId');
+  const consumerEnvId = bru.getVar('sec02ConsumerEnvId');
+  if (!providerEnvId || !consumerEnvId) {
+    throw new Error(
+      '02-subscription-management/07: Missing prerequisites. ' +
+      'sec02ProviderEnvId=' + providerEnvId + ', sec02ConsumerEnvId=' + consumerEnvId
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '02-subscription-management/07 FAILED: PROVIDE ACL creation returned ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec02ProviderAclId', data.id);
+  bru.setVar('sec02ContextId', 'DEFAULT');
+  console.log('✓ Provider PROVIDE ACL created: ' + data.id);
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.zoneId: isDefined
+  res.body.contextId: isDefined
+}
+
+tests {
+  test("Provider PROVIDE ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  ## Summary
+  Creates PROVIDE ACL for the provider environment on StudentPersonal.
+
+  ## Expected Result
+  - HTTP 201 → `sec02ProviderAclId` stored
+}

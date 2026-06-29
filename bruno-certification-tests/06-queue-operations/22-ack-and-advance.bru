@@ -1,0 +1,95 @@
+meta {
+  name: 22 Ack and Advance
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{sec06ConsumerQueuesUrl}}/{{sec06QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  deleteMessageId: {{sec06FirstMessageId}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+
+  const firstMessageId = bru.getVar('sec06FirstMessageId');
+  if (!firstMessageId) {
+    throw new Error(
+      '06-queue-operations/12-ack-and-advance: Missing sec06FirstMessageId. ' +
+      'Run 10-peek-first-message first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 200) {
+    const messageId = res.getHeader('messageid');
+    bru.setVar('sec06SecondMessageId', messageId);
+    console.log('âœ“ Ack-and-advance successful');
+    console.log('  Acknowledged (deleted): ' + bru.getVar('sec06FirstMessageId'));
+    console.log('  Next message ID: ' + messageId);
+
+    const body = res.getBody();
+    console.log('  Next payload: ' + JSON.stringify(body, null, 2));
+  } else {
+    console.error('Unexpected status: ' + status + '. Expected 200 with next message.');
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Ack-and-advance returns 200 OK", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response has a new messageid header (different from first)", function() {
+    const messageId = res.getHeader('messageid');
+    const firstMessageId = bru.getVar('sec06FirstMessageId');
+    expect(messageId).to.exist;
+    expect(messageId).to.be.a('string').and.not.be.empty;
+    expect(messageId).to.not.equal(firstMessageId);
+  });
+
+  test("Next message is Event 2 (FIFO order after advance)", function() {
+    const body = res.getBody();
+    expect(body).to.have.property('certQueueObject');
+    expect(body.certQueueObject.localId).to.equal('cert-queue-event-2');
+    expect(body.certQueueObject.sequence).to.equal(2);
+  });
+}
+
+docs {
+  ## Summary
+
+  Acknowledges the first message and retrieves the next message in one operation.
+
+  ## Rationale
+
+  The SIF Get Next and Pop pattern (Â§9.3.1) specifies that a GET with deleteMessageId
+  atomically:
+  1. Deletes (acknowledges) the message identified by deleteMessageId
+  2. Returns the next available message in FIFO order
+
+  This test passes the first message's ID as deleteMessageId and expects to receive
+  Event 2 (the next message in FIFO order). The first message should no longer exist
+  in the queue after this operation.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Body contains Event 2 (cert-queue-event-2, sequence=2)
+  - `messageid` header contains a different UUID than the first message
+  - `sec06SecondMessageId` stored for subsequent ack operations
+}

@@ -1,0 +1,77 @@
+meta {
+  name: 08 Create Provider Queue
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec07DomainId}}/{{sec07SolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "cert-svcops-provider-queue",
+      "ownerId": "{{sec07ProviderEnvId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.queue.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec07Provider' });
+
+  const providerEnvId = bru.getVar('sec07ProviderEnvId');
+  if (!providerEnvId) {
+    throw new Error(
+      '07-service-operations/05-create-provider-queue: Missing sec07ProviderEnvId. ' +
+      'Run 02-create-provider-env first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '07-service-operations/05-create-provider-queue FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec07ProviderQueueId', data.queue.id);
+  console.log('Created provider queue:', data.queue.id);
+}
+
+docs {
+  ## Summary
+
+  Creates a queue owned by the provider environment for receiving DELAYED operations.
+
+  ## Rationale
+
+  In the DELAYED/DELAYED service operations flow, the broker enqueues the consumer's
+  operation into the provider's queue. The provider polls this queue to receive
+  incoming service operation requests.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Provider queue ID stored in `sec07ProviderQueueId` Bruno variable
+}

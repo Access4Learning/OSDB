@@ -1,0 +1,78 @@
+meta {
+  name: 05 Create Provider Environment
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "CertReqRespProvider-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec04ZoneId}}"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.sessionToken: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Admin' });
+
+  const zoneId = bru.getVar('sec04ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '04-request-response/02-create-provider-env: Missing sec04ZoneId. ' +
+      'Run 01-setup-zone first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '04-request-response/02-create-provider-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec04ProviderEnvId', data.id);
+  bru.setVar('sec04ProviderSessionToken', data.sessionToken);
+  bru.setVar('sec04ProviderSharedSecret', data.sharedSecret);
+  console.log('âœ“ Created provider environment (BROKERED):', data.id);
+}
+
+docs {
+  ## Summary
+
+  Creates a DIRECT provider environment for request/response tests.
+
+  ## Rationale
+
+  A DIRECT provider environment represents an application that handles
+  requests synchronously via its own HTTP endpoint. The broker forwards
+  IMMEDIATE requests directly to the provider's registered endpoint URL.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Provider environment ID, session token, and shared secret stored
+  - `sec04ProviderEnvId`, `sec04ProviderSessionToken`, `sec04ProviderSharedSecret` set
+}

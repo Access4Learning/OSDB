@@ -1,0 +1,45 @@
+meta {
+  name: 22b Verify Intermediate Count
+  type: http
+  seq: 25
+}
+
+get {
+  url: {{sec09ConsumerQueuesUrl}}/{{sec09QueueId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Consumer' });
+}
+
+script:post-response {
+  bru.setVar('sec09CountAfterSecondAck', res.getBody().queue.messageCount);
+  console.log('  Queue count after second ack: ' + res.getBody().queue.messageCount + ' (expected 1)');
+}
+
+tests {
+  test("Queue stats returned", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Intermediate count after second ack is 1", function() {
+    expect(res.getBody().queue.messageCount).to.equal(1);
+  });
+}
+
+docs {
+  ## Summary
+  Verifies the intermediate queue count is 1 after acknowledging 2 of 3 messages.
+}

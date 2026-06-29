@@ -1,0 +1,79 @@
+meta {
+  name: 25 Create Consumer 1 SUBSCRIBE ACL for alerts
+  type: http
+  seq: 22
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec11ConsumerEnvId}}",
+    "serviceName": "alerts",
+    "zoneId": "{{sec11ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "SUBSCRIBE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Admin' });
+  
+  const consumerEnvId = bru.getVar('sec11ConsumerEnvId');
+  if (!consumerEnvId) {
+    throw new Error(
+      '11-alerts/25: Missing sec11ConsumerEnvId. Step 06 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '11-alerts/25 FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  
+  bru.setVar('sec11Consumer1AlertSubAclId', res.getBody().id);
+  console.log('✓ Consumer 1 SUBSCRIBE ACL for alerts: ' + res.getBody().id);
+}
+
+tests {
+  test("Consumer 1 SUBSCRIBE ACL for alerts created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().id).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+  Creates a SUBSCRIBE ACL for alerts service on Consumer 1.
+  
+  ## Rationale
+  Consumer 1 needs SUBSCRIBE access to alerts so that if a broadcast alert were sent,
+  it could receive it. However, in the directed alert test, Consumer 1 is the CREATOR
+  of the alert — so it should NOT receive its own alert back. This ACL ensures the
+  exclusion is based on directed delivery logic, not missing permissions.
+  
+  ## Expected Result
+  - HTTP 201 → `sec11Consumer1AlertSubAclId` stored
+}

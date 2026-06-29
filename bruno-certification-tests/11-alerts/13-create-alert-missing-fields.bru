@@ -1,0 +1,74 @@
+meta {
+  name: 13 Create Alert Missing Fields
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/alerts/alert
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "alert": {
+      "description": "Missing required fields - reporter, exchange, level"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 201) {
+    throw new Error(
+      '11-alerts/13-create-alert-missing-fields FAILED: expected 400, got 201. ' +
+      'Alert should not be created without required fields (reporter, exchange, level).'
+    );
+  }
+  console.log('✓ Alert creation correctly rejected with status: ' + status);
+}
+
+assert {
+  res.status: eq 400
+}
+
+tests {
+  test("Alert creation rejected with 400 for missing required fields", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+
+  test("Error response indicates validation failure", function() {
+    const data = res.getBody();
+    // Response should indicate which fields are missing
+    const body = JSON.stringify(data).toLowerCase();
+    expect(body).to.satisfy(function(b) {
+      return b.includes('reporter') || b.includes('exchange') || b.includes('level') || b.includes('required') || b.includes('valid');
+    });
+  });
+}
+
+docs {
+  ## Summary
+  Attempts to create an alert without required fields.
+
+  ## Rationale
+  Verifies that the broker validates required fields (reporter, exchange, level)
+  and returns 400 when they are missing.
+
+  ## Expected Result
+  - HTTP 400 Bad Request
+  - Error message indicates missing required fields
+}
+

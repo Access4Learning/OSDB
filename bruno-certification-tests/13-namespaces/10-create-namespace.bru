@@ -1,0 +1,79 @@
+meta {
+  name: 10 Create Namespace
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec13DomainId}}/{{sec13SolutionId}}/namespaces/namespace
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "namespace": {
+      "zone": "environment-global",
+      "uri": "http://www.sifassociation.org/cert/test/{{$timestamp}}",
+      "url": "http://www.sifassociation.org/cert/test/schema.xsd"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec13Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '13-namespaces/10-create-namespace FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  const ns = data.namespace || data;
+  bru.setVar('sec13NamespaceId', ns.id);
+  bru.setVar('sec13NamespaceUri', ns.uri);
+  console.log('✓ Namespace created: ' + bru.getVar('sec13NamespaceId'));
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Namespace created with status 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response contains namespace data", function() {
+    const data = res.getBody();
+    const ns = data.namespace || data;
+    expect(ns.id).to.exist;
+    expect(ns.uri).to.include("sifassociation.org/cert/test");
+  });
+}
+
+docs {
+  ## Summary
+  Creates a namespace as admin.
+
+  ## Rationale
+  Verifies that the POST /namespaces/namespace endpoint works correctly for admin users.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - Response body contains the namespace with ID, URI, and schemaLocation
+  - `sec13NamespaceId` stored for subsequent operations
+}
+

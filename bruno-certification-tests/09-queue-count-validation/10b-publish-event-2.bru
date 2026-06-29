@@ -1,0 +1,62 @@
+meta {
+  name: 10b Publish Event 2
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{sec09ProviderEventsUrl}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceName: CertCountObjects
+  serviceType: OBJECT
+  eventAction: CREATE
+  messageType: EVENT
+  zoneId: {{sec09ZoneId}}
+  contextId: DEFAULT
+}
+
+body:json {
+  {
+    "certCountObject": {
+      "refId": "{{$randomUUID}}",
+      "localId": "cert-count-event-2",
+      "name": "Count Validation Event 2",
+      "description": "Second event published for queue count validation"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Provider' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 202 && status !== 204) {
+    throw new Error('Failed to publish event 2: status ' + status);
+  }
+  console.log('✓ Event 2 published (status ' + status + ')');
+}
+
+assert {
+  res.status: in [202, 204]
+}
+
+tests {
+  test("Event 2 accepted", function() {
+    expect([202, 204]).to.include(res.getStatus());
+  });
+}
+
+docs {
+  ## Summary
+  Publishes the second event for queue count validation.
+}

@@ -1,0 +1,76 @@
+meta {
+  name: 07b Create Consumer QUERY ACL
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec04ConsumerEnvId}}",
+    "serviceName": "{{immediateProviderServiceName}}",
+    "zoneId": "{{sec04ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "QUERY",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Admin' });
+
+  const consumerEnvId = bru.getVar('sec04ConsumerEnvId');
+  if (!consumerEnvId) {
+    throw new Error('07b-create-consumer-query-acl: Missing sec04ConsumerEnvId.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '04-request-response/07b-create-consumer-query-acl: Failed to create QUERY ACL, got ' +
+      status + ': ' + JSON.stringify(res.getBody())
+    );
+  }
+  bru.setVar('sec04QueryAclId', res.getBody().id);
+  console.log('✓ Created QUERY ACL:', res.getBody().id);
+}
+
+tests {
+  test("Consumer QUERY ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates QUERY ACL entry for the consumer environment.
+
+  ## Rationale
+
+  The consumer needs QUERY access to send requests to the provider for the configured
+  service object in the test zone.
+
+  ## Expected Result
+
+  - QUERY ACL created for consumer environment → `sec04QueryAclId`
+}

@@ -1,0 +1,75 @@
+meta {
+  name: 10 Security Enforcement
+  seq: 11
+}
+
+docs {
+  # Security Enforcement
+
+  ## Concept Overview
+
+  SIF 3.7 enforces security through **Access Control Lists (ACLs)** that bind specific
+  access types to environments for particular service objects within a zone and context.
+  The broker must reject any operation that falls outside an environment's granted
+  permissions.
+
+  ### ACL Access Types and Permitted Operations
+
+  | Access Type | Permitted Operations |
+  |---|---|
+  | `PROVIDE` | Publish events, respond to requests for a service object |
+  | `QUERY` | Send requests (GET) for a service object via REQUESTS_CONNECTOR |
+  | `SUBSCRIBE` | Create subscriptions for a service object's event stream |
+  | `UPDATE` | Send update requests (PUT) for a service object |
+  | `DELETE` | Send delete requests (DELETE) for a service object |
+  | `CREATE` | Send create requests (POST) for a service object |
+
+  ### Admin vs Non-Admin Security Boundary
+
+  Administrative operations are restricted to the **Admin Environment** (type ADMIN)
+  created during solution provisioning. Non-admin environments (DIRECT or BROKERED)
+  cannot:
+
+  - Create or delete zones
+  - Create or delete contexts within zones
+  - Read other environments' configurations
+  - Access other environments' queues
+
+  ### Cross-Environment Isolation
+
+  Each environment is isolated from others:
+  - An environment can only read its own configuration
+  - An environment can only access its own queues
+  - Queue messages are scoped to the owning environment
+
+  ## Test Purpose
+
+  Verify that:
+  1. Operations outside an environment's ACL grants return 403
+  2. Non-admin environments cannot perform admin operations (create zone, create context)
+  3. Environments cannot read other environments' data (cross-env isolation)
+  4. All 403 responses include a structured error body with a message field
+
+  ## Prerequisites
+
+  - This section is self-contained (creates its own domain/solution)
+  - `sec10DomainId`, `sec10SolutionId`, `sec10AdminSessionToken`, `sec10AdminSharedSecret`
+    variables are set
+
+  ## Expected Behavior
+
+  - Zone created â†’ 3 environments registered with different ACL grants
+  - Consumer1 (SUBSCRIBE only): request operations return 403
+  - Consumer2 (QUERY only): subscription operations return 403
+  - Non-admin create zone/context â†’ 403
+  - Non-admin read other env config â†’ 403
+  - Non-admin read other env queue â†’ 403
+  - All 403 responses have error body with message field
+  - Teardown deletes ACLs, environments, and zone without errors
+
+  ## SIF Specification Reference
+
+  - SIF 3.3 Infrastructure Â§5.2 â€” Access Control
+  - SIF 3.3 Infrastructure Â§4.4 â€” Security Model
+  - SIF 3.7 Infrastructure â€” ACL Enforcement
+}

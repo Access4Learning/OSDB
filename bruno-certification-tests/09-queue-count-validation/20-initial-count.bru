@@ -1,0 +1,96 @@
+meta {
+  name: 20 Initial Count
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{sec09ConsumerQueuesUrl}}/{{sec09QueueId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Consumer' });
+
+  const queuesUrl = bru.getVar('sec09ConsumerQueuesUrl');
+  const queueId = bru.getVar('sec09QueueId');
+  if (!queuesUrl || !queueId) {
+    throw new Error(
+      '09-queue-count-validation/10-initial-count: Missing queue URL or ID. ' +
+      'Ensure setup steps completed successfully.'
+    );
+  }
+
+  const eventCount = bru.getVar('sec09EventCount');
+  if (!eventCount) {
+    throw new Error(
+      '09-queue-count-validation/10-initial-count: Events not published. ' +
+      'Run 07-publish-events first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '09-queue-count-validation/10-initial-count FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody().queue;
+  console.log('âœ“ Queue stats retrieved');
+  console.log('  Queue ID: ' + data.id);
+  console.log('  Message Count: ' + data.messageCount);
+  console.log('  Expected: 3');
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Queue stats returned successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Queue has correct ID", function() {
+    const data = res.getBody().queue;
+    expect(data.id).to.equal(bru.getVar('sec09QueueId'));
+  });
+
+  test("Message count equals number of published events (3)", function() {
+    const data = res.getBody().queue;
+    expect(data.messageCount).to.equal(3);
+  });
+}
+
+docs {
+  ## Summary
+
+  Queries the queue stats endpoint and asserts that messageCount equals the number
+  of published events (N=3).
+
+  ## Rationale
+
+  After publishing 3 events with an active subscription routing them to this queue,
+  the broker's queue stats must report exactly 3 pending messages. This establishes
+  the baseline count before any acknowledgment operations.
+
+  The queue stats endpoint (`GET /queues/{id}`) returns the full queue DTO including
+  the `messageCount` field computed from the underlying message stream.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Response body `messageCount` = 3
+  - Response contains queue metadata (id, name, ownerId, etc.)
+}

@@ -1,0 +1,79 @@
+meta {
+  name: 05 Create Provider Environment
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec02DomainId}}/{{sec02SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "CertProvider-SubMgmt-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec02ZoneId}}"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.sessionToken: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec02Admin' });
+
+  const zoneId = bru.getVar('sec02ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '02-subscription-management/02-create-provider-env: Missing sec02ZoneId. ' +
+      'Step 01-setup-zone must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '02-subscription-management/02-create-provider-env FAILED: expected 200-201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec02ProviderEnvId', data.id);
+  bru.setVar('sec02ProviderSessionToken', data.sessionToken);
+  bru.setVar('sec02ProviderSharedSecret', data.sharedSecret);
+
+  console.log('âœ“ Provider environment created: ' + data.id);
+}
+
+docs {
+  ## Summary
+
+  Creates a DIRECT provider environment for the subscription management test section.
+
+  ## Rationale
+
+  A provider environment is needed to establish ACL entries with PROVIDE access.
+  The subscription tests require at least one PROVIDE ACL so that consumer
+  SUBSCRIBE ACLs can reference a valid service/zone/context combination.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Provider environment ID stored in `sec02ProviderEnvId`
+  - Provider credentials stored in `sec02ProviderSessionToken` and `sec02ProviderSharedSecret`
+}

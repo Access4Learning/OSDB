@@ -1,0 +1,50 @@
+meta {
+  name: 25d Peek and Ack One
+  type: http
+  seq: 29
+}
+
+get {
+  url: {{sec06ConsumerQueuesUrl}}/{{sec06QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 200) {
+    const peekMsgId = res.getHeader('messageid');
+    bru.setVar('sec06CountTestMessageId', peekMsgId);
+    console.log('✓ Peeked message for ack: ' + peekMsgId);
+  }
+}
+
+tests {
+  test("Peek returns a message", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Message ID stored for ack", function() {
+    const msgId = bru.getVar('sec06CountTestMessageId');
+    expect(msgId).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+  Peeks the first message in the queue to get its messageid for acknowledgment.
+}

@@ -1,0 +1,71 @@
+meta {
+  name: 10 Publish Event 1
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{sec09ProviderEventsUrl}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceName: CertCountObjects
+  serviceType: OBJECT
+  eventAction: CREATE
+  messageType: EVENT
+  zoneId: {{sec09ZoneId}}
+  contextId: DEFAULT
+}
+
+body:json {
+  {
+    "certCountObject": {
+      "refId": "{{$randomUUID}}",
+      "localId": "cert-count-event-1",
+      "name": "Count Validation Event 1",
+      "description": "First event published for queue count validation"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Provider' });
+
+  const eventsUrl = bru.getVar('sec09ProviderEventsUrl');
+  if (!eventsUrl) {
+    throw new Error(
+      '09-queue-count-validation/10: Missing sec09ProviderEventsUrl.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 202 && status !== 204) {
+    throw new Error(
+      '09-queue-count-validation/10 FAILED (event 1): expected 202 or 204, got ' + status
+    );
+  }
+  console.log('✓ Event 1 published (status ' + status + ')');
+}
+
+assert {
+  res.status: in [202, 204]
+}
+
+tests {
+  test("Event 1 accepted by broker", function() {
+    expect([202, 204]).to.include(res.getStatus());
+  });
+}
+
+docs {
+  ## Summary
+  Publishes the first of 3 events for queue count validation.
+}

@@ -1,0 +1,89 @@
+meta {
+  name: 09 Create Queue 1
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec03DomainId}}/{{sec03SolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "cert-sec03-queue1-{{sec03Queue1Ts}}",
+      "ownerId": "{{sec03Consumer1EnvId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.queue.id: isDefined
+  res.body.queue.name: isDefined
+  res.body.queue.ownerId: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec03Consumer1' });
+
+  const consumer1EnvId = bru.getVar('sec03Consumer1EnvId');
+  if (!consumer1EnvId) {
+    throw new Error('sec03Consumer1EnvId not set. Run 03-create-consumer1-env first.');
+  }
+
+  bru.setVar('sec03Queue1Ts', Date.now().toString());
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '03-event-publishing/09-create-queue1 FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec03Queue1Id', data.queue.id);
+  console.log('✓ Queue 1 created for Consumer 1: ' + data.queue.id + ' (' + data.queue.name + ')');
+}
+
+tests {
+  test("Queue 1 created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Queue owned by Consumer 1", function() {
+    const data = res.getBody();
+    expect(data.queue.ownerId).to.equal(bru.getVar('sec03Consumer1EnvId'));
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a queue owned by Consumer 1 for receiving event messages.
+
+  ## Rationale
+
+  Consumer 1 is the subscribed consumer. Its queue will receive events published by
+  the provider once the subscription is established. This queue is the consumer's
+  inbox for asynchronous event delivery.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - `sec03Queue1Id` stored for subscription creation and queue polling
+}

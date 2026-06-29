@@ -1,0 +1,115 @@
+meta {
+  name: 16 Verify 403 Body
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{sec10Consumer1RequestsUrl}}/CertSecurityObjects
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec10ZoneId}}
+  contextId: DEFAULT
+  requestType: IMMEDIATE
+}
+
+assert {
+  res.status: eq 403
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec10Consumer1' });
+
+  const requestsUrl = bru.getVar('sec10Consumer1RequestsUrl');
+  if (!requestsUrl) {
+    throw new Error(
+      '10-security-enforcement/16-verify-403-body: Missing sec10Consumer1RequestsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 403) {
+    throw new Error('Expected 403 for verification, got: ' + status);
+  }
+
+  const body = res.getBody();
+  console.log('403 response body structure:', JSON.stringify(body, null, 2));
+}
+
+tests {
+  test("403 response returned", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+
+  test("Error body has message field", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('message');
+    expect(data.message).to.be.a('string');
+    expect(data.message.length).to.be.greaterThan(0);
+  });
+
+  test("Error body message describes authorization failure", function() {
+    const data = res.getBody();
+    // The message should indicate an access/authorization issue
+    const msg = data.message.toLowerCase();
+    const isAccessRelated = msg.includes('access') ||
+                            msg.includes('permission') ||
+                            msg.includes('denied') ||
+                            msg.includes('unauthorized') ||
+                            msg.includes('forbidden') ||
+                            msg.includes('acl');
+    expect(isAccessRelated).to.equal(true,
+      'Expected message to reference access/permission issue, got: "' + data.message + '"'
+    );
+  });
+
+  test("All previously captured 403 bodies have message field", function() {
+    // Verify the 403 bodies captured by tests 10-15
+    const bodies = [
+      'sec10UnauthorizedQueryBody',
+      'sec10UnauthorizedSubscribeBody',
+      'sec10NonAdminCreateZoneBody',
+      'sec10NonAdminCreateContextBody',
+      'sec10CrossEnvReadBody'
+    ];
+
+    for (const varName of bodies) {
+      const raw = bru.getVar(varName);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        expect(parsed, varName + ' response missing message field')
+          .to.have.property('message');
+      }
+    }
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that all 403 responses from the security enforcement tests include a
+  properly structured error body with a `message` field.
+
+  ## Rationale
+
+  The SIF specification requires that error responses include structured error
+  information to help consumers understand why a request was rejected. A bare 403
+  without a body provides no debugging information. This test verifies that the broker
+  consistently returns error bodies with descriptive message fields for all
+  authorization failures tested in this section.
+
+  ## Expected Result
+
+  - HTTP 403 Forbidden (re-verification of unauthorized query)
+  - Error body contains `message` field with authorization failure description
+  - All previously captured 403 bodies from tests 10-15 have `message` fields
+}

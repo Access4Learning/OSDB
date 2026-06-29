@@ -1,0 +1,99 @@
+meta {
+  name: 42 Provider Receives Directed Alert
+  type: http
+  seq: 39
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/queues/{{sec11ProviderQueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Provider' });
+  
+  const queueId = bru.getVar('sec11ProviderQueueId');
+  if (!queueId) {
+    throw new Error(
+      '11-alerts/42: Missing sec11ProviderQueueId. Step 27 must run first.'
+    );
+  }
+  
+  // Brief delay to allow broker to process and deliver the alert
+  const start = Date.now();
+  while (Date.now() - start < 1000) { /* busy wait 1s */ }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '11-alerts/42 FAILED: expected 200, got ' + status + '. ' +
+      'Provider queue should contain the directed alert.'
+    );
+  }
+  
+  const messageId = res.getHeader('messageid');
+  if (messageId) {
+    bru.setVar('sec11ProviderAlertMsgId', messageId);
+    console.log('✓ Provider received directed alert');
+    console.log('  messageid: ' + messageId);
+  }
+  
+  const serviceName = res.getHeader('servicename');
+  console.log('  serviceName: ' + serviceName);
+}
+
+tests {
+  test("Provider receives alert (200 OK)", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has servicename=alerts", function() {
+    const serviceName = res.getHeader('servicename');
+    expect(serviceName).to.equal('alerts');
+  });
+  
+  test("Response body contains Consumer1-ErrorDetector reporter", function() {
+    const body = res.getBody();
+    expect(JSON.stringify(body)).to.include('Consumer1-ErrorDetector');
+  });
+  
+  test("Response has messageid header", function() {
+    const messageId = res.getHeader('messageid');
+    expect(messageId).to.exist;
+    expect(messageId).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+  Verifies that the Provider receives the directed alert in its queue.
+  
+  ## Rationale — Directed Alert Delivery
+  The directed alert created in step 41 references a messageId that originated from
+  the Provider. The broker resolves the sourceEnvironmentId from the messageId and
+  delivers the alert ONLY to that environment's alert subscription queue.
+  
+  This confirms that:
+  1. The broker correctly tracked who sent the original event (Provider)
+  2. The alert was routed to the Provider's queue (not broadcast)
+  3. The alert payload includes the reporter and description from Consumer 1
+  
+  ## Expected Result
+  - HTTP 200 with alert payload
+  - `servicename` header = alerts
+  - Body contains "Consumer1-ErrorDetector"
+  - `sec11ProviderAlertMsgId` stored for ACK step
+}

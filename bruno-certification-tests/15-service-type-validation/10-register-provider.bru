@@ -1,0 +1,91 @@
+meta {
+  name: 10 Register Provider
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec15DomainId}}/{{sec15SolutionId}}/provider-registrations
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec15ProviderEnvId}}",
+    "contextServiceUuid": "{{sec15ContextServiceUuid}}",
+    "endpoint": "{{immediateProviderEndpointUrl}}/StudentPersonals",
+    "serviceType": "OBJECT",
+    "supportedRequestTypes": [
+      {
+        "requestType": "IMMEDIATE",
+        "operations": ["CREATE", "QUERY", "UPDATE", "DELETE"]
+      }
+    ]
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec15Admin' });
+
+  const providerEnvId = bru.getVar('sec15ProviderEnvId');
+  const zoneId = bru.getVar('sec15ZoneId');
+  const contextServiceUuid = bru.getVar('sec15ContextServiceUuid');
+  if (!providerEnvId || !zoneId || !contextServiceUuid) {
+    throw new Error(
+      '15-service-type-validation/10-register-provider: Missing sec15ProviderEnvId, sec15ZoneId, or sec15ContextServiceUuid. ' +
+      'Run previous setup steps first.'
+    );
+  }
+
+  const endpointUrl = bru.getEnvVar('immediateProviderEndpointUrl');
+  if (!endpointUrl) {
+    throw new Error(
+      '15-service-type-validation/10-register-provider: Missing environment variable "immediateProviderEndpointUrl". ' +
+      'Set it in your environment file.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '15-service-type-validation/10-register-provider FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec15ProviderRegistrationId', data.id);
+  console.log('Registered provider:', data.id);
+  console.log('  Service: StudentPersonals');
+  console.log('  Endpoint:', data.endpoint);
+}
+
+docs {
+  ## Summary
+  Registers the provider for IMMEDIATE request handling on StudentPersonals.
+
+  ## Rationale
+  The provider registration tells the broker where to forward requests for
+  StudentPersonals. With this in place, a valid request with `serviceType: OBJECT`
+  would succeed — proving that negative tests with wrong serviceType get rejected
+  by the filter, not by missing provider.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - Provider registration ID stored in `sec15ProviderRegistrationId`
+}

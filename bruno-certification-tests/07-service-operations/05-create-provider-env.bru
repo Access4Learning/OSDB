@@ -1,0 +1,91 @@
+meta {
+  name: 05 Create Provider Environment
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec07DomainId}}/{{sec07SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "CertSvcOpsProvider-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec07ZoneId}}"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.sessionToken: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec07Admin' });
+
+  const zoneId = bru.getVar('sec07ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '07-service-operations/02-create-provider-env: Missing sec07ZoneId. ' +
+      'Run 01-setup-zone first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '07-service-operations/02-create-provider-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec07ProviderEnvId', data.id);
+  bru.setVar('sec07ProviderSessionToken', data.sessionToken);
+  bru.setVar('sec07ProviderSharedSecret', data.sharedSecret);
+
+  // Extract queues URL from provider infrastructure services
+  if (data.infrastructureServices && data.infrastructureServices.infrastructureService) {
+    const services = data.infrastructureServices.infrastructureService;
+
+    const queuesConn = services.find(s => s.name === 'queues');
+    if (queuesConn) {
+      bru.setVar('sec07ProviderQueuesUrl', queuesConn.value);
+      console.log('  Provider Queues URL:', queuesConn.value);
+    }
+  }
+
+  console.log('âœ“ Created provider environment (BROKERED):', data.id);
+}
+
+docs {
+  ## Summary
+
+  Creates a BROKERED provider environment for service operations tests.
+
+  ## Rationale
+
+  In the DELAYED/DELAYED service operations flow, the provider receives requests
+  via its own queue rather than a direct HTTP endpoint. A BROKERED provider
+  environment gets its own infrastructure services including a queue endpoint.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Provider environment ID, session token, and shared secret stored
+  - Provider Queues URL extracted from infrastructure services
+  - `sec07ProviderEnvId`, `sec07ProviderSessionToken`, `sec07ProviderSharedSecret` set
+}

@@ -1,0 +1,85 @@
+meta {
+  name: 08 Register Provider
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec08DomainId}}/{{sec08SolutionId}}/provider-registrations
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec08ProviderEnvId}}",
+    "contextServiceUuid": "{{sec08ContextServiceUuid}}",
+    "endpoint": "{{immediateProviderEndpointUrl}}/{{immediateProviderServiceName}}",
+    "serviceType": "OBJECT",
+    "supportedRequestTypes": [
+      {
+        "requestType": "IMMEDIATE",
+        "operations": ["CREATE", "QUERY", "UPDATE", "DELETE"]
+      }
+    ]
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec08Admin' });
+
+  const providerEnvId = bru.getVar('sec08ProviderEnvId');
+  const contextServiceUuid = bru.getVar('sec08ContextServiceUuid');
+  if (!providerEnvId || !contextServiceUuid) {
+    throw new Error(
+      '08-header-passthrough/08-register-provider: Missing sec08ProviderEnvId or sec08ContextServiceUuid. ' +
+      'Run previous setup steps first.'
+    );
+  }
+
+  const endpointUrl = bru.getEnvVar('immediateProviderEndpointUrl');
+  const serviceName = bru.getEnvVar('immediateProviderServiceName');
+  if (!endpointUrl || !serviceName) {
+    throw new Error(
+      '08-header-passthrough/08-register-provider: Missing environment variables. ' +
+      'Set immediateProviderEndpointUrl and immediateProviderServiceName.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '08-header-passthrough/08-register-provider FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec08ProviderRegistrationId', data.id);
+  console.log('✓ Registered provider:', data.id);
+  console.log('  Service:', data.serviceName);
+  console.log('  Endpoint:', data.endpoint);
+}
+
+docs {
+  ## Summary
+  Registers the external provider for IMMEDIATE request handling.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec08ProviderRegistrationId` stored
+}

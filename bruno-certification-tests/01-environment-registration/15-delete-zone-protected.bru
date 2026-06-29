@@ -1,0 +1,50 @@
+meta {
+  name: 15 Delete Zone Protected
+  type: http
+  seq: 15
+}
+
+delete {
+  url: {{gatewayUrl}}/{{sec01DomainId}}/{{sec01SolutionId}}/zones/environment-global
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec01Admin' });
+}
+
+assert {
+  res.status: eq 409
+}
+
+tests {
+  test("Protected zone deletion returns 409 Conflict", function() {
+    expect(res.getStatus()).to.equal(409);
+  });
+}
+
+docs {
+  ## Summary
+
+  Attempts to delete the protected `environment-global` zone with admin credentials.
+
+  ## Rationale
+
+  The `environment-global` zone is a system-reserved zone that must never be deleted.
+  The controller must reject deletion attempts with HTTP 409 Conflict regardless of
+  caller privileges.
+
+  ## Expected Result
+
+  - HTTP 409 Conflict
+  - Zone `environment-global` remains intact
+}

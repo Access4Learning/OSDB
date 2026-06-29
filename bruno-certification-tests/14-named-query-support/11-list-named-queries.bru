@@ -1,0 +1,78 @@
+meta {
+  name: 11 List Named Queries
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/xquerys
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec14Provider' });
+
+  const queryToken = bru.getVar('sec14QueryToken');
+  if (!queryToken) {
+    throw new Error(
+      '14-named-query-support/11-list-named-queries: Missing sec14QueryToken. ' +
+      'Step 10-register-named-query must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '14-named-query-support/11-list-named-queries FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  const templates = data.xquerys.xquery;
+  console.log('✓ Listed ' + templates.length + ' Named Query Template(s)');
+}
+
+assert {
+  res.status: eq 200
+  res.body.xquerys.xquery: isDefined
+}
+
+tests {
+  test("Named Query list contains registered template", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    expect(data.xquerys).to.exist;
+    expect(data.xquerys.xquery).to.be.an("array");
+    expect(data.xquerys.xquery.length).to.be.at.least(1);
+
+    const found = data.xquerys.xquery.find(t => t.id === "StudentSnapshot");
+    expect(found).to.exist;
+    expect(found.type).to.equal("SINGULAR");
+    expect(found.status).to.equal("APPROVED");
+  });
+}
+
+docs {
+  ## Summary
+  Lists all Named Query Templates in the solution.
+
+  ## Rationale
+  Per requirement 1.2, GET /{domain}/{solution}/xquerys returns all templates
+  registered in the solution. After step 10, we expect at least one template.
+
+  ## Expected Result
+  - HTTP 200 OK
+  - Response body contains `xquerys.xquery` array with at least one template
+  - "StudentSnapshot" template is present in the list
+}

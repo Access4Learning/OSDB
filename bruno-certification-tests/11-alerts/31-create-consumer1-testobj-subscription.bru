@@ -1,0 +1,85 @@
+meta {
+  name: 31 Create Consumer 1 Subscription for TestObjects
+  type: http
+  seq: 28
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/subscriptions/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{sec11Consumer1QueueId}}",
+      "aclEntryId": "{{sec11Consumer1TestObjSubAclId}}",
+      "messageType": "EVENT"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.subscription.id: isDefined
+  res.body.subscription.queueId: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Consumer' });
+  
+  const queueId = bru.getVar('sec11Consumer1QueueId');
+  const aclId = bru.getVar('sec11Consumer1TestObjSubAclId');
+  if (!queueId || !aclId) {
+    throw new Error(
+      '11-alerts/31: Missing sec11Consumer1QueueId or sec11Consumer1TestObjSubAclId. ' +
+      'Steps 28 and 23 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '11-alerts/31 FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  
+  const data = res.getBody().subscription;
+  bru.setVar('sec11Consumer1TestObjSubId', data.id);
+  console.log('✓ Consumer 1 TestObjects subscription created: ' + data.id);
+}
+
+tests {
+  test("Consumer 1 TestObjects subscription created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().subscription.id).to.exist;
+  });
+  
+  test("Subscription references Consumer 1 queue", function() {
+    expect(res.getBody().subscription.queueId).to.equal(bru.getVar('sec11Consumer1QueueId'));
+  });
+}
+
+docs {
+  ## Summary
+  Creates a subscription binding Consumer 1's queue to TestObjects events.
+  
+  ## Rationale
+  Consumer 1 subscribes to TestObjects EVENT messages so it receives the UPDATE event
+  published by the Provider. After receiving the event, Consumer 1 will reference its
+  messageId when creating a directed alert.
+  
+  ## Expected Result
+  - HTTP 201 → `sec11Consumer1TestObjSubId` stored
+}

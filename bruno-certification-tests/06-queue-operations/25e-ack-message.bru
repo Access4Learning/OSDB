@@ -1,0 +1,46 @@
+meta {
+  name: 25e Ack Message
+  type: http
+  seq: 30
+}
+
+get {
+  url: {{sec06ConsumerQueuesUrl}}/{{sec06QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  deleteMessageId: {{sec06CountTestMessageId}}
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+
+  const msgId = bru.getVar('sec06CountTestMessageId');
+  if (!msgId) {
+    throw new Error('25e-ack-message: Missing sec06CountTestMessageId.');
+  }
+}
+
+script:post-response {
+  console.log('✓ Acked message ' + bru.getVar('sec06CountTestMessageId') + ' (status ' + res.getStatus() + ')');
+}
+
+tests {
+  test("Ack succeeds", function() {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+}
+
+docs {
+  ## Summary
+  Acknowledges the peeked message to decrease the queue count by 1.
+}

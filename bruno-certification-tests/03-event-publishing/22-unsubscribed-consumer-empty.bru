@@ -1,0 +1,71 @@
+meta {
+  name: 22 Unsubscribed Consumer Empty
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{sec03Consumer2QueuesUrl}}/{{sec03Queue2Id}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec03Consumer2' });
+
+  const queuesUrl = bru.getVar('sec03Consumer2QueuesUrl');
+  const queueId = bru.getVar('sec03Queue2Id');
+  if (!queuesUrl || !queueId) {
+    throw new Error(
+      '03-event-publishing/12-unsubscribed-consumer-empty: Missing Consumer 2 queue URL or ID. ' +
+      'Ensure setup steps completed successfully.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 204) {
+    console.log('âœ“ Consumer 2 queue is empty (no subscription for this service) â€” correct behavior');
+  } else {
+    console.error('Unexpected status: ' + status + '. Expected 204 (empty queue).');
+  }
+}
+
+assert {
+  res.status: eq 204
+}
+
+tests {
+  test("Consumer 2 queue is empty (204 No Content)", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that Consumer 2 (not subscribed to CertEventObjects) has an empty queue.
+
+  ## Rationale
+
+  Consumer 2 has a queue but no subscription for the "CertEventObjects" service in the
+  test zone. A compliant broker must NOT deliver events to consumers who lack matching
+  subscriptions, even if they have a queue in the same solution.
+
+  A 204 response confirms:
+  - The broker correctly checks subscription bindings before delivery
+  - Having a queue alone is insufficient â€” a subscription is required
+  - The broker's fan-out logic respects access control boundaries
+
+  ## Expected Result
+
+  - HTTP 204 No Content (queue is empty, no event was delivered)
+  - No response body
+}

@@ -1,0 +1,92 @@
+meta {
+  name: 07 Create ACLs
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec01DomainId}}/{{sec01SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec01ProviderEnvId}}",
+    "serviceName": "CertTestObjects",
+    "zoneId": "{{sec01ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "PROVIDE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec01Admin' });
+
+  const providerEnvId = bru.getVar('sec01ProviderEnvId');
+  const consumerEnvId = bru.getVar('sec01ConsumerEnvId');
+  if (!providerEnvId || !consumerEnvId) {
+    throw new Error(
+      '01-environment-registration/04-create-acls: Missing prerequisites. ' +
+      'sec01ProviderEnvId=' + providerEnvId + ', sec01ConsumerEnvId=' + consumerEnvId
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '01-environment-registration/04-create-acls FAILED: PROVIDE ACL creation returned ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec01ProviderAclId', data.id);
+  console.log('✓ Provider PROVIDE ACL created: ' + data.id);
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.zoneId: isDefined
+  res.body.contextId: isDefined
+}
+
+tests {
+  test("Provider PROVIDE ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates ACL entries granting PROVIDE access to the provider and SUBSCRIBE access to
+  the consumer for the CertTestObjects service in the test zone.
+
+  ## Rationale
+
+  ACL entries are the authorization mechanism in SIF. Without appropriate ACL entries,
+  environments cannot publish events, send requests, or subscribe to services. This step
+  creates two ACLs using SIF-compliant `zoneId`/`contextId` identifiers:
+  1. PROVIDE for the provider environment
+  2. SUBSCRIBE for the consumer environment
+
+  Both are required to exercise environment registration verification in subsequent tests.
+
+  ## Expected Result
+
+  - Provider PROVIDE ACL: HTTP 201 Created, `sec01ProviderAclId` stored
+  - Consumer SUBSCRIBE ACL: HTTP 201 Created, `sec01ConsumerAclId` stored
+  - Response contains `zoneId` and `contextId` fields
+}

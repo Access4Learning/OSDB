@@ -1,0 +1,63 @@
+meta {
+  name: 25a Publish Count Event A
+  type: http
+  seq: 26
+}
+
+post {
+  url: {{sec06ProviderEventsUrl}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceName: CertQueueObjects
+  serviceType: OBJECT
+  eventAction: CREATE
+  messageType: EVENT
+  zoneId: {{sec06ZoneId}}
+  contextId: DEFAULT
+}
+
+body:json {
+  {
+    "certQueueObject": {
+      "refId": "11111111-1111-1111-1111-111111111111",
+      "localId": "cert-queue-count-event-A",
+      "sequence": 10,
+      "name": "Count Test Event A"
+    }
+  }
+}
+
+assert {
+  res.status: in [202, 204]
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Provider' });
+
+  const eventsUrl = bru.getVar('sec06ProviderEventsUrl');
+  if (!eventsUrl) {
+    throw new Error('25a-publish-count-event-a: Missing sec06ProviderEventsUrl.');
+  }
+}
+
+script:post-response {
+  console.log('✓ Published count test event A (status ' + res.getStatus() + ')');
+}
+
+tests {
+  test("Event A published", function() {
+    expect([202, 204]).to.include(res.getStatus());
+  });
+}
+
+docs {
+  ## Summary
+  Publishes event A for the count decrease verification test.
+}

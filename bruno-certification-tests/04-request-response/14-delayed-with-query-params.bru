@@ -1,0 +1,72 @@
+meta {
+  name: 14 Delayed With Query Params
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{sec04ConsumerRequestsUrl}}/{{immediateProviderServiceName}}?filter=active&orderBy=name
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec04ZoneId}}
+  contextId: DEFAULT
+  requestType: DELAYED
+  queueId: {{sec04QueueId}}
+  serviceType: OBJECT
+}
+
+assert {
+  res.status: eq 202
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Consumer' });
+
+  const requestsUrl = bru.getVar('sec04ConsumerRequestsUrl');
+  const queueId = bru.getVar('sec04QueueId');
+  if (!requestsUrl || !queueId) {
+    throw new Error(
+      '04-request-response/14-delayed-with-query-params: Missing sec04ConsumerRequestsUrl or sec04QueueId. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('DELAYED request (with query params) response status:', status);
+
+  if (status === 202) {
+    console.log('✓ Request accepted (202)');
+  } else {
+    console.error('✗ Expected 202, got:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("DELAYED request with query params returns 202 Accepted", function() {
+    expect(res.getStatus()).to.equal(202);
+  });
+}
+
+docs {
+  ## Summary
+
+  Sends a DELAYED request with query parameters (?filter=active&orderBy=name).
+
+  ## Rationale
+
+  When a DELAYED request includes query parameters, the SIF specification requires
+  the broker to preserve those parameters as part of the `relativeServicePath` header
+  on the queued response message.
+
+  ## Expected Result
+
+  - HTTP 202 Accepted from the Requests Connector
+}

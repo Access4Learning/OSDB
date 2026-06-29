@@ -1,0 +1,93 @@
+meta {
+  name: 06 Create Consumer Environment
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec08DomainId}}/{{sec08SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "CertHdrPassConsumer-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec08ZoneId}}"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.sessionToken: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec08Admin' });
+
+  const zoneId = bru.getVar('sec08ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '08-header-passthrough/03-create-consumer-env: Missing sec08ZoneId. ' +
+      'Run 01-setup-zone first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '08-header-passthrough/03-create-consumer-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec08ConsumerEnvId', data.id);
+  bru.setVar('sec08ConsumerSessionToken', data.sessionToken);
+  bru.setVar('sec08ConsumerSharedSecret', data.sharedSecret);
+
+  // Extract requestsConnector URL from infrastructure services
+  if (data.infrastructureServices && data.infrastructureServices.infrastructureService) {
+    const services = data.infrastructureServices.infrastructureService;
+
+    const requestsConn = services.find(s => s.name === 'requestsConnector');
+    if (requestsConn) {
+      bru.setVar('sec08ConsumerRequestsUrl', requestsConn.value);
+      console.log('  Requests Connector URL:', requestsConn.value);
+    }
+  }
+
+  console.log('âœ“ Created consumer environment (BROKERED):', data.id);
+}
+
+docs {
+  ## Summary
+
+  Creates a BROKERED consumer environment for header passthrough tests.
+
+  ## Rationale
+
+  A BROKERED consumer sends requests via the broker's Requests Connector.
+  The broker routes the request to the registered provider. Custom headers
+  included in the consumer's request must pass through the broker to the
+  provider unchanged.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Consumer environment ID, session token, shared secret stored
+  - Requests Connector URL extracted and stored in `sec08ConsumerRequestsUrl`
+  - `sec08ConsumerEnvId`, `sec08ConsumerSessionToken`, `sec08ConsumerSharedSecret` set
+}
+

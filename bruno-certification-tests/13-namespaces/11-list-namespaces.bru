@@ -1,0 +1,84 @@
+meta {
+  name: 11 List Namespaces
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec13DomainId}}/{{sec13SolutionId}}/namespaces
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec13Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '13-namespaces/11-list-namespaces FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  console.log('✓ Namespaces listed successfully');
+
+  // Parse collection wrapper
+  let namespaces = [];
+  if (data && data.namespaces && data.namespaces.namespace && Array.isArray(data.namespaces.namespace)) {
+    namespaces = data.namespaces.namespace;
+  } else if (data && data.namespaces && Array.isArray(data.namespaces)) {
+    namespaces = data.namespaces;
+  }
+  console.log('  Found ' + namespaces.length + ' namespace(s)');
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Namespaces list returned with status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response has SIF collection wrapper", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('namespaces');
+  });
+
+  test("Collection contains at least one namespace", function() {
+    const data = res.getBody();
+    let namespaces = [];
+    if (data.namespaces && data.namespaces.namespace && Array.isArray(data.namespaces.namespace)) {
+      namespaces = data.namespaces.namespace;
+    } else if (data.namespaces && Array.isArray(data.namespaces)) {
+      namespaces = data.namespaces;
+    }
+    expect(namespaces.length).to.be.greaterThan(0);
+  });
+}
+
+docs {
+  ## Summary
+  Lists all namespaces in the solution.
+
+  ## Rationale
+  Verifies that GET /namespaces returns the SIF collection wrapper format
+  `{ "namespaces": { "namespace": [...] } }`.
+
+  ## Expected Result
+  - HTTP 200 OK
+  - Response wrapped in `{ "namespaces": { "namespace": [...] } }`
+  - At least one namespace present
+}
+

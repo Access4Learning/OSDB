@@ -1,0 +1,131 @@
+meta {
+  name: 03 Get Admin Environment
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/environments
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+
+  const domainId = bru.getVar('sec11DomainId');
+  const solutionId = bru.getVar('sec11SolutionId');
+  if (!domainId || !solutionId) {
+    throw new Error(
+      '11-alerts/03-get-admin-environment: Missing sec11DomainId or sec11SolutionId. ' +
+      'Steps 01-create-domain and 02-create-solution must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '11-alerts/03-get-admin-environment FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+
+  // Parse environment list from SIF collection response
+  let envs = [];
+  if (Array.isArray(data)) {
+    envs = data;
+  } else if (data && data.environments && data.environments.environment && Array.isArray(data.environments.environment)) {
+    envs = data.environments.environment;
+  } else if (data && data.environment && Array.isArray(data.environment)) {
+    envs = data.environment;
+  } else if (data && data.environments && Array.isArray(data.environments)) {
+    envs = data.environments;
+  } else if (data && data.content && Array.isArray(data.content)) {
+    envs = data.content;
+  }
+
+  // Find the broker-services environment
+  const brokerEnv = envs.find(e =>
+    (e.fingerprint && e.fingerprint === 'broker-services') ||
+    (e.consumerName && e.consumerName.startsWith('BROKER_SERVICES'))
+  );
+
+  if (!brokerEnv) {
+    throw new Error(
+      '11-alerts/03-get-admin-environment FAILED: ' +
+      'No broker-services environment found in solution "' + bru.getVar('sec11SolutionId') + '". ' +
+      'Found ' + envs.length + ' environment(s): ' +
+      envs.map(e => (e.consumerName || e.applicationName || 'unnamed') + ' (' + (e.fingerprint || 'no-fingerprint') + ')').join(', ')
+    );
+  }
+
+  bru.setVar('sec11AdminEnvironmentId', brokerEnv.id);
+
+  // Store admin credentials from .env into Bruno vars for { varPrefix: 'sec11Admin' } usage
+  const envPrefix = bru.getEnvVar('currentEnv');
+  const sessionTokenKey = envPrefix + '-adminSessionToken';
+  const sharedSecretKey = envPrefix + '-adminSharedSecret';
+  const sessionTokenPath = '{{process.env.' + sessionTokenKey + '}}';
+  const sharedSecretPath = '{{process.env.' + sharedSecretKey + '}}';
+
+  const adminSessionToken = bru.interpolate(sessionTokenPath);
+  const adminSharedSecret = bru.interpolate(sharedSecretPath);
+
+  if (!adminSessionToken || adminSessionToken === sessionTokenPath) {
+    throw new Error(
+      '11-alerts/03-get-admin-environment: Could not resolve admin session token. ' +
+      'Expected .env key: ' + sessionTokenKey
+    );
+  }
+  if (!adminSharedSecret || adminSharedSecret === sharedSecretPath) {
+    throw new Error(
+      '11-alerts/03-get-admin-environment: Could not resolve admin shared secret. ' +
+      'Expected .env key: ' + sharedSecretKey
+    );
+  }
+
+  bru.setVar('sec11AdminSessionToken', adminSessionToken);
+  bru.setVar('sec11AdminSharedSecret', adminSharedSecret);
+
+  console.log('✓ Admin environment found: ' + brokerEnv.id);
+  console.log('  sec11AdminSessionToken: stored');
+  console.log('  sec11AdminSharedSecret: stored');
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Admin environment retrieved", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Admin credentials stored", function() {
+    expect(bru.getVar('sec11AdminSessionToken')).to.exist;
+    expect(bru.getVar('sec11AdminSharedSecret')).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+  Retrieves the broker-services environment and stores admin credentials for section 11.
+
+  ## Rationale
+  The broker-services environment provides admin-level access needed for setup operations.
+
+  ## Expected Result
+  - HTTP 200 OK
+  - `sec11AdminEnvironmentId`, `sec11AdminSessionToken`, `sec11AdminSharedSecret` stored
+}
+

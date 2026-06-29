@@ -1,0 +1,125 @@
+meta {
+  name: 23 Verify Event Headers
+  type: http
+  seq: 23
+}
+
+get {
+  url: {{sec03Consumer1QueuesUrl}}/{{sec03Queue1Id}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec03Consumer1' });
+
+  const deliveredMessageId = bru.getVar('sec03DeliveredMessageId');
+  if (!deliveredMessageId) {
+    throw new Error(
+      '03-event-publishing/13-verify-event-headers: Missing sec03DeliveredMessageId. ' +
+      'Run 11-subscribed-consumer-gets-event first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 200) {
+    console.log('âœ“ Message retrieved for header verification');
+    console.log('  serviceName: ' + res.getHeader('servicename'));
+    console.log('  serviceType: ' + res.getHeader('servicetype'));
+    console.log('  eventAction: ' + res.getHeader('eventaction'));
+    console.log('  messageType: ' + res.getHeader('messagetype'));
+    console.log('  zoneId: ' + res.getHeader('zoneid'));
+    console.log('  contextId: ' + res.getHeader('contextid'));
+    console.log('  messageid: ' + res.getHeader('messageid'));
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Message retrieved (200 OK)", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("serviceName header is present and correct", function() {
+    const serviceName = res.getHeader('servicename');
+    expect(serviceName).to.exist;
+    expect(serviceName).to.equal('CertEventObjects');
+  });
+
+  test("serviceType header is present and correct", function() {
+    const serviceType = res.getHeader('servicetype');
+    expect(serviceType).to.exist;
+    expect(serviceType).to.equal('OBJECT');
+  });
+
+  test("eventAction header is present and correct", function() {
+    const eventAction = res.getHeader('eventaction');
+    expect(eventAction).to.exist;
+    expect(eventAction).to.equal('CREATE');
+  });
+
+  test("messageType header is present and correct", function() {
+    const messageType = res.getHeader('messagetype');
+    expect(messageType).to.exist;
+    expect(messageType).to.equal('EVENT');
+  });
+
+  test("zoneId header is present and matches published zone", function() {
+    const zoneId = res.getHeader('zoneid');
+    expect(zoneId).to.exist;
+    expect(zoneId).to.equal(bru.getVar('sec03ZoneId'));
+  });
+
+  test("contextId header is present", function() {
+    const contextId = res.getHeader('contextid');
+    expect(contextId).to.exist;
+    expect(contextId).to.equal('DEFAULT');
+  });
+
+  test("messageid header is present", function() {
+    const messageId = res.getHeader('messageid');
+    expect(messageId).to.exist;
+    expect(messageId).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that the delivered event message includes all original SIF routing headers.
+
+  ## Rationale
+
+  When the broker delivers an event to a consumer's queue, it must preserve the original
+  routing headers set by the provider. This allows the consumer to understand:
+  - Which service object the event relates to (serviceName, serviceType)
+  - What kind of change occurred (eventAction: CREATE/UPDATE/DELETE)
+  - The message classification (messageType: EVENT)
+  - The zone and context scope (zoneId, contextId)
+
+  Without these headers, consumers cannot properly process or route events internally.
+  This test verifies complete header preservation through the broker's distribution pipeline.
+
+  ## Expected Result
+
+  - HTTP 200 OK (message still in queue, idempotent peek without deleteMessageId)
+  - Response headers include:
+    - `serviceName: CertEventObjects`
+    - `serviceType: OBJECT`
+    - `eventAction: CREATE`
+    - `messageType: EVENT`
+    - `zoneId: <sec03ZoneId>`
+    - `contextId: DEFAULT`
+    - `messageid: <UUID>`
+}

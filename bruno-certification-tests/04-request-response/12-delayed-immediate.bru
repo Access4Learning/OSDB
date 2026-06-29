@@ -1,0 +1,73 @@
+meta {
+  name: 12 Delayed Immediate
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{sec04ConsumerRequestsUrl}}/{{immediateProviderServiceName}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec04ZoneId}}
+  contextId: DEFAULT
+  requestType: DELAYED
+  queueId: {{sec04QueueId}}
+  serviceType: OBJECT
+}
+
+assert {
+  res.status: eq 202
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Consumer' });
+
+  const requestsUrl = bru.getVar('sec04ConsumerRequestsUrl');
+  const queueId = bru.getVar('sec04QueueId');
+  if (!requestsUrl || !queueId) {
+    throw new Error(
+      '04-request-response/12-delayed-immediate: Missing sec04ConsumerRequestsUrl or sec04QueueId. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('DELAYED/IMMEDIATE request response status:', status);
+
+  if (status === 202) {
+    console.log('✓ Request accepted (202) — response will be delivered to queue');
+  } else {
+    console.error('✗ Expected 202, got:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("DELAYED request returns 202 Accepted", function() {
+    expect(res.getStatus()).to.equal(202);
+  });
+}
+
+docs {
+  ## Summary
+
+  Sends a DELAYED request to an IMMEDIATE provider.
+
+  ## Rationale
+
+  In the DELAYED/IMMEDIATE choreography, the consumer sends a request with
+  `requestType: DELAYED` and a `queueId`. The broker accepts immediately (202),
+  then forwards the request to the IMMEDIATE provider synchronously. When the
+  provider responds, the broker enqueues the response into the consumer's queue.
+
+  ## Expected Result
+
+  - HTTP 202 Accepted from the Requests Connector
+}

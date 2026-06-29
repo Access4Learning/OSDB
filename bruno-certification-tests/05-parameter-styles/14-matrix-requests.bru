@@ -1,0 +1,82 @@
+meta {
+  name: 14 Matrix Parameter Requests
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{sec05ConsumerRequestsUrl}}/{{sec05ServiceName}};zoneId={{sec05ZoneId}};contextId=DEFAULT
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  requestType: IMMEDIATE
+  serviceType: OBJECT
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec05Consumer' });
+
+  const requestsUrl = bru.getVar('sec05ConsumerRequestsUrl');
+  if (!requestsUrl) {
+    throw new Error(
+      '05-parameter-styles/14-matrix-requests: Missing sec05ConsumerRequestsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Matrix-parameter IMMEDIATE request response status:', status);
+
+  if (status === 200) {
+    const data = res.getBody();
+    console.log('✓ Received provider response with matrix-parameter URL');
+    console.log('  Response:', JSON.stringify(data).substring(0, 200));
+  } else {
+    console.error('✗ Expected 200, got:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("IMMEDIATE request with matrix parameters returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response contains provider data (same as header-based)", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    expect(data).to.not.be.null;
+  });
+}
+
+docs {
+  ## Summary
+
+  Sends a GET request via the Requests Connector with `;zoneId=xxx;contextId=yyy`
+  appended to the URL path instead of using HTTP headers.
+
+  ## Rationale
+
+  Verifies that the broker correctly extracts zone and context from matrix parameters
+  in the URL path and routes the request identically to the header-based approach.
+  A compliant broker must parse the semicolon-delimited parameters, identify the
+  registered provider, and forward the request as if headers were used.
+
+  This is the deprecated parameter style but must still work for backward compatibility.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Response body contains the same provider data as the header-based request (test 11)
+  - Request was routed using zone/context extracted from the URL matrix parameters
+}

@@ -1,0 +1,51 @@
+meta {
+  name: 25c Get Initial Count
+  type: http
+  seq: 28
+}
+
+get {
+  url: {{sec06ConsumerQueuesUrl}}/{{sec06QueueId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+
+  // Small delay to allow broker to enqueue
+  await new Promise(resolve => setTimeout(resolve, 500));
+}
+
+script:post-response {
+  const data = res.getBody().queue;
+  const initialCount = data.messageCount || data.count || 0;
+  bru.setVar('sec06InitialCount', initialCount);
+  console.log('✓ Initial message count = ' + initialCount);
+}
+
+tests {
+  test("Queue stats returned", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Initial count stored", function() {
+    const count = bru.getVar('sec06InitialCount');
+    expect(count).to.be.a('number');
+  });
+}
+
+docs {
+  ## Summary
+  Gets the initial queue message count before acknowledging.
+}

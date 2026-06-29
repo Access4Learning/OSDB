@@ -1,0 +1,83 @@
+meta {
+  name: 05 Create Provider Environment
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec09DomainId}}/{{sec09SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "sec09-provider-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec09ZoneId}}"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '09-queue-count-validation/02-create-provider-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec09ProviderEnvId', data.id);
+  bru.setVar('sec09ProviderSessionToken', data.sessionToken);
+  bru.setVar('sec09ProviderSharedSecret', data.sharedSecret);
+  console.log('âœ“ Provider environment created: ' + data.id);
+}
+
+tests {
+  test("Provider environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response contains credentials", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('sessionToken');
+    expect(data).to.have.property('sharedSecret');
+  });
+
+  test("Environment type is BROKERED", function() {
+    const data = res.getBody();
+    expect(data.type).to.equal('BROKERED');
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a BROKERED-type provider environment that will publish events.
+
+  ## Rationale
+
+  BROKERED environments interact with the broker through its infrastructure services.
+  The provider publishes events to the broker's Events Connector so that messages
+  accumulate in the consumer's queue for count validation testing.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - `sec09ProviderEnvId` set to environment UUID
+  - `sec09ProviderSessionToken` stored for provider authentication
+  - `sec09ProviderSharedSecret` stored for provider authentication
+}

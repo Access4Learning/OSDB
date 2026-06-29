@@ -1,0 +1,73 @@
+meta {
+  name: 02 Create Solution
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec06DomainId}}/solutions
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "solutionId": "{{sec06SolutionName}}",
+    "description": "SIF certification solution for section 06 (queue-operations)"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+
+  const domainId = bru.getVar('sec06DomainId');
+  if (!domainId) {
+    throw new Error(
+      '06-queue-operations/02-create-solution: Missing sec06DomainId. ' +
+      'Step 01-create-domain must run successfully first.'
+    );
+  }
+
+  const now = new Date();
+  const ts = now.getFullYear().toString()
+    + String(now.getMonth() + 1).padStart(2, '0')
+    + String(now.getDate()).padStart(2, '0')
+    + '-'
+    + String(now.getHours()).padStart(2, '0')
+    + String(now.getMinutes()).padStart(2, '0')
+    + String(now.getSeconds()).padStart(2, '0')
+    + String(now.getMilliseconds()).padStart(3, '0');
+  const solutionName = 'cert-solution-' + ts;
+  bru.setVar('sec06SolutionName', solutionName);
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '06-queue-operations/02-create-solution FAILED: expected 200-201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  const solutionId = data.solutionId || bru.getVar('sec06SolutionName');
+  bru.setVar('sec06SolutionId', solutionId);
+  console.log('Solution created: ' + solutionId + ' in domain: ' + bru.getVar('sec06DomainId'));
+}
+
+docs {
+  ## Summary
+  Creates a solution within the section 06 domain.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec06SolutionId` variable stored for subsequent steps
+}

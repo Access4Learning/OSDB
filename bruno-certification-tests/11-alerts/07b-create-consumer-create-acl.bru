@@ -1,0 +1,70 @@
+meta {
+  name: 07b Create Consumer CREATE ACL
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec11ConsumerEnvId}}",
+    "serviceName": "alerts",
+    "zoneId": "{{sec11ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "CREATE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Admin' });
+
+  const consumerEnvId = bru.getVar('sec11ConsumerEnvId');
+  if (!consumerEnvId) {
+    throw new Error('07b: Missing sec11ConsumerEnvId.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '11-alerts/07b: Consumer CREATE ACL returned ' +
+      status + '. Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  bru.setVar('sec11ConsumerAclId', res.getBody().id);
+  console.log('✓ Consumer CREATE ACL for alerts created: ' + res.getBody().id);
+}
+
+tests {
+  test("Consumer CREATE ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  ## Summary
+  Creates CREATE ACL for consumer to submit alerts.
+
+  ## Expected Result
+  - HTTP 201 → `sec11ConsumerAclId` stored
+}

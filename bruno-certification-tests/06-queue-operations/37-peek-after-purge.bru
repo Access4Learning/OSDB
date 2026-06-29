@@ -1,0 +1,83 @@
+meta {
+  name: 37 Peek After Purge
+  type: http
+  seq: 38
+}
+
+get {
+  url: {{sec06ConsumerQueuesUrl}}/{{sec06QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+
+  const queuesUrl = bru.getVar('sec06ConsumerQueuesUrl');
+  const queueId = bru.getVar('sec06QueueId');
+  if (!queuesUrl || !queueId) {
+    throw new Error(
+      '06-queue-operations/37-peek-after-purge: Missing queue URL or ID.'
+    );
+  }
+
+  // Allow event routing after publish
+  await new Promise(resolve => setTimeout(resolve, 2000));
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 200) {
+    const body = res.getBody();
+    console.log('✓ Queue functional after purge — received message');
+    console.log('  localId: ' + (body.certQueueObject ? body.certQueueObject.localId : 'unknown'));
+  } else if (status === 204) {
+    console.log('Queue empty (event may not have arrived yet)');
+  } else {
+    console.error('✗ Unexpected status: ' + status + ' — queue may be broken after purge');
+    console.error('  Response: ' + JSON.stringify(res.getBody()));
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Queue is functional after purge (GET returns 200)", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Received the post-purge event", function() {
+    const body = res.getBody();
+    expect(body).to.exist;
+    expect(body).to.have.property('certQueueObject');
+    expect(body.certQueueObject.localId).to.equal('cert-queue-post-purge');
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies the queue is still fully functional after a purge by peeking the new message.
+
+  ## Rationale
+
+  This is the critical test: after purging all messages, the queue's Redis stream
+  and consumer group must remain intact. A GET messages call must work normally —
+  returning 200 with the newly published event, not 500 Internal Server Error.
+
+  If this test fails with 500, it means the purge incorrectly destroyed the stream
+  infrastructure and the queue is broken.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - Body contains the post-purge event (cert-queue-post-purge)
+}

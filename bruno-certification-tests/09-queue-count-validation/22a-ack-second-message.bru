@@ -1,0 +1,56 @@
+meta {
+  name: 22a Ack Second Message
+  type: http
+  seq: 24
+}
+
+get {
+  url: {{sec09ConsumerQueuesUrl}}/{{sec09QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  deleteMessageId: {{sec09SecondMessageId}}
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Consumer' });
+
+  let currentMessageId = bru.getVar('sec09SecondMessageId');
+  if (!currentMessageId) {
+    throw new Error('22a: Missing sec09SecondMessageId. Run step 21b first.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('✓ Acked message 2 (status ' + status + ')');
+
+  if (status === 200 && res.getHeader('messageid')) {
+    bru.setVar('sec09ThirdMessageId', res.getHeader('messageid'));
+    console.log('  Got message 3: ' + res.getHeader('messageid'));
+  }
+}
+
+tests {
+  test("Ack second message succeeds", function() {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+}
+
+docs {
+  ## Summary
+  Acknowledges the second message.
+
+  ## Expected Result
+  - HTTP 200 with third message, or 204 if only 2 messages existed
+  - `sec09ThirdMessageId` stored if available
+}

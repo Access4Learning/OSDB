@@ -1,0 +1,98 @@
+meta {
+  name: 46 Consumer 2 List Alerts Visibility
+  type: http
+  seq: 43
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/alerts
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Consumer2' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '11-alerts/46 FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  
+  const data = res.getBody();
+  let alerts = [];
+  if (data && data.alerts && data.alerts.alert && Array.isArray(data.alerts.alert)) {
+    alerts = data.alerts.alert;
+  }
+  
+  console.log('✓ Consumer 2 sees ' + alerts.length + ' alert(s) via GET /alerts');
+  
+  const directedAlertId = bru.getVar('sec11DirectedAlertId');
+  const directedVisible = alerts.some(function(a) { return a.id === directedAlertId; });
+  console.log('  Directed alert ' + directedAlertId + ' visible to Consumer 2: ' + directedVisible);
+}
+
+tests {
+  test("Consumer 2 list alerts returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Consumer 2 sees broadcast alerts", function() {
+    const data = res.getBody();
+    let alerts = [];
+    if (data.alerts && data.alerts.alert && Array.isArray(data.alerts.alert)) {
+      alerts = data.alerts.alert;
+    }
+  
+    // Consumer 2 should see at least the broadcast alerts (those without messageID)
+    expect(alerts.length).to.be.greaterThanOrEqual(1);
+  });
+  
+  test("Consumer 2 does NOT see directed alert (not creator, not target)", function() {
+    const data = res.getBody();
+    let alerts = [];
+    if (data.alerts && data.alerts.alert && Array.isArray(data.alerts.alert)) {
+      alerts = data.alerts.alert;
+    }
+  
+    // The directed alert (step 41) targets the Provider, not Consumer 2
+    const directedAlertId = bru.getVar('sec11DirectedAlertId');
+    const directedVisible = alerts.some(function(a) { return a.id === directedAlertId; });
+    expect(directedVisible).to.equal(false,
+      'Consumer 2 should NOT see directed alert ' + directedAlertId +
+      ' — it is neither the creator nor the target');
+  });
+}
+
+docs {
+  ## Summary
+  Verifies alert visibility rules via the GET /alerts API for a bystander environment.
+  
+  ## Rationale — Expanded Visibility Verification
+  Consumer 2 is neither the creator nor the target of the directed alert (step 41).
+  Under expanded visibility rules:
+  - Consumer 2 SHOULD see broadcast alerts (targetEnvironmentId IS NULL)
+  - Consumer 2 SHOULD NOT see directed alerts where it is not the creator or target
+  
+  This test confirms that the `findVisibleAlerts` query correctly excludes directed
+  alerts from environments that have no relationship to them.
+  
+  ## Expected Result
+  - HTTP 200 OK
+  - Consumer 2 sees broadcast alerts (at least 1)
+  - Consumer 2 does NOT see the directed alert from step 41
+}

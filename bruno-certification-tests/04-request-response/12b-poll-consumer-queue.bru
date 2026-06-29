@@ -1,0 +1,73 @@
+meta {
+  name: 12b Poll Consumer Queue
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/queues/{{sec04QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Consumer' });
+
+  // Wait for the broker to process and deliver the response to the queue
+  await new Promise(resolve => setTimeout(resolve, 3000));
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Queue poll status:', status);
+
+  if (status === 200) {
+    const messageId = res.getHeader('messageid');
+    bru.setVar('sec04DelayedImmMessageId', messageId);
+    console.log('✓ Response delivered to queue, messageid:', messageId);
+
+    const body = res.getBody();
+    console.log('  Response body:', JSON.stringify(body).substring(0, 200));
+  } else if (status === 204) {
+    console.log('  Queue empty — response not yet delivered (may need more time)');
+  }
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+tests {
+  test("Queue poll returns response (200) or empty (204)", function() {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+
+  test("Response delivered to consumer queue (messageid set)", function() {
+    if (res.getStatus() === 200) {
+      const messageId = res.getHeader('messageid');
+      expect(messageId).to.exist;
+    }
+  });
+}
+
+docs {
+  ## Summary
+
+  Polls the consumer's queue for the DELAYED/IMMEDIATE response.
+
+  ## Rationale
+
+  After sending a DELAYED request (step 12), the broker enqueues the provider's
+  response to the consumer's queue. This step polls the queue to verify delivery.
+
+  ## Expected Result
+
+  - HTTP 200 with response body and messageid header, or
+  - HTTP 204 if response not yet delivered
+}

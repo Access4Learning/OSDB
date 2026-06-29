@@ -1,0 +1,73 @@
+meta {
+  name: 04 Setup Zone
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec07DomainId}}/{{sec07SolutionId}}/zones
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+body:json {
+  {
+    "zoneId": "cert-svcops-{{$timestamp}}",
+    "description": "Zone for service operations certification tests"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec07Admin' });
+
+  const domainId = bru.getVar('sec07DomainId');
+  const solutionId = bru.getVar('sec07SolutionId');
+  if (!domainId || !solutionId) {
+    throw new Error(
+      '07-service-operations/01-setup-zone: Missing sec07DomainId or sec07SolutionId. ' +
+      'Run steps 01-03 first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '07-service-operations/01-setup-zone FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec07ZoneId', data.zoneId || data.id);
+  console.log('Ã¢Å“â€œ Created zone:', bru.getVar('sec07ZoneId'));
+}
+
+docs {
+  ## Summary
+
+  Creates a dedicated zone for service operations tests.
+
+  ## Rationale
+
+  Each test section creates its own zone for isolation. This ensures
+  no interference from other test sections and enables clean teardown.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Zone ID stored in `sec07ZoneId` Bruno variable
+}

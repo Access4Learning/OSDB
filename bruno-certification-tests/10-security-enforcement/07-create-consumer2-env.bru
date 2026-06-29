@@ -1,0 +1,107 @@
+meta {
+  name: 07 Create Consumer 2 Environment
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec10DomainId}}/{{sec10SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "sec10-consumer2-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec10ZoneId}}"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec10Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '10-security-enforcement/04-create-consumer2-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec10Consumer2EnvId', data.id);
+  bru.setVar('sec10Consumer2SessionToken', data.sessionToken);
+  bru.setVar('sec10Consumer2SharedSecret', data.sharedSecret);
+
+  // Extract infrastructure service URLs for Consumer 2
+  if (data.infrastructureServices && data.infrastructureServices.infrastructureService) {
+    const services = data.infrastructureServices.infrastructureService;
+    for (const svc of services) {
+      if (svc.name === 'requestsConnector') {
+        bru.setVar('sec10Consumer2RequestsUrl', svc.value);
+      }
+      if (svc.name === 'subscriptions') {
+        bru.setVar('sec10Consumer2SubscriptionsUrl', svc.value);
+      }
+      if (svc.name === 'queues') {
+        bru.setVar('sec10Consumer2QueuesUrl', svc.value);
+      }
+    }
+  }
+
+  console.log('âœ“ Consumer 2 environment created: ' + data.id);
+  console.log('  Type: BROKERED (will have QUERY only, no SUBSCRIBE)');
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.sessionToken: isDefined
+}
+
+tests {
+  test("Consumer 2 environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response contains credentials", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('sessionToken');
+    expect(data).to.have.property('sharedSecret');
+  });
+
+  test("Environment type is BROKERED", function() {
+    const data = res.getBody();
+    expect(data.type).to.equal('BROKERED');
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates Consumer 2 (BROKERED) â€” will be granted only QUERY access, no SUBSCRIBE.
+
+  ## Rationale
+
+  Consumer 2 is intentionally restricted to QUERY-only access. This allows the
+  security enforcement tests to verify that a subscription creation (which requires
+  SUBSCRIBE access) is rejected with 403 when attempted by Consumer 2.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - `sec10Consumer2EnvId` set to environment UUID
+  - `sec10Consumer2SessionToken` and `sec10Consumer2SharedSecret` stored
+  - Infrastructure service URLs extracted for test use
+}

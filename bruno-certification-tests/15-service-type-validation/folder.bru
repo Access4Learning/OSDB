@@ -1,0 +1,52 @@
+meta {
+  name: 15-service-type-validation
+  seq: 16
+}
+
+docs {
+  # Service Type Header Validation Tests
+
+  ## Concept Overview
+
+  SIF 3.3 §5.1 defines that the `serviceType` HTTP header must match the URL path pattern.
+  Different paths accept different serviceType values:
+
+  | URL path pattern | Valid serviceType values |
+  |---|---|
+  | `/requests/*` | OBJECT, SERVICEPATH, XQUERYTEMPLATE |
+  | `/services/*` | FUNCTIONAL |
+  | `/events` | OBJECT, UTILITY, FUNCTIONAL, SERVICEPATH, XQUERYTEMPLATE, SERVICE |
+  | Utility paths | UTILITY |
+
+  The gateway's `ServiceTypeValidationFilter` rejects requests with mismatched
+  serviceType values with HTTP 400 before they reach authorization or connectors.
+
+  ## Test Purpose
+
+  Verify that the broker correctly rejects requests with invalid serviceType values:
+  - GET `/requests/{object}` with `serviceType: FUNCTIONAL` → 400
+  - GET `/requests/{object}` with `serviceType: UTILITY` → 400
+  - GET `/requests/{object}` with `serviceType: INVALID_VALUE` → 400
+  - POST `/services/{name}` with `serviceType: OBJECT` → 400
+  - POST `/services/{name}` with `serviceType: XQUERYTEMPLATE` → 400
+
+  ## Prerequisites
+
+  - This section is self-contained (creates its own domain/solution)
+  - An external provider endpoint must be running at the URL configured in
+    `immediateProviderEndpointUrl`
+  - The provider must serve "StudentPersonals"
+
+  ## Expected Behavior
+
+  - Setup creates a zone, provider env, consumer env, ACLs, and provider registration
+  - Consumer has QUERY access so requests would normally succeed
+  - Negative tests prove that invalid serviceType causes HTTP 400 rejection
+  - The 400 response contains the invalid value, path, and valid values list
+  - Teardown removes all section-specific resources
+
+  ## SIF Specification Reference
+
+  - SIF 3.3 §5.1 — serviceType header validation
+  - SIF 3.7 §5.1 — serviceType / URL path mapping
+}

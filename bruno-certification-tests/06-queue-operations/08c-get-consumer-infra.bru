@@ -1,0 +1,73 @@
+meta {
+  name: 08c Get Consumer Infrastructure
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec06DomainId}}/{{sec06SolutionId}}/environments/{{sec06ConsumerEnvId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Admin' });
+
+  const consumerEnvId = bru.getVar('sec06ConsumerEnvId');
+  if (!consumerEnvId) {
+    throw new Error('08c-get-consumer-infra: Missing sec06ConsumerEnvId.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error('Failed to fetch consumer environment: status ' + status);
+  }
+
+  const envData = res.getBody();
+  if (envData.infrastructureServices && envData.infrastructureServices.infrastructureService) {
+    const services = envData.infrastructureServices.infrastructureService;
+    const queuesService = services.find(s => s.name === 'queues');
+    if (queuesService) {
+      bru.setVar('sec06ConsumerQueuesUrl', queuesService.value);
+      console.log('✓ Consumer QUEUES URL: ' + queuesService.value);
+    } else {
+      throw new Error('QUEUES not found in consumer infrastructure services');
+    }
+  } else {
+    throw new Error('No infrastructure services found on consumer environment');
+  }
+}
+
+tests {
+  test("Consumer environment fetched", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Consumer queues URL stored", function() {
+    const queuesUrl = bru.getVar('sec06ConsumerQueuesUrl');
+    expect(queuesUrl).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+
+  Fetches the consumer environment to extract the QUEUES infrastructure URL.
+
+  ## Expected Result
+
+  - HTTP 200 OK
+  - `sec06ConsumerQueuesUrl` stored for queue message polling
+}

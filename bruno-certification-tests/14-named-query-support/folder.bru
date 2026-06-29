@@ -1,0 +1,45 @@
+meta {
+  name: 14 Named Query Support
+  seq: 15
+}
+
+docs {
+  # Named Query Support (xQueryTemplates)
+
+  ## Concept Overview
+
+  In SIF 3.7, **Named Queries** (xQueryTemplates) allow providers to register
+  parameterized query templates that consumers invoke by token. The broker maintains
+  a registry of templates, routes consumer requests to the appropriate provider,
+  and enforces ACL permissions.
+
+  Key concepts:
+  - **Provider** registers a Named Query Template with a unique queryToken
+  - **Consumer** invokes the query via GET /requests/{queryToken} with serviceType: XQUERYTEMPLATE header
+  - **Gateway** enforces QUERY ACL on the queryToken as the service name
+  - **Requests Connector** routes to the provider using serviceType=XQUERYTEMPLATE for lookup
+
+  ## Test Purpose
+
+  Verify that:
+  1. Provider can register a Named Query Template (POST to xquerys)
+  2. Templates can be listed and retrieved by token
+  3. Consumer with QUERY ACL can invoke the named query
+  4. Consumer without QUERY ACL gets 403
+  5. Non-existent token invocation returns 404
+  6. Provider can delete a template
+  7. ACL enforcement uses queryToken as serviceName
+
+  ## Prerequisites
+
+  - This section is self-contained (creates its own domain/solution)
+  - Provider needs PROVIDE ACL for xQueryTemplates service (to register templates)
+  - Consumer needs QUERY ACL for the specific queryToken (to invoke queries)
+
+  ## SIF Specification Reference
+
+  - SIF 3.7 Infrastructure — Named Queries (xQueryTemplates)
+  - SIF 3.3 Infrastructure §5.6.2 — serviceType header
+  - SIF 3.3 Infrastructure §4.5 — Access Control
+}
+

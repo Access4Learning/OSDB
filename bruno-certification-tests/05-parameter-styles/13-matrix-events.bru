@@ -1,0 +1,92 @@
+meta {
+  name: 13 Matrix Parameter Events
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{sec05ProviderEventsUrl}};zoneId={{sec05ZoneId}};contextId=DEFAULT
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceName: {{sec05ServiceName}}
+  serviceType: OBJECT
+  eventAction: UPDATE
+  messageType: EVENT
+}
+
+body:json {
+  {
+    "certParamObject": {
+      "refId": "{{$randomUUID}}",
+      "localId": "cert-matrix-event-{{$timestamp}}",
+      "name": "Matrix Parameter Event",
+      "description": "Event published with matrix-style ;zoneId=xxx;contextId=yyy in URL"
+    }
+  }
+}
+
+assert {
+  res.status: in [202, 204]
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec05Provider' });
+
+  const eventsUrl = bru.getVar('sec05ProviderEventsUrl');
+  if (!eventsUrl) {
+    throw new Error(
+      '05-parameter-styles/13-matrix-events: Missing sec05ProviderEventsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 202 && status !== 204) {
+    throw new Error(
+      '05-parameter-styles/13-matrix-events FAILED: expected 202 or 204, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  console.log('✓ Matrix-parameter event published successfully (status ' + status + ')');
+  console.log('  URL used: ...;zoneId=' + bru.getVar('sec05ZoneId') + ';contextId=DEFAULT');
+}
+
+tests {
+  test("Event with matrix parameters accepted by broker", function() {
+    const status = res.getStatus();
+    expect([202, 204]).to.include(status);
+  });
+}
+
+docs {
+  ## Summary
+
+  Publishes an event using the deprecated matrix parameter style with `;zoneId=xxx;contextId=yyy`
+  appended to the URL path.
+
+  ## Rationale
+
+  SIF brokers must support the deprecated matrix parameter style for backward compatibility.
+  Instead of passing zoneId and contextId as HTTP headers, the consumer/provider appends
+  them as semicolon-delimited parameters in the URL path (e.g., `/events;zoneId=myZone;contextId=DEFAULT`).
+
+  The broker must extract these matrix parameters from the URL and route the event
+  identically to the header-based approach. This test verifies that the broker handles
+  matrix parameter extraction correctly on event publishing.
+
+  ## Expected Result
+
+  - HTTP 202 Accepted or 204 No Content
+  - Event routed to the same zone/context as if headers were used
+  - No zoneId/contextId in HTTP headers — they are in the URL only
+}

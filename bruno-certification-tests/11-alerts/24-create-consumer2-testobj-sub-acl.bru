@@ -1,0 +1,78 @@
+meta {
+  name: 24 Create Consumer 2 SUBSCRIBE ACL for TestObjects
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec11Consumer2EnvId}}",
+    "serviceName": "TestObjects",
+    "zoneId": "{{sec11ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "SUBSCRIBE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Admin' });
+  
+  const consumer2EnvId = bru.getVar('sec11Consumer2EnvId');
+  if (!consumer2EnvId) {
+    throw new Error(
+      '11-alerts/24: Missing sec11Consumer2EnvId. Step 20 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '11-alerts/24 FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+  
+  bru.setVar('sec11Consumer2TestObjSubAclId', res.getBody().id);
+  console.log('✓ Consumer 2 SUBSCRIBE ACL for TestObjects: ' + res.getBody().id);
+}
+
+tests {
+  test("Consumer 2 SUBSCRIBE ACL for TestObjects created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().id).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+  Creates a SUBSCRIBE ACL for TestObjects on Consumer 2.
+  
+  ## Rationale
+  Consumer 2 also subscribes to TestObjects to receive the Provider's broadcast events.
+  This proves that the event fan-out works (both consumers get it), but the directed
+  alert later goes ONLY to the Provider.
+  
+  ## Expected Result
+  - HTTP 201 → `sec11Consumer2TestObjSubAclId` stored
+}

@@ -1,0 +1,58 @@
+meta {
+  name: 21b Ack First Message
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{sec09ConsumerQueuesUrl}}/{{sec09QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  deleteMessageId: {{sec09FirstMessageId}}
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Consumer' });
+
+  const msgId = bru.getVar('sec09FirstMessageId');
+  if (!msgId) {
+    throw new Error('21b: Missing sec09FirstMessageId. Run step 21 first.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200 && status !== 204) {
+    throw new Error('Ack failed: expected 200/204, got ' + status);
+  }
+
+  if (status === 200 && res.getHeader('messageid')) {
+    bru.setVar('sec09SecondMessageId', res.getHeader('messageid'));
+    console.log('✓ Acked first message, got next: ' + res.getHeader('messageid'));
+  }
+}
+
+tests {
+  test("Ack first message succeeds", function() {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+}
+
+docs {
+  ## Summary
+  Acknowledges the first message (deletes it from queue).
+
+  ## Expected Result
+  - HTTP 200 with next message, or 204 if empty
+  - `sec09SecondMessageId` stored if available
+}

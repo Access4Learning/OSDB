@@ -1,0 +1,98 @@
+meta {
+  name: 20 Publish Event
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{sec03ProviderEventsUrl}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceName: CertEventObjects
+  serviceType: OBJECT
+  eventAction: CREATE
+  messageType: EVENT
+  zoneId: {{sec03ZoneId}}
+  contextId: DEFAULT
+}
+
+body:json {
+  {
+    "certEventObject": {
+      "refId": "{{$randomUUID}}",
+      "localId": "cert-event-{{$timestamp}}",
+      "name": "Certification Event Object",
+      "description": "Event published by 03-event-publishing certification test"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec03Provider' });
+
+  const eventsUrl = bru.getVar('sec03ProviderEventsUrl');
+  if (!eventsUrl) {
+    throw new Error(
+      '03-event-publishing/10-publish-event: Missing sec03ProviderEventsUrl. ' +
+      'Ensure step 08-create-subscription completed successfully.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 202 && status !== 204) {
+    throw new Error(
+      '03-event-publishing/10-publish-event FAILED: expected 202 or 204, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  console.log('âœ“ Event published successfully (status ' + status + ')');
+  bru.setVar('sec03EventPublished', true);
+}
+
+assert {
+  res.status: in [202, 204]
+}
+
+tests {
+  test("Event accepted by broker", function() {
+    const status = res.getStatus();
+    expect([202, 204]).to.include(status);
+  });
+}
+
+docs {
+  ## Summary
+
+  Publishes a CREATE event for "CertEventObjects" to the broker's Events Connector.
+
+  ## Rationale
+
+  This is the core SIF event publishing operation. The provider POSTs an event payload
+  to the Events Connector URL with all required SIF routing headers. A compliant broker
+  must accept the event (202 Accepted or 204 No Content) and distribute it to all
+  consumers with matching subscriptions.
+
+  The required SIF event headers are:
+  - `serviceName`: identifies the service object type
+  - `serviceType`: always "OBJECT" for data object events
+  - `eventAction`: CREATE, UPDATE, or DELETE
+  - `messageType`: always "EVENT"
+  - `zoneId`: the zone scope
+  - `contextId`: the context within the zone
+
+  ## Expected Result
+
+  - HTTP 202 Accepted or 204 No Content
+  - Event is queued for delivery to Consumer 1 (subscribed)
+  - Event is NOT delivered to Consumer 2 (not subscribed)
+}

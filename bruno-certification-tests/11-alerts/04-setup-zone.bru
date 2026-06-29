@@ -1,0 +1,83 @@
+meta {
+  name: 04 Setup Zone
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/zones
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+body:json {
+  {
+    "zoneId": "environment-global",
+    "description": "Environment-global zone for alerts service registration"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Admin' });
+
+  const domainId = bru.getVar('sec11DomainId');
+  const solutionId = bru.getVar('sec11SolutionId');
+  if (!domainId || !solutionId) {
+    throw new Error(
+      '11-alerts/04-setup-zone: Missing sec11DomainId or sec11SolutionId. ' +
+      'Previous steps must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 201 || status === 409) {
+    // 409 means zone already exists (auto-created with solution) — that's fine
+    bru.setVar('sec11ZoneId', 'environment-global');
+    console.log('✓ Section 11 environment-global zone ready (status: ' + status + ')');
+  } else {
+    throw new Error(
+      '11-alerts/04-setup-zone FAILED: expected 201 or 409, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+}
+
+assert {
+  res.status: in [201, 409]
+}
+
+tests {
+  test("Environment-global zone ready", function() {
+    const status = res.getStatus();
+    expect([201, 409]).to.include(status);
+  });
+
+  test("Zone ID stored", function() {
+    const zoneId = bru.getVar('sec11ZoneId');
+    expect(zoneId).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+  Creates the environment-global zone required for alerts service registration.
+
+  ## Rationale
+  The alerts utility service requires a provider registered in the environment-global zone.
+  This zone must exist before registering the alerts provider.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec11ZoneId` variable stored
+}
+

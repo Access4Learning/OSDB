@@ -1,0 +1,80 @@
+meta {
+  name: 05 Create Provider Environment
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec08DomainId}}/{{sec08SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "CertHdrPassProvider-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec08ZoneId}}"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.sessionToken: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec08Admin' });
+
+  const zoneId = bru.getVar('sec08ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '08-header-passthrough/02-create-provider-env: Missing sec08ZoneId. ' +
+      'Run 01-setup-zone first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '08-header-passthrough/02-create-provider-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec08ProviderEnvId', data.id);
+  bru.setVar('sec08ProviderSessionToken', data.sessionToken);
+  bru.setVar('sec08ProviderSharedSecret', data.sharedSecret);
+  console.log('âœ“ Created provider environment (DIRECT):', data.id);
+}
+
+docs {
+  ## Summary
+
+  Creates a DIRECT provider environment for header passthrough tests.
+
+  ## Rationale
+
+  A DIRECT provider environment receives IMMEDIATE requests forwarded by the
+  broker. Custom headers on the consumer's request should arrive at the provider's
+  endpoint unchanged. The DIRECT type ensures the broker proxies to the provider
+  synchronously, making header verification straightforward.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Provider environment ID, session token, and shared secret stored
+  - `sec08ProviderEnvId`, `sec08ProviderSessionToken`, `sec08ProviderSharedSecret` set
+}
+

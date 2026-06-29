@@ -1,0 +1,69 @@
+meta {
+  name: 12 Delete Subscription
+  type: http
+  seq: 12
+}
+
+delete {
+  url: {{gatewayUrl}}/{{sec02DomainId}}/{{sec02SolutionId}}/subscriptions/{{sec02SubscriptionId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 204
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec02Consumer' });
+
+  const subscriptionId = bru.getVar('sec02SubscriptionId');
+  if (!subscriptionId) {
+    throw new Error('sec02SubscriptionId not set. Run 10-create-subscription first.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 204) {
+    throw new Error(
+      '02-subscription-management/12-delete-subscription FAILED: expected 204, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  console.log('✓ Subscription deleted: ' + bru.getVar('sec02SubscriptionId'));
+}
+
+tests {
+  test("Subscription deleted with 204 No Content", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+
+  test("Response body is empty", function() {
+    const body = res.getBody();
+    // 204 responses should have no body (or empty)
+    expect(body === null || body === undefined || body === '' || Object.keys(body).length === 0).to.be.true;
+  });
+}
+
+docs {
+  ## Summary
+
+  Deletes the previously created subscription.
+
+  ## Rationale
+
+  Subscription deletion must stop future message delivery. A compliant broker must
+  return 204 No Content on successful deletion.
+
+  ## Expected Result
+
+  - HTTP 204 No Content with empty body
+}

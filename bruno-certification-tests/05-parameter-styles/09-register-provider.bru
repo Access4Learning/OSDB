@@ -1,0 +1,83 @@
+meta {
+  name: 09 Register Provider
+  type: http
+  seq: 10.2
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec05DomainId}}/{{sec05SolutionId}}/provider-registrations
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec05ProviderEnvId}}",
+    "contextServiceUuid": "{{sec05ContextServiceUuid}}",
+    "endpoint": "{{immediateProviderEndpointUrl}}/{{immediateProviderServiceName}}",
+    "serviceType": "OBJECT",
+    "supportedRequestTypes": [
+      {
+        "requestType": "IMMEDIATE",
+        "operations": ["CREATE", "QUERY", "UPDATE", "DELETE"]
+      }
+    ]
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec05Admin' });
+
+  const providerEnvId = bru.getVar('sec05ProviderEnvId');
+  const contextServiceUuid = bru.getVar('sec05ContextServiceUuid');
+  if (!providerEnvId || !contextServiceUuid) {
+    throw new Error(
+      '05-parameter-styles/09-register-provider: Missing sec05ProviderEnvId or sec05ContextServiceUuid. ' +
+      'Run previous setup steps first.'
+    );
+  }
+
+  const endpointUrl = bru.getEnvVar('immediateProviderEndpointUrl');
+  const serviceName = bru.getEnvVar('immediateProviderServiceName');
+  if (!endpointUrl || !serviceName) {
+    throw new Error(
+      '05-parameter-styles/09-register-provider: Missing environment variables. ' +
+      'Set immediateProviderEndpointUrl and immediateProviderServiceName.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '05-parameter-styles/09-register-provider FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec05ProviderRegistrationId', data.id);
+  console.log('✓ Registered provider:', data.id);
+}
+
+docs {
+  ## Summary
+  Registers the external provider for IMMEDIATE request handling in the parameter-styles tests.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - Provider registration ID stored in `sec05ProviderRegistrationId`
+}

@@ -1,0 +1,67 @@
+meta {
+  name: 04 Setup Zone
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec02DomainId}}/{{sec02SolutionId}}/zones
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+body:json {
+  {
+    "zoneId": "CertSubMgmtZone-{{$timestamp}}",
+    "description": "Subscription management certification test zone"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec02Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '02-subscription-management/01-setup-zone FAILED: expected 200-201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec02ZoneId', data.zoneId || data.id);
+
+  console.log('âœ“ Zone created: ' + bru.getVar('sec02ZoneId'));
+}
+
+docs {
+  ## Summary
+
+  Creates a dedicated zone for subscription management tests.
+
+  ## Rationale
+
+  Each test section creates its own zone to ensure complete isolation from other
+  sections. The zone provides the organizational boundary within which environments,
+  ACLs, queues, and subscriptions operate.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Zone ID stored in `sec02ZoneId`
+  - A DEFAULT context is auto-created within the zone
+}

@@ -1,0 +1,80 @@
+meta {
+  name: 08 Create Provider PROVIDE ACL
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec10DomainId}}/{{sec10SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec10ProviderEnvId}}",
+    "serviceName": "CertSecurityObjects",
+    "zoneId": "{{sec10ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "PROVIDE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec10Admin' });
+
+  const providerEnvId = bru.getVar('sec10ProviderEnvId');
+  const consumer1EnvId = bru.getVar('sec10Consumer1EnvId');
+  const consumer2EnvId = bru.getVar('sec10Consumer2EnvId');
+  const zoneId = bru.getVar('sec10ZoneId');
+  if (!providerEnvId || !consumer1EnvId || !consumer2EnvId || !zoneId) {
+    throw new Error(
+      '10-security-enforcement/08: Missing setup variables. ' +
+      'Ensure steps 01-07 completed successfully.'
+    );
+  }
+
+  bru.setVar('sec10ContextId', 'DEFAULT');
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '10-security-enforcement/08: PROVIDE ACL creation returned ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  bru.setVar('sec10ProvideAclId', res.getBody().id);
+  console.log('✓ Provider PROVIDE ACL created: ' + res.getBody().id);
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.zoneId: isDefined
+  res.body.contextId: isDefined
+}
+
+tests {
+  test("Provider PROVIDE ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  ## Summary
+  Creates PROVIDE ACL for the provider environment in security enforcement tests.
+
+  ## Expected Result
+  - HTTP 201 → `sec10ProvideAclId` stored
+}

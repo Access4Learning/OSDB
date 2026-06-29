@@ -1,0 +1,73 @@
+meta {
+  name: 32 Delete Single Message
+  type: http
+  seq: 33
+}
+
+delete {
+  url: {{sec06ConsumerQueuesUrl}}/{{sec06QueueId}}/messages/{{sec06DeleteTargetMessageId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+
+  const queuesUrl = bru.getVar('sec06ConsumerQueuesUrl');
+  const queueId = bru.getVar('sec06QueueId');
+  const messageId = bru.getVar('sec06DeleteTargetMessageId');
+  if (!queuesUrl || !queueId) {
+    throw new Error(
+      '06-queue-operations/32-delete-single-message: Missing queue URL or ID.'
+    );
+  }
+  if (!messageId) {
+    throw new Error(
+      '06-queue-operations/32-delete-single-message: Missing sec06DeleteTargetMessageId. ' +
+      'Run 31-peek-for-delete first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 204) {
+    console.log('✓ Message deleted successfully (204 No Content)');
+    console.log('  Deleted messageId: ' + bru.getVar('sec06DeleteTargetMessageId'));
+  } else {
+    console.error('Unexpected status: ' + status + '. Expected 204 for successful delete.');
+    console.error('  Response: ' + JSON.stringify(res.getBody()));
+  }
+}
+
+assert {
+  res.status: eq 204
+}
+
+tests {
+  test("DELETE single message returns 204 No Content", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  ## Summary
+
+  Happy path: DELETE a single message from the queue by messageId.
+
+  ## Rationale
+
+  The DELETE /{domainId}/{solutionId}/queues/{queueId}/messages/{messageId} endpoint
+  allows a consumer to remove a specific message from the queue without the ack-and-advance
+  pattern. This is useful when a consumer wants to selectively delete messages.
+
+  ## Expected Result
+
+  - HTTP 204 No Content (message deleted successfully)
+}

@@ -1,0 +1,36 @@
+meta {
+  name: 13 Namespaces Registry
+  seq: 14
+}
+
+docs {
+  # Namespaces Registry
+
+  ## Concept Overview
+
+  In SIF 3.7, the **Namespaces** utility service allows administrators to manage
+  XML namespace registrations within a solution. Namespaces define URI-to-schema
+  mappings used for data validation and interoperability.
+
+  Namespace management is admin-only for write operations (create, update, delete).
+  Read operations (list, get by ID) are available to all authenticated environments.
+
+  ## Test Purpose
+
+  Verify that:
+  1. Admin can create a namespace (201)
+  2. Namespaces can be listed with SIF collection wrapper (200)
+  3. A namespace can be retrieved by ID (200)
+  4. Admin can update a namespace (200)
+  5. Admin can delete a namespace (204)
+  6. Non-admin create/update/delete returns 403
+
+  ## Prerequisites
+
+  - This section is self-contained (creates its own domain/solution)
+
+  ## SIF Specification Reference
+
+  - SIF 3.7 Infrastructure — Utility Services — Namespaces
+}
+

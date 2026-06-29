@@ -1,0 +1,64 @@
+meta {
+  name: 35 Purge Queue
+  type: http
+  seq: 36
+}
+
+delete {
+  url: {{sec06ConsumerQueuesUrl}}/{{sec06QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+
+  const queuesUrl = bru.getVar('sec06ConsumerQueuesUrl');
+  const queueId = bru.getVar('sec06QueueId');
+  if (!queuesUrl || !queueId) {
+    throw new Error(
+      '06-queue-operations/35-purge-queue: Missing queue URL or ID.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 202) {
+    console.log('✓ Queue purge accepted (202)');
+  } else {
+    console.log('Purge returned: ' + status);
+  }
+}
+
+assert {
+  res.status: in [200, 202, 204]
+}
+
+tests {
+  test("Purge queue returns success", function() {
+    const status = res.getStatus();
+    expect([200, 202, 204]).to.include(status);
+  });
+}
+
+docs {
+  ## Summary
+
+  Purges all remaining messages from the queue.
+
+  ## Rationale
+
+  Tests that the purge endpoint works correctly and doesn't break the queue
+  for subsequent operations. After purge, the queue should remain functional.
+
+  ## Expected Result
+
+  - HTTP 202 Accepted (purge initiated)
+}

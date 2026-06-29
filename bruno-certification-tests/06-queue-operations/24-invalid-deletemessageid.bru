@@ -1,0 +1,82 @@
+meta {
+  name: 24 Invalid DeleteMessageId
+  type: http
+  seq: 25
+}
+
+get {
+  url: {{sec06ConsumerQueuesUrl}}/{{sec06QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  deleteMessageId: 00000000-0000-0000-0000-000000000000
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Consumer' });
+
+  const queuesUrl = bru.getVar('sec06ConsumerQueuesUrl');
+  const queueId = bru.getVar('sec06QueueId');
+  if (!queuesUrl || !queueId) {
+    throw new Error(
+      '06-queue-operations/14-invalid-deletemessageid: Missing queue URL or ID.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 404) {
+    console.log('âœ“ Invalid deleteMessageId correctly rejected with 404');
+    const body = res.getBody();
+    if (body && body.message) {
+      console.log('  Error message: ' + body.message);
+    }
+  } else {
+    console.error('Unexpected status: ' + status + '. Expected 404 for invalid deleteMessageId.');
+  }
+}
+
+assert {
+  res.status: eq 404
+}
+
+tests {
+  test("Invalid deleteMessageId returns 404", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+
+  test("Response contains error body", function() {
+    const body = res.getBody();
+    expect(body).to.exist;
+    expect(body).to.have.property('message');
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that a GET with a non-existent deleteMessageId returns 404.
+
+  ## Rationale
+
+  SIF Â§9.3.1 specifies that if a consumer provides a deleteMessageId that does not
+  match any message in that consumer's pending delivery list, the broker must return
+  a 404 response with an error body indicating the message was not found.
+
+  This prevents consumers from accidentally acknowledging messages they haven't
+  received and protects against invalid or stale message IDs.
+
+  The UUID `00000000-0000-0000-0000-000000000000` is used as a guaranteed-invalid
+  message ID since no real message would have this identifier.
+
+  ## Expected Result
+
+  - HTTP 404 Not Found
+  - Response body contains an error message indicating the message was not found
+}

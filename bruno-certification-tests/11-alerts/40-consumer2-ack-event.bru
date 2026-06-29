@@ -1,0 +1,64 @@
+meta {
+  name: 40 Consumer 2 ACK Event
+  type: http
+  seq: 37
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/queues/{{sec11Consumer2QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  deleteMessageId: {{sec11Consumer2EventMsgId}}
+}
+
+assert {
+  res.status: eq 204
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Consumer2' });
+  
+  const msgId = bru.getVar('sec11Consumer2EventMsgId');
+  if (!msgId) {
+    throw new Error(
+      '11-alerts/40: Missing sec11Consumer2EventMsgId. Step 39 must run first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 204) {
+    throw new Error(
+      '11-alerts/40: Expected 204 (queue empty after ACK), got ' + status + '. ' +
+      'There may be unexpected messages in Consumer 2 queue.'
+    );
+  }
+  
+  console.log('✓ Consumer 2 ACKed event — queue now empty');
+}
+
+tests {
+  test("Queue empty after ACK (204 No Content)", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  ## Summary
+  Acknowledges (deletes) the TestObjects event from Consumer 2's queue and verifies empty.
+  
+  ## Rationale
+  Consumer 2's queue is drained clean so that in step 45 we can verify it remains empty
+  after the directed alert is created. If Consumer 2's queue still had messages, we
+  couldn't distinguish between leftover events and incorrectly delivered alerts.
+  
+  ## Expected Result
+  - HTTP 204 No Content (queue empty after the single event was ACKed)
+}

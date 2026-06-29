@@ -1,0 +1,82 @@
+meta {
+  name: 04 Setup Zone
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec09DomainId}}/{{sec09SolutionId}}/zones
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+body:json {
+  {
+    "zoneId": "sec09-count-zone-{{$timestamp}}",
+    "description": "Certification test zone for 09-queue-count-validation"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec09Admin' });
+
+  // Verify provisioning state
+  const domainId = bru.getVar('sec09DomainId');
+  const solutionId = bru.getVar('sec09SolutionId');
+  if (!domainId || !solutionId) {
+    throw new Error(
+      '09-queue-count-validation/01-setup-zone: Missing sec09DomainId or sec09SolutionId. ' +
+      'Run steps 01-03 first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '09-queue-count-validation/01-setup-zone FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec09ZoneId', data.zoneId || data.id);
+  console.log('Ã¢Å“â€œ Zone created: ' + (data.zoneId || data.id));
+}
+
+tests {
+  test("Zone created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Zone ID stored", function() {
+    const zoneId = bru.getVar('sec09ZoneId');
+    expect(zoneId).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a dedicated zone for the queue count validation test section.
+
+  ## Rationale
+
+  Each certification test section creates its own zone to ensure complete isolation
+  from other test sections. This zone will contain the provider and consumer
+  environments used in queue count validation tests.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - `sec09ZoneId` Bruno variable set to the new zone's identifier
+}

@@ -1,0 +1,71 @@
+meta {
+  name: 09 Queue Count Validation
+  seq: 10
+}
+
+docs {
+  # Queue Count Validation
+
+  ## Concept Overview
+
+  SIF brokers maintain a **message count** for each queue that reflects the number of
+  pending (unacknowledged) messages. This count is exposed via the queue details/stats
+  endpoint (`GET /queues/{id}`) and must accurately track the queue's state through
+  the full message lifecycle:
+
+  1. **After publishing**: When events are published and routed to a subscribed consumer's
+     queue, the message count increases by one for each delivered event.
+  2. **After acknowledgment**: When a consumer acknowledges a message via the
+     `deleteMessageId` query parameter on the queue messages endpoint, the broker removes
+     the message and the count decreases by exactly one.
+  3. **Reaching zero**: After all messages have been individually acknowledged, the queue's
+     message count must reach exactly zero.
+
+  This bookkeeping is critical for:
+  - Monitoring: operators rely on message counts to detect processing backlogs
+  - Health checks: a non-zero count after expected processing indicates a problem
+  - SIF compliance: the queue stats endpoint must reflect the true queue state
+
+  ## Queue Stats Endpoint
+
+  `GET {{queuesUrl}}/{{queueId}}` returns the queue's metadata including:
+  - `id` â€” Queue UUID
+  - `name` â€” Queue name
+  - `ownerId` â€” Owning environment UUID
+  - `messageCount` â€” Current number of pending messages (the field under test)
+  - `created`, `lastAccessed`, `lastModified` â€” Timestamps
+
+  ## Acknowledgment Mechanism
+
+  Messages are acknowledged using the **Get Next and Pop** pattern (SIF Â§9.3.1):
+  - `GET {{queuesUrl}}/{{queueId}}/messages?deleteMessageId={{previousMessageId}}`
+  - This atomically removes the specified message and returns the next one (or 204 if empty)
+
+  ## Test Purpose
+
+  Verify that:
+  1. After publishing N events, the queue's messageCount equals N
+  2. After acknowledging one message, the count decreases by exactly 1
+  3. After acknowledging all messages sequentially, the count reaches exactly 0
+
+  ## Prerequisites
+
+  - This section is self-contained (creates its own domain/solution)
+  - `sec09AdminSessionToken`, `sec09AdminSharedSecret`, and `sec09AdminEnvironmentId`
+    must be stored in Bruno collection variables
+
+  ## Expected Behavior
+
+  - Setup creates: 1 zone, 1 provider env (DIRECT), 1 consumer env (BROKERED),
+    PROVIDE + SUBSCRIBE ACLs, 1 queue, 1 subscription, then publishes 3 events
+  - Initial count assertion: GET queue stats â†’ messageCount = 3
+  - Single ack: acknowledge 1 message â†’ messageCount = 2
+  - Sequential acks: acknowledge remaining 2 messages one-by-one â†’ messageCount = 0
+  - Teardown removes all resources created by this section
+
+  ## SIF Specification Reference
+
+  - SIF 3.7 Â§9: Message Queue Management
+  - SIF 3.7 Â§9.3.1: Queue Message Retrieval (Get Next and Pop)
+  - SIF 3.7 Â§9.2: Queue Statistics
+}

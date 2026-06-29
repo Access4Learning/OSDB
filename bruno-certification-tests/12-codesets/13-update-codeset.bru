@@ -1,0 +1,91 @@
+meta {
+  name: 13 Update Code Set
+  type: http
+  seq: 13
+}
+
+put {
+  url: {{gatewayUrl}}/{{sec12DomainId}}/{{sec12SolutionId}}/codeSets/{{sec12CodeSetId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "codeSet": {
+      "zone": "environment-global",
+      "version": "2.0",
+      "timestamp": "2024-06-01T00:00:00Z",
+      "source": "http://cert-test.example.org/codesets",
+      "codeItems": {
+        "codeItem": [
+          { "code": "A", "value": "VALUE_A", "action": "ADD", "timestamp": "2024-01-01T00:00:00Z" },
+          { "code": "B", "value": "VALUE_B", "action": "ADD", "timestamp": "2024-01-01T00:00:00Z" },
+          { "code": "C", "value": "VALUE_C", "action": "ADD", "timestamp": "2024-01-01T00:00:00Z" },
+          { "code": "D", "value": "VALUE_D", "action": "ADD", "timestamp": "2024-06-01T00:00:00Z" }
+        ]
+      }
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec12Admin' });
+
+  const codeSetId = bru.getVar('sec12CodeSetId');
+  if (!codeSetId) {
+    throw new Error(
+      '12-codesets/13-update-codeset: Missing sec12CodeSetId. ' +
+      'Step 10-create-codeset must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '12-codesets/13-update-codeset FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  console.log('✓ Code set updated: ' + bru.getVar('sec12CodeSetId'));
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Code set updated with status 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Updated code set has version 2.0", function() {
+    const data = res.getBody();
+    const codeSet = data.codeSet || data;
+    expect(codeSet.version).to.equal("2.0");
+  });
+}
+
+docs {
+  ## Summary
+  Updates an existing code set (admin only).
+
+  ## Rationale
+  Verifies that PUT /codeSets/{id} updates the code set values correctly.
+
+  ## Expected Result
+  - HTTP 200 OK
+  - Updated code set contains new VALUE_D entry
+}
+

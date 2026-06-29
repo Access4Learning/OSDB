@@ -1,0 +1,87 @@
+meta {
+  name: 10 Unauthorized Query
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{sec10Consumer1RequestsUrl}}/CertSecurityObjects
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec10ZoneId}}
+  contextId: DEFAULT
+  requestType: IMMEDIATE
+}
+
+assert {
+  res.status: eq 403
+  res.body.message: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec10Consumer1' });
+
+  const requestsUrl = bru.getVar('sec10Consumer1RequestsUrl');
+  if (!requestsUrl) {
+    throw new Error(
+      '10-security-enforcement/10-unauthorized-query: Missing sec10Consumer1RequestsUrl. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Consumer 1 (SUBSCRIBE only) attempted QUERY → status: ' + status);
+
+  if (status === 403) {
+    console.log('✓ Correctly rejected: Consumer 1 lacks QUERY access');
+    const body = res.getBody();
+    bru.setVar('sec10UnauthorizedQueryBody', JSON.stringify(body));
+  } else {
+    console.error('✗ Expected 403, got: ' + status);
+  }
+}
+
+tests {
+  test("Request rejected with 403 Forbidden", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+
+  test("Error response contains message field", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('message');
+    expect(data.message).to.be.a('string');
+    expect(data.message.length).to.be.greaterThan(0);
+  });
+
+  test("Consumer 1 does not have QUERY access", function() {
+    // Consumer 1 was granted only SUBSCRIBE — QUERY should be denied
+    expect(res.getStatus()).to.equal(403);
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that Consumer 1 (SUBSCRIBE-only) is rejected when attempting a QUERY
+  operation via the Requests Connector.
+
+  ## Rationale
+
+  A SIF-compliant broker must enforce ACL boundaries. Consumer 1 has only SUBSCRIBE
+  access for CertSecurityObjects, meaning it can create subscriptions but cannot send
+  requests. The broker must return 403 with an error body when QUERY is attempted
+  without the appropriate ACL grant.
+
+  ## Expected Result
+
+  - HTTP 403 Forbidden
+  - Response body contains `message` field describing insufficient access rights
+}

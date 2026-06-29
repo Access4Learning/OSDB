@@ -1,0 +1,91 @@
+meta {
+  name: 15 Consumer List Alerts Filtered
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/alerts
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Consumer' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '11-alerts/15-consumer-list-alerts-filtered FAILED: expected 200, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+
+  // Parse alerts from collection wrapper
+  let alerts = [];
+  if (data && data.alerts && data.alerts.alert && Array.isArray(data.alerts.alert)) {
+    alerts = data.alerts.alert;
+  } else if (data && data.alerts && Array.isArray(data.alerts)) {
+    alerts = data.alerts;
+  }
+
+  console.log('✓ Consumer sees ' + alerts.length + ' alert(s) (should only see own)');
+  bru.setVar('sec11ConsumerAlertCount', alerts.length);
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Consumer list returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Consumer sees own and broadcast alerts", function() {
+    const data = res.getBody();
+    let alerts = [];
+    if (data.alerts && data.alerts.alert && Array.isArray(data.alerts.alert)) {
+      alerts = data.alerts.alert;
+    } else if (data.alerts && Array.isArray(data.alerts)) {
+      alerts = data.alerts;
+    }
+
+    // With expanded visibility, consumer sees:
+    // 1. Alerts it created (reporter = "ConsumerReporter")
+    // 2. Broadcast alerts (targetEnvironmentId is NULL — no messageID was provided at creation)
+    // Verify consumer's own alert is present
+    const ownAlerts = alerts.filter(function(a) { return a.reporter === "ConsumerReporter"; });
+    expect(ownAlerts.length).to.be.greaterThanOrEqual(1);
+  });
+}
+
+docs {
+  ## Summary
+  Lists alerts as a non-admin consumer to verify visibility rules.
+
+  ## Rationale
+  With expanded alert visibility, non-admin environments see:
+  1. Alerts they created
+  2. Alerts directed at them (targetEnvironmentId = their ID)
+  3. Broadcast alerts (targetEnvironmentId is NULL)
+
+  The admin created a broadcast alert in step 10 (no messageID), and the consumer
+  created a broadcast alert in step 14 (no messageID). Both have NULL targetEnvironmentId,
+  so the consumer sees both as broadcast alerts plus its own as creator.
+
+  ## Expected Result
+  - HTTP 200 OK
+  - Consumer sees its own alert(s) plus any broadcast alerts
+}
+

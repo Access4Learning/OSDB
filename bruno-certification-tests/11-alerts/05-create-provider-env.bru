@@ -1,0 +1,83 @@
+meta {
+  name: 05 Create Provider Environment
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "CertProvider-Alerts-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec11ZoneId}}"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Admin' });
+
+  const zoneId = bru.getVar('sec11ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '11-alerts/05-create-provider-env: Missing sec11ZoneId. ' +
+      'Step 04-setup-zone must run successfully first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '11-alerts/05-create-provider-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec11ProviderEnvId', data.id);
+  bru.setVar('sec11ProviderSessionToken', data.sessionToken);
+  bru.setVar('sec11ProviderSharedSecret', data.sharedSecret);
+  console.log('✓ Provider environment created: ' + data.id);
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.sessionToken: isDefined
+}
+
+tests {
+  test("Provider environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody();
+    expect(data.id).to.exist;
+    expect(data.sessionToken).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+  Creates a DIRECT provider environment for the alerts service.
+
+  ## Rationale
+  Alert creation requires a registered provider. This environment will be used to
+  register the alerts provider in the environment-global zone.
+
+  ## Expected Result
+  - HTTP 201 Created
+  - `sec11ProviderEnvId`, `sec11ProviderSessionToken`, `sec11ProviderSharedSecret` stored
+}
+

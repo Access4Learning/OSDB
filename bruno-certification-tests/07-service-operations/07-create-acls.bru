@@ -1,0 +1,80 @@
+meta {
+  name: 07 Create ACLs
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec07DomainId}}/{{sec07SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec07ProviderEnvId}}",
+    "serviceName": "CertFunctionalService",
+    "zoneId": "{{sec07ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "PROVIDE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.zoneId: isDefined
+  res.body.contextId: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec07Admin' });
+
+  const zoneId = bru.getVar('sec07ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '07-service-operations/04-create-acls: Missing sec07ZoneId. ' +
+      'Run 01-setup-zone first.'
+    );
+  }
+
+  bru.setVar('sec07ServiceName', 'CertFunctionalService');
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '07-service-operations/04-create-acls: Failed to create PROVIDE ACL, got ' + status +
+      '. Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const provideData = res.getBody();
+  bru.setVar('sec07ProvideAclId', provideData.id);
+  console.log('✓ Created PROVIDE ACL:', provideData.id);
+}
+
+tests {
+  test("Provider PROVIDE ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates PROVIDE ACL entry for service operations tests.
+
+  ## Expected Result
+
+  - PROVIDE ACL created for provider environment → `sec07ProvideAclId`
+}

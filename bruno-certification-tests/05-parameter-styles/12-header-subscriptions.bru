@@ -1,0 +1,102 @@
+meta {
+  name: 12 Header-Based Subscriptions
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec05DomainId}}/{{sec05SolutionId}}/subscriptions/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{sec05QueueId}}",
+      "aclEntryId": "{{sec05SubscribeAclId}}",
+      "messageType": "EVENT"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.subscription.id: isDefined
+  res.body.subscription.zoneId: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec05Consumer' });
+
+  const queueId = bru.getVar('sec05QueueId');
+  const aclId = bru.getVar('sec05SubscribeAclId');
+  if (!queueId || !aclId) {
+    throw new Error(
+      '05-parameter-styles/12-header-subscriptions: Missing sec05QueueId or sec05SubscribeAclId. ' +
+      'Run setup steps first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '05-parameter-styles/12-header-subscriptions FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec05SubscriptionId', data.subscription.id);
+  console.log('Subscription created with header-based context:', data.subscription.id);
+  console.log('  zoneId:', data.subscription.zoneId);
+  console.log('  contextId:', data.subscription.contextId || 'DEFAULT');
+  console.log('  serviceName:', data.subscription.serviceName);
+}
+
+tests {
+  test("Subscription created with 201 status", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Subscription contains zoneId resolved from ACL", function() {
+    const data = res.getBody();
+    expect(data.subscription).to.have.property('zoneId');
+    expect(data.subscription.zoneId).to.be.a('string').and.not.be.empty;
+  });
+
+  test("Subscription binds to correct queue", function() {
+    const data = res.getBody();
+    const expectedQueueId = bru.getVar('sec05QueueId');
+    expect(data.subscription.queueId).to.equal(expectedQueueId);
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a subscription using the standard header-based approach where zone and context
+  are resolved from the ACL entry (no matrix parameters in URL).
+
+  ## Rationale
+
+  Subscription creation in SIF resolves zone and context from the ACL entry rather than
+  from URL or headers. This test establishes the baseline subscription behavior that
+  the section uses for event delivery verification. The zone/context binding is implicit
+  via the ACL entry's context UUID.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Subscription ID stored in `sec05SubscriptionId`
+  - Response contains zoneId, contextId, serviceName resolved from ACL entry
+}

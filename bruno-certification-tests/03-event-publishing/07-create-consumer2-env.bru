@@ -1,0 +1,85 @@
+meta {
+  name: 07 Create Consumer 2 Environment
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec03DomainId}}/{{sec03SolutionId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "applicationName": "sec03-consumer2-{{$timestamp}}",
+    "type": "BROKERED",
+    "defaultZoneId": "{{sec03ZoneId}}"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec03Admin' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status < 200 || status > 201) {
+    throw new Error(
+      '03-event-publishing/04-create-consumer2-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec03Consumer2EnvId', data.id);
+  bru.setVar('sec03Consumer2SessionToken', data.sessionToken);
+  bru.setVar('sec03Consumer2SharedSecret', data.sharedSecret);
+  console.log('âœ“ Consumer 2 environment created: ' + data.id);
+  console.log('  Application Name: ' + data.applicationName);
+  console.log('  Type: ' + data.type);
+}
+
+tests {
+  test("Consumer 2 environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response contains credentials", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('sessionToken');
+    expect(data).to.have.property('sharedSecret');
+  });
+
+  test("Environment type is BROKERED", function() {
+    const data = res.getBody();
+    expect(data.type).to.equal('BROKERED');
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a BROKERED-type consumer environment (Consumer 2) that will NOT receive events.
+
+  ## Rationale
+
+  Consumer 2 serves as the control case. It has a queue but does NOT have a subscription
+  for the provider's service events. This allows the test to verify that the broker
+  correctly routes events only to subscribed consumers, not to all consumers with queues.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - `sec03Consumer2EnvId` set to environment UUID
+  - `sec03Consumer2SessionToken` stored for consumer authentication
+  - `sec03Consumer2SharedSecret` stored for consumer authentication
+}

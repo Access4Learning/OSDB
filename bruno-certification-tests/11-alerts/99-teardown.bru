@@ -1,0 +1,101 @@
+meta {
+  name: 99 Teardown
+  type: http
+  seq: 99
+}
+
+delete {
+  url: {{gatewayUrl}}/domains/{{sec11DomainId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: in [200, 204, 404]
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 200 || status === 204) {
+    console.log('✓ Domain deleted (cascade removes all resources): ' + bru.getVar('sec11DomainId'));
+  } else if (status === 404) {
+    console.log('✓ Domain already deleted (404)');
+  } else {
+    console.error('⚠ Unexpected status ' + status + ' — continuing');
+  }
+  
+  // Clear section variables
+  bru.setVar('sec11DomainId', null);
+  bru.setVar('sec11DomainName', null);
+  bru.setVar('sec11SolutionId', null);
+  bru.setVar('sec11SolutionName', null);
+  bru.setVar('sec11AdminEnvironmentId', null);
+  bru.setVar('sec11AdminSessionToken', null);
+  bru.setVar('sec11AdminSharedSecret', null);
+  bru.setVar('sec11ZoneId', null);
+  bru.setVar('sec11ProviderEnvId', null);
+  bru.setVar('sec11ProviderSessionToken', null);
+  bru.setVar('sec11ProviderSharedSecret', null);
+  bru.setVar('sec11ConsumerEnvId', null);
+  bru.setVar('sec11ConsumerSessionToken', null);
+  bru.setVar('sec11ConsumerSharedSecret', null);
+  bru.setVar('sec11ProviderAclId', null);
+  bru.setVar('sec11ConsumerAclId', null);
+  bru.setVar('sec11ProviderRegistrationId', null);
+  bru.setVar('sec11AlertId', null);
+  bru.setVar('sec11ConsumerAlertId', null);
+  bru.setVar('sec11AlertCount', null);
+  bru.setVar('sec11ConsumerAlertCount', null);
+  // New scenario variables (steps 20-45)
+  bru.setVar('sec11Consumer2EnvId', null);
+  bru.setVar('sec11Consumer2SessionToken', null);
+  bru.setVar('sec11Consumer2SharedSecret', null);
+  bru.setVar('sec11ProviderTestObjAclId', null);
+  bru.setVar('sec11ProviderAlertSubAclId', null);
+  bru.setVar('sec11Consumer1TestObjSubAclId', null);
+  bru.setVar('sec11Consumer2TestObjSubAclId', null);
+  bru.setVar('sec11Consumer1AlertSubAclId', null);
+  bru.setVar('sec11Consumer2AlertSubAclId', null);
+  bru.setVar('sec11ProviderQueueId', null);
+  bru.setVar('sec11Consumer1QueueId', null);
+  bru.setVar('sec11Consumer2QueueId', null);
+  bru.setVar('sec11ProviderAlertSubId', null);
+  bru.setVar('sec11Consumer1TestObjSubId', null);
+  bru.setVar('sec11Consumer1AlertSubId', null);
+  bru.setVar('sec11Consumer2TestObjSubId', null);
+  bru.setVar('sec11Consumer2AlertSubId', null);
+  bru.setVar('sec11ProviderEventsUrl', null);
+  bru.setVar('sec11EventMessageId', null);
+  bru.setVar('sec11Consumer1EventMsgId', null);
+  bru.setVar('sec11Consumer2EventMsgId', null);
+  bru.setVar('sec11DirectedAlertId', null);
+  bru.setVar('sec11ProviderAlertMsgId', null);
+}
+
+tests {
+  test("Domain teardown completed", function() {
+    expect(res.getStatus()).to.be.oneOf([200, 204, 404]);
+  });
+}
+
+docs {
+  ## Summary
+  Deletes the test domain, which cascade-deletes all resources.
+  
+  ## Rationale
+  Ensures clean state after test execution regardless of pass/fail status.
+  
+  ## Expected Result
+  - HTTP 200/204: Domain and all child resources deleted
+  - HTTP 404: Already cleaned up
+}
