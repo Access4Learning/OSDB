@@ -175,7 +175,7 @@ The broker proxies to this provider, which returns test data. No provider creden
 
 ## Exposing the Provider with ngrok (remote broker)
 
-When the broker runs **remotely** (e.g. the AWS demo/transcript environments) it cannot reach
+When the broker runs **remotely** (e.g. the AWS demo environment) it cannot reach
 `localhost:9091`. [ngrok](https://ngrok.com) tunnels your local provider to a public HTTPS URL the
 broker can proxy IMMEDIATE requests to.
 
