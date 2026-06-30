@@ -1,0 +1,105 @@
+meta {
+  name: 09e Register DELAYED Provider
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/provider-registrations
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec04ProviderEnvId}}",
+    "contextServiceUuid": "{{sec04DelayedContextServiceUuid}}",
+    "endpoint": "{{immediateProviderEndpointUrl}}/{{delayedProviderServiceName}}",
+    "serviceType": "OBJECT",
+    "supportedRequestTypes": [
+      {
+        "requestType": "DELAYED",
+        "operations": ["CREATE", "QUERY", "UPDATE", "DELETE"]
+      }
+    ]
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Admin' });
+
+  const providerEnvId = bru.getVar('sec04ProviderEnvId');
+  const contextServiceUuid = bru.getVar('sec04DelayedContextServiceUuid');
+  if (!providerEnvId || !contextServiceUuid) {
+    throw new Error(
+      '04-request-response/09e-register-delayed-provider: Missing sec04ProviderEnvId or ' +
+      'sec04DelayedContextServiceUuid. Run 09a and 09d first.'
+    );
+  }
+
+  const serviceName = bru.getEnvVar('delayedProviderServiceName');
+  const endpointUrl = bru.getEnvVar('immediateProviderEndpointUrl');
+  if (!serviceName || !endpointUrl) {
+    throw new Error(
+      '04-request-response/09e-register-delayed-provider: Missing delayedProviderServiceName or ' +
+      'immediateProviderEndpointUrl environment variable.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '04-request-response/09e-register-delayed-provider FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec04DelayedProviderRegistrationId', data.id);
+  console.log('✓ Registered DELAYED provider:', data.id);
+}
+
+tests {
+  test("DELAYED provider registration created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().id).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+
+  Registers the provider environment for the DELAYED-only service object with
+  `supportedRequestTypes: [DELAYED]`.
+
+  ## Rationale
+
+  The broker's RoutingService decides DELAYED→DELAYED vs DELAYED→IMMEDIATE purely from the
+  matched provider registration's `supportedRequestTypes` (it checks DELAYED first). By
+  registering this dedicated service as DELAYED-only, consumer DELAYED requests for it route
+  through `handleDelayedToDelayed` — enqueued to the provider's queue and drained by the
+  test-provider's poll trigger. The IMMEDIATE service registration is left untouched so its
+  DELAYED→IMMEDIATE coverage (step 12) is preserved.
+
+  The `endpoint` is required by the registration schema but is never invoked for the DELAYED
+  choreography (the provider receives requests by polling its queue).
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Registration id stored in `sec04DelayedProviderRegistrationId`
+}

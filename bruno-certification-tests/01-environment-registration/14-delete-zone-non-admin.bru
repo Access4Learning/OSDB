@@ -14,12 +14,13 @@ headers {
   Content-Type: application/json
   Authorization: {{authorizationHeader}}
   timestamp: {{timestampHeader}}
-  X-Run-As-Environment: some-consumer-env
 }
 
 script:pre-request {
   const auth = require('./common/auth.js');
-  auth.setAuthHeaders(req, bru, { varPrefix: 'sec01Admin' });
+  // Authenticate directly as the non-admin (BROKERED) consumer environment created in step 06.
+  // Zone deletion must be rejected for non-admin callers with 403.
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec01Consumer' });
 }
 
 script:post-response {
@@ -57,9 +58,14 @@ docs {
 
   ## Rationale
 
-  Zone deletion is an administrative operation. Non-admin callers (identified by
-  `X-Run-As-Environment` not being `broker-services` and not matching a global admin)
-  must be denied access. This test confirms the authorization guard works correctly.
+  Zone deletion is an administrative operation. A non-admin environment (the BROKERED
+  consumer created in step 06) authenticating with its own credentials must be denied
+  access. This test confirms the authorization guard works correctly.
+
+  Note: impersonation via `X-Run-As-Environment` only accepts a UUID or the literal
+  `broker-services` (the gateway returns 400 PROXY_005 for any other value), so a
+  non-admin caller is simulated by authenticating directly as the consumer environment
+  rather than via run-as impersonation.
 
   ## Expected Result
 

@@ -1,0 +1,84 @@
+meta {
+  name: 09d Get Provider DELAYED Options
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/provider-registrations/available-options?environmentId={{sec04ProviderEnvId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Admin' });
+
+  const providerEnvId = bru.getVar('sec04ProviderEnvId');
+  if (!providerEnvId) {
+    throw new Error('09d-get-provider-delayed-options: Missing sec04ProviderEnvId.');
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  const data = res.getBody();
+
+  if (status !== 200 || !data || data.length === 0) {
+    throw new Error(
+      '04-request-response/09d-get-provider-delayed-options: No available provider options found. ' +
+      'Ensure the DELAYED PROVIDE ACL (09a) was created. Status: ' + status + ', Data: ' + JSON.stringify(data)
+    );
+  }
+
+  const serviceName = bru.getEnvVar('delayedProviderServiceName');
+  const option = data.find(o => o.serviceName === serviceName);
+  if (!option) {
+    throw new Error(
+      '04-request-response/09d-get-provider-delayed-options: No available option for service "' + serviceName + '". ' +
+      'Available: ' + data.map(o => o.serviceName).join(', ')
+    );
+  }
+
+  bru.setVar('sec04DelayedContextServiceUuid', option.contextServiceUuid);
+  console.log('✓ Found contextServiceUuid for ' + serviceName + ': ' + option.contextServiceUuid);
+}
+
+tests {
+  test("Provider options returned", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an('array').and.not.be.empty;
+  });
+
+  test("DELAYED contextServiceUuid stored", function() {
+    const uuid = bru.getVar('sec04DelayedContextServiceUuid');
+    expect(uuid).to.be.a('string').and.not.be.empty;
+  });
+}
+
+docs {
+  ## Summary
+
+  Fetches the available provider registration option for the DELAYED-only service to obtain
+  its `contextServiceUuid`.
+
+  ## Rationale
+
+  Provider registration requires the `contextServiceUuid` the broker assigned when the DELAYED
+  PROVIDE ACL (09a) was created. This endpoint returns available options filtered by
+  environmentId; we select the one matching `delayedProviderServiceName`.
+
+  ## Expected Result
+
+  - HTTP 200 with array of available options
+  - `sec04DelayedContextServiceUuid` stored for the DELAYED provider registration
+}

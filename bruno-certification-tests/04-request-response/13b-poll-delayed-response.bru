@@ -20,7 +20,8 @@ script:pre-request {
   const auth = require('./common/auth.js');
   auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Consumer' });
 
-  // Wait for the broker to process (provider responds via Responses Connector)
+  // The provider was driven on demand in step 13a (POST /test-control/poll); allow the
+  // Responses Connector to deliver the submitted response into the consumer queue.
   await new Promise(resolve => setTimeout(resolve, 5000));
 }
 
@@ -68,12 +69,14 @@ docs {
 
   ## Rationale
 
-  After the DELAYED request (step 13), the provider responds asynchronously.
-  This step polls the queue with deleteMessageId to ack the previous message
+  After the DELAYED request (step 13) and the on-demand provider poll (step 13a), the
+  test-provider submits its response via the Responses Connector, which delivers it to the
+  consumer's queue. This step polls the queue with deleteMessageId to ack the previous message
   and retrieve the delayed response.
 
   ## Expected Result
 
-  - HTTP 200 with response body and messageid header, or
-  - HTTP 204 if provider has not yet responded
+  - HTTP 200 with response body and messageid header (happy path now that the provider is
+    self-driven via step 13a), or
+  - HTTP 204 if the Responses Connector has not yet delivered the response
 }

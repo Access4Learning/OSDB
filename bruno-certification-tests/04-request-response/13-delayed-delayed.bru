@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{sec04ConsumerRequestsUrl}}/{{immediateProviderServiceName}}
+  url: {{sec04ConsumerRequestsUrl}}/{{delayedProviderServiceName}}
   body: none
   auth: none
 }
@@ -36,6 +36,14 @@ script:pre-request {
       'Run setup steps first.'
     );
   }
+
+  const serviceName = bru.getEnvVar('delayedProviderServiceName');
+  if (!serviceName) {
+    throw new Error(
+      '04-request-response/13-delayed-delayed: Missing delayedProviderServiceName environment variable. ' +
+      'This step targets the DELAYED-only service registered in steps 09a–09f.'
+    );
+  }
 }
 
 script:post-response {
@@ -58,14 +66,18 @@ tests {
 docs {
   ## Summary
 
-  Sends a DELAYED request for the DELAYED/DELAYED choreography.
+  Sends a DELAYED request for the dedicated DELAYED-only service object
+  (`delayedProviderServiceName`) to exercise a true DELAYED/DELAYED choreography.
 
   ## Rationale
 
-  In the DELAYED/DELAYED choreography, the broker accepts the consumer's request
-  (202) and enqueues it to the provider's queue. The provider independently polls
-  its queue, processes the request, and submits the response through the Responses
-  Connector.
+  Because the broker selects DELAYED→DELAYED vs DELAYED→IMMEDIATE from the matched provider
+  registration's `supportedRequestTypes`, this step targets the separate DELAYED-only service
+  registered in steps 09a–09f (same provider environment, different object). The broker accepts
+  the request (202) and enqueues it to the provider's queue. The standalone test-provider then
+  drains that queue on demand in step 13a (`POST /test-control/poll`), processes the request,
+  and submits the response through the Responses Connector for delivery to the consumer's queue
+  (polled in step 13b).
 
   ## Expected Result
 

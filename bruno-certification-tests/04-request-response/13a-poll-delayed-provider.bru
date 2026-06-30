@@ -1,0 +1,91 @@
+meta {
+  name: 13a Trigger Provider Poll (DELAYED)
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{immediateProviderEndpointUrl}}/test-control/poll
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+assert {
+  res.status: eq 200
+  res.body.polled: eq true
+  res.body.messageProcessed: eq true
+}
+
+script:pre-request {
+  // Poll_Trigger_Endpoint is UNAUTHENTICATED by design — do NOT add HMAC/auth headers here.
+  const endpointUrl = bru.getEnvVar('immediateProviderEndpointUrl');
+  if (!endpointUrl) {
+    throw new Error(
+      '04-request-response/13a-poll-delayed-provider: Missing immediateProviderEndpointUrl environment variable.'
+    );
+  }
+  // The broker enqueues to the provider queue synchronously before returning 202 in step 13,
+  // so the message is already present. A brief settle keeps the trigger robust under load.
+  await new Promise(resolve => setTimeout(resolve, 1000));
+}
+
+script:post-response {
+  const status = res.getStatus();
+  const data = res.getBody();
+  console.log('Provider poll trigger status:', status, JSON.stringify(data));
+
+  if (status !== 200) {
+    throw new Error(
+      '04-request-response/13a-poll-delayed-provider FAILED: expected 200, got ' + status + '. ' +
+      'Is the test-provider running and configured (step 09g)? Response: ' + JSON.stringify(data)
+    );
+  }
+
+  if (data.polled && data.messageProcessed) {
+    console.log('✓ Provider polled its queue and submitted a response for the DELAYED request');
+  } else {
+    console.error('✗ Expected polled:true and messageProcessed:true, got:', JSON.stringify(data));
+  }
+}
+
+tests {
+  test("Poll trigger returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("A poll cycle ran (delayed polling enabled)", function() {
+    expect(res.getBody().polled).to.equal(true);
+  });
+
+  test("The enqueued DELAYED request was processed and answered", function() {
+    expect(res.getBody().messageProcessed).to.equal(true);
+  });
+}
+
+docs {
+  ## Summary
+
+  Drives the DELAYED→DELAYED exchange by calling the test-provider's unauthenticated
+  Poll_Trigger_Endpoint (`POST {{immediateProviderEndpointUrl}}/test-control/poll`) exactly once.
+
+  ## Rationale
+
+  The test-provider runs no background poller — each DELAYED poll cycle runs only when triggered,
+  making the exchange deterministic. After step 13 enqueues the request to the provider queue
+  (synchronously, before the 202), this single trigger makes the provider poll its queue, generate
+  test data, and submit the response via the Responses Connector. The endpoint is intentionally
+  unauthenticated, so no HMAC headers are sent.
+
+  ## Prerequisites
+
+  - Test-provider configured with provider credentials + provider queue (step 09g)
+  - Consumer DELAYED request enqueued (step 13)
+
+  ## Expected Result
+
+  - HTTP 200 with `{ polled: true, messageProcessed: true }` — a cycle ran and the message was answered
+}

@@ -1,0 +1,86 @@
+meta {
+  name: 09b Create Consumer DELAYED QUERY ACL
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec04ConsumerEnvId}}",
+    "serviceName": "{{delayedProviderServiceName}}",
+    "zoneId": "{{sec04ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "QUERY",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Admin' });
+
+  const consumerEnvId = bru.getVar('sec04ConsumerEnvId');
+  if (!consumerEnvId) {
+    throw new Error('09b-create-consumer-delayed-query-acl: Missing sec04ConsumerEnvId.');
+  }
+
+  const serviceName = bru.getEnvVar('delayedProviderServiceName');
+  if (!serviceName) {
+    throw new Error(
+      '04-request-response/09b-create-consumer-delayed-query-acl: Missing environment variable "delayedProviderServiceName".'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '04-request-response/09b-create-consumer-delayed-query-acl: Failed to create QUERY ACL, got ' +
+      status + ': ' + JSON.stringify(res.getBody())
+    );
+  }
+  bru.setVar('sec04DelayedQueryAclId', res.getBody().id);
+  console.log('✓ Created DELAYED QUERY ACL:', res.getBody().id);
+}
+
+tests {
+  test("Consumer DELAYED QUERY ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a QUERY ACL authorizing the consumer environment to query the DELAYED-only
+  service object (`delayedProviderServiceName`).
+
+  ## Rationale
+
+  The consumer needs QUERY access to send DELAYED requests for the dedicated DELAYED
+  service object in the test zone. Without this ACL the broker rejects the request
+  before routing.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - QUERY ACL id stored in `sec04DelayedQueryAclId`
+}

@@ -1,0 +1,22 @@
+# Environment files with credentials
+.env
+
+# Node modules (CryptoJS dependency)
+node_modules/
+
+# Bruno cache and temporary files
+.bruno/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log

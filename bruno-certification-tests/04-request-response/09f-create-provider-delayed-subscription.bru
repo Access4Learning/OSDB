@@ -1,0 +1,101 @@
+meta {
+  name: 09f Create Provider DELAYED_REQUEST Subscription
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/subscriptions/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{sec04ProviderQueueId}}",
+      "aclEntryId": "{{sec04DelayedProvideAclId}}",
+      "serviceName": "{{delayedProviderServiceName}}",
+      "serviceType": "OBJECT",
+      "messageType": "DELAYED_REQUEST"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.subscription.id: isDefined
+  res.body.subscription.queueId: isDefined
+}
+
+script:pre-request {
+  const queueId = bru.getVar('sec04ProviderQueueId');
+  if (!queueId) {
+    throw new Error('09f-create-provider-delayed-subscription: Missing sec04ProviderQueueId. Run 09c first.');
+  }
+
+  const aclId = bru.getVar('sec04DelayedProvideAclId');
+  if (!aclId) {
+    throw new Error('09f-create-provider-delayed-subscription: Missing sec04DelayedProvideAclId. Run 09a first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Provider' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '04-request-response/09f-create-provider-delayed-subscription FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec04DelayedSubscriptionId', data.subscription.id);
+  console.log('✓ Created provider DELAYED_REQUEST subscription:', data.subscription.id);
+  console.log('  Provider queueId:', data.subscription.queueId);
+}
+
+tests {
+  test("Provider DELAYED_REQUEST subscription created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Subscription bound to provider queue", function() {
+    const data = res.getBody().subscription;
+    expect(data.queueId).to.equal(bru.getVar('sec04ProviderQueueId'));
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a DELAYED_REQUEST subscription binding the DELAYED service object to the provider's
+  queue (`sec04ProviderQueueId`) via the provider's PROVIDE ACL (`sec04DelayedProvideAclId`).
+
+  ## Rationale
+
+  When a consumer sends a DELAYED request for the DELAYED service object, the broker's
+  `DelayedRequestHandler.handleDelayedToDelayed` resolves the provider's queue by querying this
+  subscription (serviceName + contextUuid), then enqueues the request there. Without this
+  subscription the broker returns 404 (no request subscription) for the DELAYED→DELAYED route.
+
+  ## Prerequisites
+
+  - Provider DELAYED PROVIDE ACL (09a) — `sec04DelayedProvideAclId`
+  - Provider queue (09c) — `sec04ProviderQueueId`
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Subscription id stored in `sec04DelayedSubscriptionId`
+  - Subscription `queueId` equals the provider queue
+}

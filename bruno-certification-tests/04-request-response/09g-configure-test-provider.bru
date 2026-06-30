@@ -1,0 +1,127 @@
+meta {
+  name: 09g Configure Test Provider
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{immediateProviderEndpointUrl}}/test-control/configure
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "gatewayUrl": "{{gatewayUrl}}",
+    "sessionToken": "{{sec04ProviderSessionToken}}",
+    "sharedSecret": "{{sec04ProviderSharedSecret}}",
+    "domainId": "{{sec04DomainId}}",
+    "solutionId": "{{sec04SolutionId}}",
+    "queueId": "{{sec04ProviderQueueId}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.configured: eq true
+  res.body.delayedPollingEnabled: eq true
+  res.body.queueIdConfigured: eq true
+}
+
+script:pre-request {
+  // Control_Endpoint is UNAUTHENTICATED by design — do NOT add HMAC/auth headers here.
+  const sessionToken = bru.getVar('sec04ProviderSessionToken');
+  const sharedSecret = bru.getVar('sec04ProviderSharedSecret');
+  const queueId = bru.getVar('sec04ProviderQueueId');
+  if (!sessionToken || !sharedSecret) {
+    throw new Error(
+      '04-request-response/09g-configure-test-provider: Missing sec04ProviderSessionToken or ' +
+      'sec04ProviderSharedSecret. Run 05-create-provider-env first.'
+    );
+  }
+  if (!queueId) {
+    throw new Error(
+      '04-request-response/09g-configure-test-provider: Missing sec04ProviderQueueId. Run 09c first.'
+    );
+  }
+
+  const endpointUrl = bru.getEnvVar('immediateProviderEndpointUrl');
+  if (!endpointUrl) {
+    throw new Error(
+      '04-request-response/09g-configure-test-provider: Missing immediateProviderEndpointUrl environment variable. ' +
+      'It must point at the running test-provider base URL (e.g., http://localhost:9091/sif/provider).'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 200) {
+    throw new Error(
+      '04-request-response/09g-configure-test-provider FAILED: expected 200, got ' + status + '. ' +
+      'Is the standalone test-provider running at immediateProviderEndpointUrl? ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  console.log('✓ Test provider configured. configured=' + data.configured +
+    ', delayedPollingEnabled=' + data.delayedPollingEnabled +
+    ', queueIdConfigured=' + data.queueIdConfigured);
+  console.log('  sessionToken (masked):', data.sessionTokenMasked);
+  console.log('  sharedSecret (masked):', data.sharedSecretMasked);
+}
+
+tests {
+  test("Configure returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Provider reports configured: true", function() {
+    expect(res.getBody().configured).to.equal(true);
+  });
+
+  test("Delayed polling enabled (complete credentials + queueId)", function() {
+    expect(res.getBody().delayedPollingEnabled).to.equal(true);
+  });
+
+  test("Response never exposes raw secret", function() {
+    const body = JSON.stringify(res.getBody());
+    const rawSecret = bru.getVar('sec04ProviderSharedSecret');
+    if (rawSecret && rawSecret.length >= 8) {
+      expect(body).to.not.include(rawSecret);
+    }
+  });
+}
+
+docs {
+  ## Summary
+
+  Pushes the provider's runtime credentials and provider queue id to the standalone
+  test-provider via its unauthenticated Control_Endpoint
+  (`POST {{immediateProviderEndpointUrl}}/test-control/configure`), making the suite
+  self-driving for DELAYED→DELAYED without restarting the provider.
+
+  ## Rationale
+
+  The test-provider needs `sessionToken`, `sharedSecret`, `domainId`, `solutionId`, and the
+  provider `queueId` to authenticate to the broker, poll the provider queue, and submit
+  responses. These values only exist after the provider environment (05) and provider queue
+  (09c) are created — the exact chicken-and-egg this feature removes. The Control_Endpoint is
+  intentionally unauthenticated (localhost test tool), so no HMAC headers are sent.
+
+  ## Prerequisites
+
+  - Provider environment (05) — `sec04ProviderSessionToken`, `sec04ProviderSharedSecret`
+  - Provider queue (09c) — `sec04ProviderQueueId`
+  - The standalone test-provider running at `immediateProviderEndpointUrl`
+
+  ## Expected Result
+
+  - HTTP 200 with `configured: true`, `delayedPollingEnabled: true`, `queueIdConfigured: true`
+  - Secrets returned masked only (raw `sharedSecret` never present in the response)
+}

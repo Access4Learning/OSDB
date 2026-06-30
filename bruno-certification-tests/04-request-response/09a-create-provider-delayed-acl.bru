@@ -1,0 +1,96 @@
+meta {
+  name: 09a Create Provider DELAYED ACL
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{sec04ProviderEnvId}}",
+    "serviceName": "{{delayedProviderServiceName}}",
+    "zoneId": "{{sec04ZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "PROVIDE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Admin' });
+
+  const providerEnvId = bru.getVar('sec04ProviderEnvId');
+  const zoneId = bru.getVar('sec04ZoneId');
+  if (!providerEnvId || !zoneId) {
+    throw new Error(
+      '04-request-response/09a-create-provider-delayed-acl: Missing sec04ProviderEnvId or sec04ZoneId. ' +
+      'Run the setup steps first.'
+    );
+  }
+
+  const serviceName = bru.getEnvVar('delayedProviderServiceName');
+  if (!serviceName) {
+    throw new Error(
+      '04-request-response/09a-create-provider-delayed-acl: Missing environment variable "delayedProviderServiceName". ' +
+      'Set it in your environment file (e.g., environments/local.bru).'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '04-request-response/09a-create-provider-delayed-acl: Failed to create PROVIDE ACL, got ' + status +
+      '. Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec04DelayedProvideAclId', data.id);
+  console.log('✓ Created DELAYED PROVIDE ACL:', data.id);
+}
+
+tests {
+  test("Provider DELAYED PROVIDE ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a PROVIDE ACL entry authorizing the provider environment to serve the
+  dedicated DELAYED-only service object (`delayedProviderServiceName`).
+
+  ## Rationale
+
+  The DELAYED→DELAYED choreography requires a provider registration that supports the
+  DELAYED request type. The broker's RoutingService selects DELAYED→DELAYED purely on
+  provider capability, so the IMMEDIATE service (`immediateProviderServiceName`) cannot
+  also be DELAYED without changing the IMMEDIATE tests. To keep both choreographies under
+  the same provider environment, a second, DELAYED-only service object is used. This ACL
+  is the foundation for that service's registration and DELAYED_REQUEST subscription.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - PROVIDE ACL id stored in `sec04DelayedProvideAclId`
+}

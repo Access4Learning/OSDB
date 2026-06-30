@@ -38,17 +38,27 @@ assert {
 }
 
 tests {
+  // GET /zones returns the SIF double-nested collection wrapper:
+  //   { "zones": { "zone": [ ... ] } }
+  // Fall back to a few shapes for robustness.
+  function extractZones(body) {
+    if (Array.isArray(body)) return body;
+    if (body && body.zones && Array.isArray(body.zones.zone)) return body.zones.zone;
+    if (body && Array.isArray(body.zones)) return body.zones;
+    if (body && Array.isArray(body.zone)) return body.zone;
+    if (body && Array.isArray(body.data)) return body.data;
+    return [];
+  }
+
   test("Deleted zone is NOT in the response list", function() {
-    const body = res.getBody();
-    const zones = Array.isArray(body) ? body : (body.zones || body.data || []);
+    const zones = extractZones(res.getBody());
     const deletedZoneId = bru.getVar('sec01DeleteTestZoneId');
     const found = zones.some(z => z.zoneId === deletedZoneId || z.id === deletedZoneId);
     expect(found).to.be.false;
   });
 
   test("Primary zone sec01ZoneId is still present (sibling isolation)", function() {
-    const body = res.getBody();
-    const zones = Array.isArray(body) ? body : (body.zones || body.data || []);
+    const zones = extractZones(res.getBody());
     const primaryZoneId = bru.getVar('sec01ZoneId');
     const found = zones.some(z => z.zoneId === primaryZoneId || z.id === primaryZoneId);
     expect(found).to.be.true;

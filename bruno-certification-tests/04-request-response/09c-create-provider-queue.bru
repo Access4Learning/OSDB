@@ -1,0 +1,86 @@
+meta {
+  name: 09c Create Provider Queue
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "cert-reqresp-provider-queue",
+      "ownerId": "{{sec04ProviderEnvId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.queue.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Provider' });
+
+  const providerEnvId = bru.getVar('sec04ProviderEnvId');
+  if (!providerEnvId) {
+    throw new Error(
+      '04-request-response/09c-create-provider-queue: Missing sec04ProviderEnvId. ' +
+      'Run 05-create-provider-env first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '04-request-response/09c-create-provider-queue FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const data = res.getBody();
+  bru.setVar('sec04ProviderQueueId', data.queue.id);
+  console.log('✓ Created provider queue:', data.queue.id);
+}
+
+tests {
+  test("Provider queue created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().queue.id).to.exist;
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a queue owned by the provider environment for receiving DELAYED requests.
+
+  ## Rationale
+
+  In the DELAYED→DELAYED choreography the broker enqueues the consumer's request into
+  the provider's queue (resolved via the provider's DELAYED_REQUEST subscription). The
+  standalone test-provider polls this queue (when triggered via its `/test-control/poll`
+  endpoint), processes the request, and submits the response through the Responses
+  Connector.
+
+  ## Expected Result
+
+  - HTTP 201 Created
+  - Provider queue id stored in `sec04ProviderQueueId`
+}

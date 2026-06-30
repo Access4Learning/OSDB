@@ -75,16 +75,40 @@ docs {
   ## Prerequisites
 
   - This section is self-contained (creates its own domain/solution)
-  - An external provider endpoint must be running at the URL configured in
-    `immediateProviderEndpointUrl` (environment variable)
-  - The provider must serve the service name configured in `immediateProviderServiceName`
+  - The standalone **test-provider** app must be running at the URL configured in
+    `immediateProviderEndpointUrl` (environment variable). With only that URL pre-configured,
+    the suite drives the provider end-to-end:
+    - For IMMEDIATE and DELAYED→IMMEDIATE, the broker proxies to the test-provider's HTTP
+      endpoint for `immediateProviderServiceName`.
+    - For DELAYED→DELAYED, the suite registers a dedicated DELAYED-only service
+      (`delayedProviderServiceName`) on the same provider environment, configures the
+      test-provider at runtime via its unauthenticated `POST /test-control/configure`
+      endpoint (step 09g), and triggers each poll cycle via `POST /test-control/poll`
+      (step 13a) — no provider restart required.
+
+  ## Self-Driving DELAYED→DELAYED Wiring
+
+  The broker's RoutingService picks DELAYED→DELAYED vs DELAYED→IMMEDIATE from the matched
+  provider registration's `supportedRequestTypes` (DELAYED is checked first). To keep a true
+  DELAYED→IMMEDIATE test (step 12) and a true DELAYED→DELAYED test (step 13) under one provider
+  environment, two service objects are used:
+
+  - `immediateProviderServiceName` (IMMEDIATE only) — steps 10, 11, 12, 14
+  - `delayedProviderServiceName` (DELAYED only) — step 13
+
+  The DELAYED service is wired in steps 09a–09g: provider PROVIDE ACL, consumer QUERY ACL,
+  provider queue, provider options lookup, DELAYED registration, DELAYED_REQUEST subscription,
+  and the test-provider runtime configure call.
 
   ## Expected Behavior
 
-  - Setup creates a zone, provider env (DIRECT), consumer env (BROKERED), ACLs, and queue
-  - Provider is registered with IMMEDIATE support pointing to the external endpoint
+  - Setup creates a zone, provider env (BROKERED), consumer env (BROKERED), ACLs, and a consumer queue
+  - The IMMEDIATE service is registered pointing to the external test-provider endpoint
+  - A dedicated DELAYED-only service is registered and bound to a provider queue via a
+    DELAYED_REQUEST subscription; the test-provider is configured at runtime
   - IMMEDIATE requests return 200 with provider response body
-  - DELAYED requests return 202; polling the queue yields the response
+  - DELAYED requests return 202; polling the consumer queue yields the response (the provider is
+    driven on demand via `POST /test-control/poll`)
   - Requests for unregistered services return 404
   - DELAYED requests without queueId return an error response
   - Teardown removes all section-specific resources
