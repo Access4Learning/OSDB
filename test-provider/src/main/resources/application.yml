@@ -1,0 +1,56 @@
+# =============================================================================
+# SIF Test Provider — Configuration
+# =============================================================================
+# This is a standalone test provider that responds to IMMEDIATE requests
+# (proxied by the broker) and optionally polls a queue for DELAYED requests.
+#
+# After registering this provider via Bruno, paste the session token and
+# shared secret below (or pass them as environment variables).
+# =============================================================================
+
+server:
+  port: 9091
+  servlet:
+    context-path: /sif/provider
+
+spring:
+  application:
+    name: sif-test-provider
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+# ---------------------------------------------------------------------------
+# Provider settings
+# ---------------------------------------------------------------------------
+provider:
+  gateway-url: ${PROVIDER_GATEWAY_URL:http://localhost:8080}
+  session-token: ${PROVIDER_SESSION_TOKEN:}
+  shared-secret: ${PROVIDER_SHARED_SECRET:}
+  domain-id: ${PROVIDER_DOMAIN_ID:}
+  solution-id: ${PROVIDER_SOLUTION_ID:}
+  # Set queue-id to enable delayed request polling; leave unset to disable
+  #queue-id: ${PROVIDER_QUEUE_ID:}
+  port: ${server.port}
+
+# ---------------------------------------------------------------------------
+# Actuator
+# ---------------------------------------------------------------------------
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+logging:
+  level:
+    org.sifunity.testprovider: INFO
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
