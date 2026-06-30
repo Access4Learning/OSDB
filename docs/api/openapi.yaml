@@ -1,0 +1,1015 @@
+openapi: 3.0.3
+info:
+  title: SIF Unity Broker API
+  description: >
+    REST API for the SIF Unity Broker implementing the SIF 3.7 specification.
+    All authenticated endpoints require an Authorization header with HMAC-SHA256
+    signature and a timestamp header used in the signature computation.
+  version: 1.0.0
+  contact:
+    name: SIF Unity Broker Team
+  license:
+    name: Proprietary
+servers:
+  - url: /
+    description: Default
+security:
+  - sifHmac: []
+tags:
+  - name: Domains
+    description: Domain (tenant) management
+  - name: Solutions
+    description: Solution management within domains
+  - name: Zones
+    description: Zone management
+  - name: Contexts
+    description: Context management within zones
+  - name: Environments
+    description: Environment registration and management
+  - name: ACLs
+    description: Access Control List management
+  - name: Providers
+    description: Provider service registration and discovery
+paths:
+  # ── Domains ──
+  /domains:
+    post:
+      tags: [Domains]
+      summary: Create a domain
+      operationId: createDomain
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/Timestamp"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DomainCreateRequest"
+      responses:
+        "201":
+          description: Domain created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainDTO"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    get:
+      tags: [Domains]
+      summary: List all domains
+      operationId: listDomains
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/Timestamp"
+      responses:
+        "200":
+          description: SIF collection wrapper containing domains
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainCollection"
+  /domains/{domainId}:
+    parameters:
+      - name: domainId
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: "#/components/parameters/Authorization"
+      - $ref: "#/components/parameters/Timestamp"
+    get:
+      tags: [Domains]
+      summary: Get a domain
+      operationId: getDomain
+      responses:
+        "200":
+          description: Domain found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainDTO"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Domains]
+      summary: Update a domain description
+      operationId: updateDomain
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DomainUpdateRequest"
+      responses:
+        "200":
+          description: Domain updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainDTO"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Domains]
+      summary: Delete a domain (cascades to all children)
+      operationId: deleteDomain
+      responses:
+        "204":
+          description: Domain deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+  # ── Solutions ──
+  /solutions:
+    post:
+      tags: [Solutions]
+      summary: Create a solution
+      operationId: createSolution
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/Timestamp"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolutionCreateRequest"
+      responses:
+        "201":
+          description: Solution created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SolutionDTO"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    get:
+      tags: [Solutions]
+      summary: List solutions (optionally by domain)
+      operationId: listSolutions
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/Timestamp"
+        - name: domainId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: SIF collection wrapper containing solutions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SolutionCollection"
+  /solutions/{solutionId}:
+    parameters:
+      - name: solutionId
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: "#/components/parameters/Authorization"
+      - $ref: "#/components/parameters/Timestamp"
+    get:
+      tags: [Solutions]
+      summary: Get a solution
+      operationId: getSolution
+      responses:
+        "200":
+          description: Solution found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SolutionDTO"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Solutions]
+      summary: Update a solution description
+      operationId: updateSolution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolutionUpdateRequest"
+      responses:
+        "200":
+          description: Solution updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SolutionDTO"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Solutions]
+      summary: Delete a solution (cascades to zones, contexts, environments)
+      operationId: deleteSolution
+      responses:
+        "204":
+          description: Solution deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+  # ── Zones ──
+  /zones:
+    post:
+      tags: [Zones]
+      summary: Create a zone
+      operationId: createZone
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/Timestamp"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ZoneCreateRequest"
+      responses:
+        "201":
+          description: Zone created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneDTO"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    get:
+      tags: [Zones]
+      summary: List zones (optionally by solution)
+      operationId: listZones
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/Timestamp"
+        - name: solutionId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: SIF collection wrapper containing zones
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneCollection"
+  # ── Contexts ──
+  /zones/{zoneId}/contexts:
+    parameters:
+      - name: zoneId
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: "#/components/parameters/Authorization"
+      - $ref: "#/components/parameters/Timestamp"
+    post:
+      tags: [Contexts]
+      summary: Create a context within a zone
+      operationId: createContext
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContextCreateRequest"
+      responses:
+        "201":
+          description: Context created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContextDTO"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    get:
+      tags: [Contexts]
+      summary: List contexts within a zone
+      operationId: listContexts
+      responses:
+        "200":
+          description: SIF collection wrapper containing contexts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContextCollection"
+  # ── Environments ──
+  /environments:
+    post:
+      tags: [Environments]
+      summary: Register a new environment (no auth required)
+      operationId: registerEnvironment
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnvironmentRegistrationRequest"
+      responses:
+        "201":
+          description: Environment registered (sharedSecret only returned here)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvironmentRegistrationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    get:
+      tags: [Environments]
+      summary: List environments
+      operationId: listEnvironments
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/Timestamp"
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/EnvironmentType"
+        - name: solutionId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        "200":
+          description: Page of environments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvironmentPage"
+  /environments/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: "#/components/parameters/Authorization"
+      - $ref: "#/components/parameters/Timestamp"
+    get:
+      tags: [Environments]
+      summary: Get an environment by ID
+      operationId: getEnvironment
+      responses:
+        "200":
+          description: Environment found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Environment"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Environments]
+      summary: Delete an environment
+      operationId: deleteEnvironment
+      responses:
+        "204":
+          description: Environment deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+  # ── ACLs ──
+  /acl-entries:
+    post:
+      tags: [ACLs]
+      summary: Create an ACL entry
+      operationId: createAclEntry
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/Timestamp"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AclEntryCreateRequest"
+      responses:
+        "201":
+          description: ACL entry created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AclEntryDTO"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    get:
+      tags: [ACLs]
+      summary: List ACL entries for an environment
+      operationId: listAclEntries
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/Timestamp"
+        - name: environmentId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of ACL entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AclEntryDTO"
+  /acl-entries/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: "#/components/parameters/Authorization"
+      - $ref: "#/components/parameters/Timestamp"
+    put:
+      tags: [ACLs]
+      summary: Update an ACL entry access level
+      operationId: updateAclEntry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AclEntryUpdateRequest"
+      responses:
+        "200":
+          description: ACL entry updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AclEntryDTO"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [ACLs]
+      summary: Delete an ACL entry
+      operationId: deleteAclEntry
+      responses:
+        "204":
+          description: ACL entry deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+  # ── Providers ──
+  /provider-registrations:
+    post:
+      tags: [Providers]
+      summary: Register a provider service
+      operationId: registerProvider
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/Timestamp"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderRegistrationRequest"
+      responses:
+        "201":
+          description: Provider registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderRegistrationDTO"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    get:
+      tags: [Providers]
+      summary: List provider registrations for an environment
+      operationId: listProviderRegistrations
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/Timestamp"
+        - name: environmentId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of provider registrations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProviderRegistrationDTO"
+  /provider-registrations/lookup:
+    get:
+      tags: [Providers]
+      summary: Look up a provider by service, zone, and context
+      operationId: lookupProvider
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+        - $ref: "#/components/parameters/Timestamp"
+        - name: serviceName
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: zoneId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: contextId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Provider found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderRegistrationDTO"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /provider-registrations/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: "#/components/parameters/Authorization"
+      - $ref: "#/components/parameters/Timestamp"
+    delete:
+      tags: [Providers]
+      summary: Delete a provider registration
+      operationId: deleteProviderRegistration
+      responses:
+        "204":
+          description: Provider registration deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  securitySchemes:
+    sifHmac:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: >
+        SIF HMAC-SHA256 authentication.
+        Format: SIF_HMACSHA256 Base64(sessionToken:hash)
+        where hash = HMAC-SHA256(sessionToken:timestamp, sharedSecret).
+        Must be accompanied by a timestamp header.
+  parameters:
+    Authorization:
+      name: Authorization
+      in: header
+      required: true
+      description: "SIF_HMACSHA256 Base64(sessionToken:hash)"
+      schema:
+        type: string
+      example: "SIF_HMACSHA256 YWRtaW4tYm9vdHN0cmFwLXRva2VuOmhhc2g="
+    Timestamp:
+      name: timestamp
+      in: header
+      required: true
+      description: ISO 8601 timestamp used in HMAC signature computation
+      schema:
+        type: string
+        format: date-time
+      example: "2026-01-21T06:30:00.000Z"
+  responses:
+    BadRequest:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SifErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SifErrorResponse"
+    Conflict:
+      description: Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SifErrorResponse"
+  schemas:
+    SifErrorResponse:
+      type: object
+      properties:
+        code: { type: string, example: AUTH_001 }
+        message: { type: string }
+        description: { type: string }
+        scope: { type: string, example: BROKER }
+        timestamp: { type: string, format: date-time }
+        field: { type: string }
+        stackTrace: { type: string }
+    EnvironmentType:
+      type: string
+      enum: [DIRECT, BROKERED, ADMIN]
+    AccessType:
+      type: string
+      enum: [QUERY, CREATE, UPDATE, DELETE, SUBSCRIBE, PROVIDE]
+    AccessLevel:
+      type: string
+      enum: [APPROVED, SUPPORTED, REJECTED, UNSUPPORTED, REQUESTED]
+    MessageExchangePattern:
+      type: string
+      enum: [IMMEDIATE, DELAYED, EVENT]
+    DomainCreateRequest:
+      type: object
+      required: [domainId]
+      properties:
+        domainId:
+          type: string
+          pattern: "^[a-zA-Z0-9]([a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
+        description:
+          type: string
+    DomainUpdateRequest:
+      type: object
+      properties:
+        description: { type: string }
+    DomainDTO:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        domainId: { type: string }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+    SolutionCreateRequest:
+      type: object
+      required: [domainId, solutionId]
+      properties:
+        domainId: { type: string }
+        solutionId:
+          type: string
+          pattern: "^[a-zA-Z0-9]([a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
+        description: { type: string }
+    SolutionUpdateRequest:
+      type: object
+      properties:
+        description: { type: string }
+    SolutionDTO:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        domainId: { type: string }
+        solutionId: { type: string }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+    ZoneCreateRequest:
+      type: object
+      required: [solutionId, zoneId]
+      properties:
+        solutionId: { type: string }
+        zoneId:
+          type: string
+          pattern: "^[a-zA-Z0-9]([a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
+        description: { type: string }
+    ZoneDTO:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        solutionId: { type: string }
+        zoneId: { type: string }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+    ContextCreateRequest:
+      type: object
+      required: [contextId]
+      properties:
+        contextId:
+          type: string
+          pattern: "^[a-zA-Z0-9]([a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
+        description: { type: string }
+    ContextDTO:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        zoneId: { type: string }
+        contextId: { type: string }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+    EnvironmentRegistrationRequest:
+      type: object
+      required: [applicationName, type, defaultZoneId]
+      properties:
+        applicationName: { type: string }
+        type: { $ref: "#/components/schemas/EnvironmentType" }
+        defaultZoneId: { type: string }
+        defaultContextId: { type: string }
+        solutionId:
+          type: string
+          description: Optional SIF 3.3 solutionId — advisory, may be reflected in infrastructure service URLs
+        applicationInfo:
+          $ref: "#/components/schemas/ApplicationInfo"
+    EnvironmentRegistrationResponse:
+      description: >
+        Full SIF environment object returned after registration.
+        The sharedSecret is only returned here and must be stored securely.
+      allOf:
+        - $ref: "#/components/schemas/Environment"
+        - type: object
+          properties:
+            sharedSecret:
+              type: string
+              description: Only returned during registration — store securely
+    Environment:
+      type: object
+      description: SIF 3.7 Environment object
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: "#/components/schemas/EnvironmentType" }
+        fingerprint:
+          type: string
+          description: Unique shareable identifier (must not match refId, sessionToken, userToken, or applicationKey)
+        sessionToken: { type: string }
+        solutionId: { type: string }
+        defaultZone:
+          $ref: "#/components/schemas/DefaultZone"
+        authenticationMethod:
+          type: string
+          description: How the applicationKey enforces security (e.g. SIF_HMACSHA256)
+        instanceId: { type: string }
+        userToken: { type: string }
+        consumerName:
+          type: string
+          description: Descriptive name identifiable to Zone Administrators
+        applicationInfo:
+          $ref: "#/components/schemas/ApplicationInfo"
+        infrastructureServices:
+          $ref: "#/components/schemas/InfrastructureServices"
+        provisionedZones:
+          $ref: "#/components/schemas/ProvisionedZones"
+    DefaultZone:
+      type: object
+      properties:
+        id: { type: string }
+    ApplicationInfo:
+      type: object
+      properties:
+        applicationKey: { type: string }
+        supportedInfrastructureVersion: { type: string }
+        dataModelNamespace: { type: string, format: uri }
+        transport: { type: string }
+        applicationProduct:
+          $ref: "#/components/schemas/ProductIdentity"
+        adapterProduct:
+          $ref: "#/components/schemas/ProductIdentity"
+    ProductIdentity:
+      type: object
+      properties:
+        vendorName: { type: string }
+        productName: { type: string }
+        productVersion: { type: string }
+        iconURI: { type: string, format: uri }
+    InfrastructureServices:
+      type: object
+      properties:
+        infrastructureService:
+          type: array
+          items:
+            $ref: "#/components/schemas/InfrastructureService"
+    InfrastructureService:
+      type: object
+      description: URL of a broker infrastructure service endpoint
+      properties:
+        name:
+          type: string
+          enum:
+            - environment
+            - provisionRequests
+            - requestsConnector
+            - eventsConnector
+            - queues
+            - subscriptions
+            - servicesConnector
+            - responsesConnector
+        value:
+          type: string
+          format: uri
+          description: Base URL of the service
+    ProvisionedZones:
+      type: object
+      properties:
+        provisionedZone:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProvisionedZone"
+    ProvisionedZone:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Zone identifier
+        services:
+          type: object
+          properties:
+            service:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProvisionedService"
+    ProvisionedService:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [UTILITY, OBJECT, FUNCTIONAL, SERVICEPATH, XQUERYTEMPLATE, SERVICE]
+        name: { type: string }
+        contextId: { type: string }
+        rights:
+          type: object
+          properties:
+            right:
+              type: array
+              items:
+                $ref: "#/components/schemas/Right"
+    Right:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [QUERY, CREATE, UPDATE, DELETE, SUBSCRIBE, PROVIDE]
+        value:
+          type: string
+          enum: [APPROVED, SUPPORTED, REJECTED, UNSUPPORTED, REQUESTED]
+    EnvironmentPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items: { $ref: "#/components/schemas/Environment" }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+        number: { type: integer }
+        size: { type: integer }
+    AclEntryCreateRequest:
+      type: object
+      required: [environmentId, serviceName, zoneId, accessType, accessLevel]
+      properties:
+        environmentId: { type: string, format: uuid }
+        serviceName: { type: string }
+        zoneId: { type: string }
+        contextId: { type: string }
+        accessType: { $ref: "#/components/schemas/AccessType" }
+        accessLevel: { $ref: "#/components/schemas/AccessLevel" }
+    AclEntryUpdateRequest:
+      type: object
+      required: [accessLevel]
+      properties:
+        accessLevel: { $ref: "#/components/schemas/AccessLevel" }
+    AclEntryDTO:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        environmentId: { type: string, format: uuid }
+        serviceName: { type: string }
+        zoneId: { type: string }
+        contextId: { type: string }
+        accessType: { $ref: "#/components/schemas/AccessType" }
+        accessLevel: { $ref: "#/components/schemas/AccessLevel" }
+    ProviderRegistrationRequest:
+      type: object
+      required: [environmentId, serviceName, zoneId, endpoint, supportedPatterns]
+      properties:
+        environmentId: { type: string, format: uuid }
+        serviceName: { type: string }
+        zoneId: { type: string }
+        contextId: { type: string }
+        endpoint: { type: string, format: uri }
+        supportedPatterns:
+          type: array
+          items: { $ref: "#/components/schemas/MessageExchangePattern" }
+          minItems: 1
+    ProviderRegistrationDTO:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        environmentId: { type: string, format: uuid }
+        serviceName: { type: string }
+        zoneId: { type: string }
+        contextId: { type: string }
+        endpoint: { type: string, format: uri }
+        supportedPatterns:
+          type: array
+          items: { $ref: "#/components/schemas/MessageExchangePattern" }
+        registeredAt: { type: string, format: date-time }
+    # ── SIF Collection Wrappers ──
+    # SIF 3.7 requires collection responses to use a double-nested wrapper:
+    # {"<plural>": {"<singular>": [...]}}
+    # These schemas define the wrapper structure for each collection endpoint.
+    DomainCollection:
+      type: object
+      description: SIF 3.7 collection wrapper for domains
+      properties:
+        domains:
+          type: object
+          properties:
+            domain:
+              type: array
+              items:
+                $ref: "#/components/schemas/DomainDTO"
+      example:
+        domains:
+          domain:
+            - id: "550e8400-e29b-41d4-a716-446655440000"
+              domainId: "state-a-edu"
+              description: "State A Department of Education"
+    SolutionCollection:
+      type: object
+      description: SIF 3.7 collection wrapper for solutions
+      properties:
+        solutions:
+          type: object
+          properties:
+            solution:
+              type: array
+              items:
+                $ref: "#/components/schemas/SolutionDTO"
+      example:
+        solutions:
+          solution:
+            - id: "660f9511-f30c-52e5-b827-557766551111"
+              domainId: "state-a-edu"
+              solutionId: "production"
+              description: "Production environment"
+    ZoneCollection:
+      type: object
+      description: SIF 3.7 collection wrapper for zones
+      properties:
+        zones:
+          type: object
+          properties:
+            zone:
+              type: array
+              items:
+                $ref: "#/components/schemas/ZoneDTO"
+      example:
+        zones:
+          zone:
+            - id: "770a0622-a41d-63f6-c938-668877662222"
+              solutionId: "production"
+              zoneId: "district-001"
+              description: "District 001"
+    ContextCollection:
+      type: object
+      description: SIF 3.7 collection wrapper for contexts
+      properties:
+        contexts:
+          type: object
+          properties:
+            context:
+              type: array
+              items:
+                $ref: "#/components/schemas/ContextDTO"
+      example:
+        contexts:
+          context:
+            - id: "880b1733-b52e-74g7-d049-779988773333"
+              zoneId: "district-001"
+              contextId: "DEFAULT"
+              description: "Default context"
