@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/provider-registrations
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/providers/provider
   body: json
   auth: none
 }
@@ -85,7 +85,7 @@ tests {
 docs {
   ## Summary
   Registers the provider to serve the "StudentSnapshot" Named Query via
-  POST /provider-registrations with serviceType=XQUERYTEMPLATE.
+  POST /providers/provider with serviceType=XQUERYTEMPLATE.
 
   ## Rationale
   Per the decoupled architecture (xquery-provider-registration-fix), template catalog

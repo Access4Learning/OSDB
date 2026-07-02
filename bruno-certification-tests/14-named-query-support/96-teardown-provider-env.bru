@@ -1,0 +1,56 @@
+meta {
+  name: 96 Teardown Provider Environment
+  type: http
+  seq: 96
+}
+
+delete {
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/environments/{{sec14ProviderEnvId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec14Admin' });
+}
+
+script:post-response {
+  // Surgical teardown: delete the provider environment this section created.
+  // Deleting the environment cascades its ACL entries, provider registrations,
+  // and queues. Tolerant by design — teardown must never fail the run.
+  const status = res.getStatus();
+  const envId = bru.getVar('sec14ProviderEnvId');
+  if (!envId) {
+    console.log('• No sec14ProviderEnvId to delete — skipping');
+  } else if (status === 200 || status === 204) {
+    console.log('✓ Provider environment deleted: ' + envId);
+  } else if (status === 404) {
+    console.log('✓ Provider environment already gone (404): ' + envId);
+  } else {
+    console.error('⚠ Unexpected status ' + status + ' deleting provider env ' + envId + ' — continuing');
+  }
+  bru.setVar('sec14ProviderEnvId', null);
+  bru.setVar('sec14ProviderSessionToken', null);
+  bru.setVar('sec14ProviderSharedSecret', null);
+}
+
+docs {
+  ## Summary
+
+  Deletes the provider environment created in step 05. Runs in both global-admin and
+  solution-admin modes (untagged). Deleting the environment cascades its ACL entries,
+  provider registrations, and queues, so no separate cleanup of those is needed.
+
+  ## Expected Result
+
+  - HTTP 200/204: environment deleted
+  - HTTP 404: already removed
+  - Missing variable: skipped (no-op)
+}

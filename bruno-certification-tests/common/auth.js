@@ -123,4 +123,39 @@ function setAuthHeaders(req, bru, roleOrOptions = 'consumer') {
   }
 }
 
-module.exports = { setAuthHeaders };
+module.exports = { setAuthHeaders, isGlobalAdminRun, sectionAdminRole };
+
+/**
+ * Returns true if this run should execute as the global admin (the default),
+ * or false if it should run as a per-solution "solution admin" (broker-services).
+ *
+ * Controlled by the `runAsGlobalAdmin` environment variable. Defaults to true
+ * when unset, so existing runs are unaffected.
+ *
+ * @param {Object} bru - Bruno utility object
+ * @returns {boolean}
+ */
+function isGlobalAdminRun(bru) {
+  const v = bru.getEnvVar('runAsGlobalAdmin');
+  if (v === undefined || v === null || v === '') {
+    return true; // default: global admin
+  }
+  return String(v).toLowerCase() === 'true';
+}
+
+/**
+ * Returns the .env credential role that section operational tests should
+ * authenticate as:
+ *   - global-admin run  → 'admin'         (reads {currentEnv}-adminSessionToken/SharedSecret)
+ *   - solution-admin run → 'solutionAdmin' (reads {currentEnv}-solutionAdminSessionToken/SharedSecret)
+ *
+ * Tests tagged `globaladminonly` should NOT use this — they always require the
+ * global admin ('admin') and are excluded from solution-admin runs via
+ * `--exclude-tags globaladminonly`.
+ *
+ * @param {Object} bru - Bruno utility object
+ * @returns {string} role name for setAuthHeaders
+ */
+function sectionAdminRole(bru) {
+  return isGlobalAdminRun(bru) ? 'admin' : 'solutionAdmin';
+}

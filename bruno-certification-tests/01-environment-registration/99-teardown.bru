@@ -2,6 +2,9 @@ meta {
   name: 99 Teardown
   type: http
   seq: 99
+  tags: [
+    globaladminonly
+  ]
 }
 
 delete {
@@ -43,6 +46,11 @@ script:post-response {
 docs {
   ## Summary
   Deletes the test domain, which cascade-deletes the solution and all resources within it.
+
+  Tagged `globaladminonly`: this runs only in global-admin mode. In solution-admin runs
+  (`runAsGlobalAdmin: false`) it is excluded via `--exclude-tags globaladminonly`, and the
+  surgical teardown steps (96–98) clean up only the environments and zone this section
+  created — the pre-provisioned domain/solution are left intact.
 
   ## Expected Result
   - HTTP 200/204: Domain and all child resources deleted

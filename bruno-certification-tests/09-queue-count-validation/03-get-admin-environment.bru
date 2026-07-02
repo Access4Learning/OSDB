@@ -17,14 +17,39 @@ headers {
 
 script:pre-request {
   const auth = require('./common/auth.js');
-  auth.setAuthHeaders(req, bru, 'admin');
+
+  // In solution-admin runs, the create-domain / create-solution steps are excluded
+  // (globaladminonly), so resolve the pre-provisioned scope from .env here.
+  if (!auth.isGlobalAdminRun(bru)) {
+    const envPrefix = bru.getEnvVar('currentEnv');
+    const domainId = bru.interpolate('{{process.env.' + envPrefix + '-domainId}}');
+    const solutionId = bru.interpolate('{{process.env.' + envPrefix + '-solutionId}}');
+    if (!domainId || domainId.indexOf('process.env') !== -1) {
+      throw new Error(
+        '09-queue-count-validation/03-get-admin-environment: solution-admin run requires .env key "'
+        + envPrefix + '-domainId".'
+      );
+    }
+    if (!solutionId || solutionId.indexOf('process.env') !== -1) {
+      throw new Error(
+        '09-queue-count-validation/03-get-admin-environment: solution-admin run requires .env key "'
+        + envPrefix + '-solutionId".'
+      );
+    }
+    bru.setVar('sec09DomainId', domainId);
+    bru.setVar('sec09SolutionId', solutionId);
+  }
+
+  // Global-admin runs authenticate as 'admin'; solution-admin runs as 'solutionAdmin'.
+  auth.setAuthHeaders(req, bru, auth.sectionAdminRole(bru));
 
   const domainId = bru.getVar('sec09DomainId');
   const solutionId = bru.getVar('sec09SolutionId');
   if (!domainId || !solutionId) {
     throw new Error(
       '09-queue-count-validation/03-get-admin-environment: Missing sec09DomainId or sec09SolutionId. ' +
-      'Steps 01 and 02 must run first.'
+      'In global-admin runs, steps 01-create-domain and 02-create-solution must run first; ' +
+      'in solution-admin runs, set {currentEnv}-domainId / -solutionId in .env.'
     );
   }
 }
@@ -39,6 +64,9 @@ script:post-response {
   }
 
   const data = res.getBody();
+
+  // Parse environment list from SIF collection response
+  // Response shape: { "environments": { "environment": [...] } }
   let envs = [];
   if (Array.isArray(data)) {
     envs = data;
@@ -52,6 +80,7 @@ script:post-response {
     envs = data.content;
   }
 
+  // Find the broker-services environment
   const brokerEnv = envs.find(e =>
     (e.fingerprint && e.fingerprint === 'broker-services') ||
     (e.consumerName && e.consumerName.startsWith('BROKER_SERVICES'))
@@ -59,29 +88,47 @@ script:post-response {
 
   if (!brokerEnv) {
     throw new Error(
-      '09-queue-count-validation/03-get-admin-environment FAILED: No broker-services environment found. ' +
-      'Found ' + envs.length + ' environment(s).'
+      '09-queue-count-validation/03-get-admin-environment FAILED: ' +
+      'No broker-services environment found in solution "' + bru.getVar('sec09SolutionId') + '". ' +
+      'Found ' + envs.length + ' environment(s): ' +
+      envs.map(e => (e.consumerName || e.applicationName || 'unnamed') + ' (' + (e.fingerprint || 'no-fingerprint') + ')').join(', ')
     );
   }
 
   bru.setVar('sec09AdminEnvironmentId', brokerEnv.id);
 
+  // Store admin credentials from .env into Bruno vars for { varPrefix: 'sec09Admin' } usage.
+  // Global-admin runs use the 'admin' role; solution-admin runs use 'solutionAdmin'.
+  const auth = require('./common/auth.js');
   const envPrefix = bru.getEnvVar('currentEnv');
-  const sessionTokenPath = '{{process.env.' + envPrefix + '-adminSessionToken}}';
-  const sharedSecretPath = '{{process.env.' + envPrefix + '-adminSharedSecret}}';
+  const role = auth.sectionAdminRole(bru);
+  const sessionTokenKey = envPrefix + '-' + role + 'SessionToken';
+  const sharedSecretKey = envPrefix + '-' + role + 'SharedSecret';
+  const sessionTokenPath = '{{process.env.' + sessionTokenKey + '}}';
+  const sharedSecretPath = '{{process.env.' + sharedSecretKey + '}}';
+
   const adminSessionToken = bru.interpolate(sessionTokenPath);
   const adminSharedSecret = bru.interpolate(sharedSecretPath);
 
   if (!adminSessionToken || adminSessionToken === sessionTokenPath) {
-    throw new Error('Could not resolve admin session token from .env');
+    throw new Error(
+      '09-queue-count-validation/03-get-admin-environment: Could not resolve admin session token. ' +
+      'Expected .env key: ' + sessionTokenKey
+    );
   }
   if (!adminSharedSecret || adminSharedSecret === sharedSecretPath) {
-    throw new Error('Could not resolve admin shared secret from .env');
+    throw new Error(
+      '09-queue-count-validation/03-get-admin-environment: Could not resolve admin shared secret. ' +
+      'Expected .env key: ' + sharedSecretKey
+    );
   }
 
   bru.setVar('sec09AdminSessionToken', adminSessionToken);
   bru.setVar('sec09AdminSharedSecret', adminSharedSecret);
-  console.log('Admin environment found: ' + brokerEnv.id);
+
+  console.log('✓ Admin environment found: ' + brokerEnv.id);
+  console.log('  sec09AdminSessionToken: stored');
+  console.log('  sec09AdminSharedSecret: stored');
 }
 
 docs {
@@ -90,5 +137,5 @@ docs {
 
   ## Expected Result
   - HTTP 200 OK
-  - sec09AdminEnvironmentId, sec09AdminSessionToken, sec09AdminSharedSecret stored
+  - `sec09AdminEnvironmentId`, `sec09AdminSessionToken`, `sec09AdminSharedSecret` stored
 }

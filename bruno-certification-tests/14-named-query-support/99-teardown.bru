@@ -4,6 +4,7 @@ meta {
   seq: 99
   tags: [
     teardown
+    globaladminonly
   ]
 }
 
@@ -58,7 +59,12 @@ docs {
   ## Summary
   Deletes the test domain, which cascade-deletes the solution and all resources
   within it (environments, ACLs, zones, xQueryTemplates, provider registrations).
-  
+
+  Tagged `globaladminonly`: this runs only in global-admin mode. In solution-admin runs
+  (`runAsGlobalAdmin: false`) it is excluded via `--exclude-tags globaladminonly`, and the
+  surgical teardown steps (96–98) clean up only the environments and zone this section
+  created — the pre-provisioned domain/solution are left intact.
+
   ## Expected Result
   - HTTP 200/204: Domain and all child resources deleted
   - HTTP 404: Already cleaned up (idempotent)

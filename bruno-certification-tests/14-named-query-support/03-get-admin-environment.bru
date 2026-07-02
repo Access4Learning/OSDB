@@ -17,14 +17,39 @@ headers {
 
 script:pre-request {
   const auth = require('./common/auth.js');
-  auth.setAuthHeaders(req, bru, 'admin');
+
+  // In solution-admin runs, the create-domain / create-solution steps are excluded
+  // (globaladminonly), so resolve the pre-provisioned scope from .env here.
+  if (!auth.isGlobalAdminRun(bru)) {
+    const envPrefix = bru.getEnvVar('currentEnv');
+    const domainId = bru.interpolate('{{process.env.' + envPrefix + '-domainId}}');
+    const solutionId = bru.interpolate('{{process.env.' + envPrefix + '-solutionId}}');
+    if (!domainId || domainId.indexOf('process.env') !== -1) {
+      throw new Error(
+        '14-named-query-support/03-get-admin-environment: solution-admin run requires .env key "'
+        + envPrefix + '-domainId".'
+      );
+    }
+    if (!solutionId || solutionId.indexOf('process.env') !== -1) {
+      throw new Error(
+        '14-named-query-support/03-get-admin-environment: solution-admin run requires .env key "'
+        + envPrefix + '-solutionId".'
+      );
+    }
+    bru.setVar('sec14DomainId', domainId);
+    bru.setVar('sec14SolutionId', solutionId);
+  }
+
+  // Global-admin runs authenticate as 'admin'; solution-admin runs as 'solutionAdmin'.
+  auth.setAuthHeaders(req, bru, auth.sectionAdminRole(bru));
 
   const domainId = bru.getVar('sec14DomainId');
   const solutionId = bru.getVar('sec14SolutionId');
   if (!domainId || !solutionId) {
     throw new Error(
       '14-named-query-support/03-get-admin-environment: Missing sec14DomainId or sec14SolutionId. ' +
-      'Steps 01-create-domain and 02-create-solution must run successfully first.'
+      'In global-admin runs, steps 01-create-domain and 02-create-solution must run first; ' +
+      'in solution-admin runs, set {currentEnv}-domainId / -solutionId in .env.'
     );
   }
 }
@@ -71,9 +96,13 @@ script:post-response {
 
   bru.setVar('sec14AdminEnvironmentId', brokerEnv.id);
 
+  // Store admin credentials from .env into Bruno vars for { varPrefix: 'sec14Admin' } usage.
+  // Global-admin runs use the 'admin' role; solution-admin runs use 'solutionAdmin'.
+  const auth = require('./common/auth.js');
   const envPrefix = bru.getEnvVar('currentEnv');
-  const sessionTokenKey = envPrefix + '-adminSessionToken';
-  const sharedSecretKey = envPrefix + '-adminSharedSecret';
+  const role = auth.sectionAdminRole(bru);
+  const sessionTokenKey = envPrefix + '-' + role + 'SessionToken';
+  const sharedSecretKey = envPrefix + '-' + role + 'SharedSecret';
   const sessionTokenPath = '{{process.env.' + sessionTokenKey + '}}';
   const sharedSecretPath = '{{process.env.' + sharedSecretKey + '}}';
 

@@ -1,0 +1,56 @@
+meta {
+  name: 97 Teardown Consumer Environment
+  type: http
+  seq: 97
+}
+
+delete {
+  url: {{gatewayUrl}}/{{sec08DomainId}}/{{sec08SolutionId}}/environments/{{sec08ConsumerEnvId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec08Admin' });
+}
+
+script:post-response {
+  // Surgical teardown: delete the consumer environment this section created.
+  // Deleting the environment cascades its ACL entries, provider registrations,
+  // and queues. Tolerant by design — teardown must never fail the run.
+  const status = res.getStatus();
+  const envId = bru.getVar('sec08ConsumerEnvId');
+  if (!envId) {
+    console.log('• No sec08ConsumerEnvId to delete — skipping');
+  } else if (status === 200 || status === 204) {
+    console.log('✓ Consumer environment deleted: ' + envId);
+  } else if (status === 404) {
+    console.log('✓ Consumer environment already gone (404): ' + envId);
+  } else {
+    console.error('⚠ Unexpected status ' + status + ' deleting consumer env ' + envId + ' — continuing');
+  }
+  bru.setVar('sec08ConsumerEnvId', null);
+  bru.setVar('sec08ConsumerSessionToken', null);
+  bru.setVar('sec08ConsumerSharedSecret', null);
+}
+
+docs {
+  ## Summary
+
+  Deletes the consumer environment created in step 06. Runs in both global-admin and
+  solution-admin modes (untagged). Deleting the environment cascades its ACL entries,
+  provider registrations, and queues.
+
+  ## Expected Result
+
+  - HTTP 200/204: environment deleted
+  - HTTP 404: already removed
+  - Missing variable: skipped (no-op)
+}

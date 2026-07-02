@@ -2,6 +2,9 @@ meta {
   name: 02 Create Solution
   type: http
   seq: 2
+  tags: [
+    globaladminonly
+  ]
 }
 
 post {
@@ -26,7 +29,7 @@ body:json {
 script:pre-request {
   const auth = require('./common/auth.js');
   auth.setAuthHeaders(req, bru, 'admin');
-
+  
   const domainId = bru.getVar('sec01DomainId');
   if (!domainId) {
     throw new Error(
@@ -34,7 +37,7 @@ script:pre-request {
       'Step 01-create-domain must run successfully first.'
     );
   }
-
+  
   const now = new Date();
   const ts = now.getFullYear().toString()
     + String(now.getMonth() + 1).padStart(2, '0')
@@ -56,7 +59,7 @@ script:post-response {
       'Response: ' + JSON.stringify(res.getBody())
     );
   }
-
+  
   const data = res.getBody();
   const solutionId = data.solutionId || bru.getVar('sec01SolutionName');
   bru.setVar('sec01SolutionId', solutionId);
@@ -66,7 +69,7 @@ script:post-response {
 docs {
   ## Summary
   Creates a solution within the section 01 domain.
-
+  
   ## Expected Result
   - HTTP 201 Created
   - `sec01SolutionId` variable stored for subsequent steps

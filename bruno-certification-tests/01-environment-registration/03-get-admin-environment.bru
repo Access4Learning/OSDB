@@ -17,14 +17,39 @@ headers {
 
 script:pre-request {
   const auth = require('./common/auth.js');
-  auth.setAuthHeaders(req, bru, 'admin');
+
+  // In solution-admin runs, the create-domain / create-solution steps are excluded
+  // (globaladminonly), so resolve the pre-provisioned scope from .env here.
+  if (!auth.isGlobalAdminRun(bru)) {
+    const envPrefix = bru.getEnvVar('currentEnv');
+    const domainId = bru.interpolate('{{process.env.' + envPrefix + '-domainId}}');
+    const solutionId = bru.interpolate('{{process.env.' + envPrefix + '-solutionId}}');
+    if (!domainId || domainId.indexOf('process.env') !== -1) {
+      throw new Error(
+        '01-environment-registration/03-get-admin-environment: solution-admin run requires .env key "'
+        + envPrefix + '-domainId".'
+      );
+    }
+    if (!solutionId || solutionId.indexOf('process.env') !== -1) {
+      throw new Error(
+        '01-environment-registration/03-get-admin-environment: solution-admin run requires .env key "'
+        + envPrefix + '-solutionId".'
+      );
+    }
+    bru.setVar('sec01DomainId', domainId);
+    bru.setVar('sec01SolutionId', solutionId);
+  }
+
+  // Global-admin runs authenticate as 'admin'; solution-admin runs as 'solutionAdmin'.
+  auth.setAuthHeaders(req, bru, auth.sectionAdminRole(bru));
 
   const domainId = bru.getVar('sec01DomainId');
   const solutionId = bru.getVar('sec01SolutionId');
   if (!domainId || !solutionId) {
     throw new Error(
       '01-environment-registration/03-get-admin-environment: Missing sec01DomainId or sec01SolutionId. ' +
-      'Steps 01-create-domain and 02-create-solution must run successfully first.'
+      'In global-admin runs, steps 01-create-domain and 02-create-solution must run first; ' +
+      'in solution-admin runs, set {currentEnv}-domainId / -solutionId in .env.'
     );
   }
 }
@@ -72,10 +97,13 @@ script:post-response {
 
   bru.setVar('sec01AdminEnvironmentId', brokerEnv.id);
 
-  // Store admin credentials from .env into Bruno vars for { varPrefix: 'sec01Admin' } usage
+  // Store admin credentials from .env into Bruno vars for { varPrefix: 'sec01Admin' } usage.
+  // Global-admin runs use the 'admin' role; solution-admin runs use 'solutionAdmin'.
+  const auth = require('./common/auth.js');
   const envPrefix = bru.getEnvVar('currentEnv');
-  const sessionTokenKey = envPrefix + '-adminSessionToken';
-  const sharedSecretKey = envPrefix + '-adminSharedSecret';
+  const role = auth.sectionAdminRole(bru);
+  const sessionTokenKey = envPrefix + '-' + role + 'SessionToken';
+  const sharedSecretKey = envPrefix + '-' + role + 'SharedSecret';
   const sessionTokenPath = '{{process.env.' + sessionTokenKey + '}}';
   const sharedSecretPath = '{{process.env.' + sharedSecretKey + '}}';
 

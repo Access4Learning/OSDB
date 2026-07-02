@@ -1,0 +1,54 @@
+meta {
+  name: 98 Teardown Zone
+  type: http
+  seq: 98
+}
+
+delete {
+  url: {{gatewayUrl}}/{{sec06DomainId}}/{{sec06SolutionId}}/zones/{{sec06ZoneId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec06Admin' });
+}
+
+script:post-response {
+  // Surgical teardown: delete the section zone created in step 04. Zone deletion
+  // cascades contexts -> context_services -> ACL entries -> provider registrations
+  // -> subscriptions. Tolerant by design — teardown must never fail the run.
+  const status = res.getStatus();
+  const zoneId = bru.getVar('sec06ZoneId');
+  if (!zoneId) {
+    console.log('• No sec06ZoneId to delete — skipping');
+  } else if (status === 200 || status === 204) {
+    console.log('✓ Zone deleted: ' + zoneId);
+  } else if (status === 404) {
+    console.log('✓ Zone already gone (404): ' + zoneId);
+  } else {
+    console.error('⚠ Unexpected status ' + status + ' deleting zone ' + zoneId + ' — continuing');
+  }
+  bru.setVar('sec06ZoneId', null);
+}
+
+docs {
+  ## Summary
+
+  Deletes the section zone created in step 04. Runs in both global-admin and
+  solution-admin modes (untagged). Zone deletion cascades contexts and all their
+  dependent data (context services, ACL entries, provider registrations, subscriptions).
+
+  ## Expected Result
+
+  - HTTP 200/204: zone deleted
+  - HTTP 404: already removed
+  - Missing variable: skipped (no-op)
+}

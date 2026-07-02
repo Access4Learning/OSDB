@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/xquerys
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/xquerys/xquery
   body: json
   auth: none
 }
@@ -99,7 +99,7 @@ docs {
   ## Rationale
   Per the decoupled architecture (xquery-provider-registration-fix), template catalog
   management is an admin operation. The admin creates the catalog entry, and providers
-  separately register to serve it via POST /provider-registrations.
+  separately register to serve it via POST /providers/provider.
 
   The queryToken "StudentSnapshot" matches the consumer's QUERY ACL created in step 08,
   enabling the consumer to invoke this query in step 13.
