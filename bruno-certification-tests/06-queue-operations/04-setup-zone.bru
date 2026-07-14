@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{gatewayUrl}}/{{sec06DomainId}}/{{sec06SolutionId}}/zones
+  url: {{gatewayUrl}}/{{sec06DomainId}}/{{sec06SolutionId}}/zones/zone
   body: json
   auth: none
 }
@@ -19,8 +19,10 @@ headers {
 
 body:json {
   {
-    "zoneId": "sec06-queue-ops-zone-{{$timestamp}}",
-    "description": "Certification test zone for 06-queue-operations"
+    "zone": {
+      "id": "sec06-queue-ops-zone-{{$timestamp}}",
+      "description": "Certification test zone for 06-queue-operations"
+    }
   }
 }
 
@@ -49,8 +51,8 @@ script:post-response {
   }
 
   const data = res.getBody();
-  bru.setVar('sec06ZoneId', data.zoneId || data.id);
-  console.log('Ã¢Å“â€œ Zone created: ' + (data.zoneId || data.id));
+  bru.setVar('sec06ZoneId', data.zone.id);
+  console.log('Ã¢Å“â€œ Zone created: ' + data.zone.id);
 }
 
 tests {

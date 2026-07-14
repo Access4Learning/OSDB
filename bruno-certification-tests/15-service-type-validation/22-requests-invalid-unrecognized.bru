@@ -58,22 +58,22 @@ tests {
 
   test("Error response contains the invalid value", function() {
     const body = res.getBody();
-    expect(body.description).to.contain('INVALID_VALUE');
+    expect(body.error.description).to.contain('INVALID_VALUE');
   });
 
   test("Error response contains full SIF value list", function() {
     const body = res.getBody();
-    expect(body.description).to.contain('OBJECT');
-    expect(body.description).to.contain('UTILITY');
-    expect(body.description).to.contain('FUNCTIONAL');
-    expect(body.description).to.contain('SERVICEPATH');
-    expect(body.description).to.contain('XQUERYTEMPLATE');
-    expect(body.description).to.contain('SERVICE');
+    expect(body.error.description).to.contain('OBJECT');
+    expect(body.error.description).to.contain('UTILITY');
+    expect(body.error.description).to.contain('FUNCTIONAL');
+    expect(body.error.description).to.contain('SERVICEPATH');
+    expect(body.error.description).to.contain('XQUERYTEMPLATE');
+    expect(body.error.description).to.contain('SERVICE');
   });
 
   test("Error response contains path info", function() {
     const body = res.getBody();
-    expect(body.description).to.contain('/requests');
+    expect(body.error.description).to.contain('/requests');
   });
 }
 

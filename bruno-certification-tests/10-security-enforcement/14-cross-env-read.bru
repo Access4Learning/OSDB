@@ -17,7 +17,9 @@ headers {
 
 assert {
   res.status: eq 403
-  res.body.message: isDefined
+  res.body.error.id: isDefined
+  res.body.error.code: isDefined
+  res.body.error.message: isDefined
 }
 
 script:pre-request {
@@ -53,9 +55,10 @@ tests {
 
   test("Error response contains message field", function() {
     const data = res.getBody();
-    expect(data).to.have.property('message');
-    expect(data.message).to.be.a('string');
-    expect(data.message.length).to.be.greaterThan(0);
+    expect(data).to.have.property('error');
+    expect(data.error).to.have.property('message');
+    expect(data.error.message).to.be.a('string');
+    expect(data.error.message.length).to.be.greaterThan(0);
   });
 
   test("Environments are isolated from each other", function() {

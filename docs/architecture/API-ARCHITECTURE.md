@@ -93,7 +93,7 @@ GET    /environments?solutionId=prod      # Filter by solution
 **Resource Naming Conventions**
 
 - **Plural nouns**: `/environments`, `/zones`, `/subscriptions` (not `/environment`, `/zone`)
-- **Lowercase with hyphens**: `/acl-entries`, `/provider-registrations` (not `/aclEntries`, `/providerRegistrations`)
+- **Lowercase with hyphens**: `/acl-entries` (not `/aclEntries`)
 - **Hierarchical paths**: `/zones/{zoneId}/contexts` (parent-child relationships)
 - **No verbs in URLs**: Use HTTP methods instead (not `/getEnvironment`, `/createZone`)
 
@@ -1036,19 +1036,61 @@ Link: <https://docs.sifunitybroker.org/migration/v2>; rel="deprecation"
 
 The SIF Unity Broker implements the SIF 3.7 specification for educational data interoperability. This section maps SIF 3.7 concepts to broker API endpoints and implementation details.
 
-### SIF 3.7 Message Types
+### SIF 3.7 Core Concepts
 
-**SIF defines four message types:**
+SIF 3.7 separates three distinct concepts that are easy to conflate. The broker models all three:
+**message types** (what kind of message is being conveyed), **service types** (what category of
+service is being accessed), and **connector endpoints** (the HTTP route families the gateway
+dispatches to).
 
-| SIF Message Type | Broker Endpoint | HTTP Method | Description |
-|------------------|-----------------|-------------|-------------|
-| **Event** | `/{domainId}/{solutionId}/events/{serviceName}` | POST | Asynchronous notifications of data changes |
-| **Request** | `/{domainId}/{solutionId}/requests/{serviceName}` | GET | Synchronous queries for data |
-| **Response** | `/{domainId}/{solutionId}/responses/{serviceName}` | POST | Responses to delayed requests |
-| **Functional Service** | `/{domainId}/{solutionId}/services/{serviceName}` | GET, POST, PUT, DELETE | Multi-phase workflow jobs |
+#### Message Types
+
+The `messageType` header. Per the SIF 3.3/3.7 infrastructure specification, there are exactly four:
+
+| Message Type | Description |
+|--------------|-------------|
+| **EVENT** | Asynchronous notification of a data change (CREATE/UPDATE/DELETE) |
+| **REQUEST** | A query or change operation issued by a consumer |
+| **RESPONSE** | A provider's reply to a delayed request |
+| **ERROR** | An error payload. Conveyed **inline within a Response** (`error` element), not via a dedicated endpoint |
+
+> `ERROR` is a message type, but it has no route of its own — it rides inside a Response. "Functional
+> Service" is **not** a message type; it is a service type (see below).
+
+#### Service Types
+
+The `serviceType` value, classifying the category of service being provided or consumed. From the
+broker's `ServiceType` enum (`sif-broker-common`):
+
+| Service Type | Description |
+|--------------|-------------|
+| **OBJECT** | Data object service (e.g. `StudentPersonal`, `SchoolInfo`) |
+| **FUNCTIONAL** | Functional service — multi-phase jobs/workflows |
+| **XQUERYTEMPLATE** | Named queries — XQuery-based retrieval templates |
+| **SERVICEPATH** | Hierarchical service-path services |
+| **UTILITY** | Infrastructure/utility services (environments, queues, subscriptions) |
+| **SERVICE** | Generic service |
+
+> Object, named-query (XQUERYTEMPLATE), and service-path services all ride the **same**
+> request/response/event choreography — they are distinguished by `serviceType`, not by a separate URL
+> family. Only **functional services** have their own `/services/.../jobs` endpoint.
+
+#### Connector Endpoints
+
+The HTTP route families the gateway routes to a connector:
+
+| Endpoint | HTTP Method(s) | Carries | Description |
+|----------|----------------|---------|-------------|
+| `/{domainId}/{solutionId}/events/{serviceName}` | POST | EVENT | Provider publishes a data-change event |
+| `/{domainId}/{solutionId}/requests/{serviceName}` | GET, POST, PUT, DELETE | REQUEST | Consumer query/create/update/delete |
+| `/{domainId}/{solutionId}/responses/{serviceName}` | POST | RESPONSE (and ERROR inline) | Provider submits a response to a delayed request |
+| `/{domainId}/{solutionId}/services/{serviceName}/jobs` | GET, POST, PUT, DELETE | REQUEST/RESPONSE | Functional-service multi-phase jobs |
+
+Infrastructure/utility surfaces (not part of the data choreography) include
+`/{domainId}/{solutionId}/environments`, `/queues`, and `/subscriptions`.
 
 
-### SIF Message Type to API Endpoint Mapping
+### SIF Interaction to API Endpoint Mapping
 
 **1. SIF Events (CREATE, UPDATE, DELETE notifications)**
 
@@ -1226,7 +1268,7 @@ CREATE TABLE provider_registry (
 **Provider Registration API:**
 
 ```http
-POST /provider-registrations
+POST /providers/provider
 Authorization: SIF_HMACSHA256 provider-token:signature
 timestamp: 2026-03-12T10:30:00.000Z
 Content-Type: application/json
@@ -1372,10 +1414,16 @@ sequenceDiagram
 - ✅ ACL-based authorization for service access
 
 **Message Types:**
-- ✅ Event messages (CREATE, UPDATE, DELETE)
-- ✅ Request messages (synchronous queries)
+- ✅ Event messages (CREATE, UPDATE, DELETE notifications)
+- ✅ Request messages (query/create/update/delete operations)
 - ✅ Response messages (delayed request responses)
-- ✅ Functional Service Jobs (multi-phase workflows)
+- ✅ Error payloads (conveyed inline within responses)
+
+**Service Types:**
+- ✅ Object services (data objects)
+- ✅ Functional services (multi-phase workflow jobs)
+- ✅ Named queries (XQuery templates) and service paths
+- ✅ Utility/infrastructure services
 
 **Organizational Hierarchy:**
 - ✅ Zone support (organizational units)

@@ -52,15 +52,16 @@ tests {
 
   test("Error body has message field", function() {
     const data = res.getBody();
-    expect(data).to.have.property('message');
-    expect(data.message).to.be.a('string');
-    expect(data.message.length).to.be.greaterThan(0);
+    expect(data).to.have.property('error');
+    expect(data.error).to.have.property('message');
+    expect(data.error.message).to.be.a('string');
+    expect(data.error.message.length).to.be.greaterThan(0);
   });
 
   test("Error body message describes authorization failure", function() {
     const data = res.getBody();
     // The message should indicate an access/authorization issue
-    const msg = data.message.toLowerCase();
+    const msg = data.error.message.toLowerCase();
     const isAccessRelated = msg.includes('access') ||
                             msg.includes('permission') ||
                             msg.includes('denied') ||
@@ -68,7 +69,7 @@ tests {
                             msg.includes('forbidden') ||
                             msg.includes('acl');
     expect(isAccessRelated).to.equal(true,
-      'Expected message to reference access/permission issue, got: "' + data.message + '"'
+      'Expected message to reference access/permission issue, got: "' + data.error.message + '"'
     );
   });
 
@@ -86,8 +87,31 @@ tests {
       const raw = bru.getVar(varName);
       if (raw) {
         const parsed = JSON.parse(raw);
-        expect(parsed, varName + ' response missing message field')
+        expect(parsed, varName + ' response missing error envelope')
+          .to.have.property('error');
+        expect(parsed.error, varName + ' response missing message field')
           .to.have.property('message');
+      }
+    }
+  });
+
+  test("Zone/context admin-rejection bodies are SifErrorResponse", function() {
+    // The zone/context create-rejection bodies use the SIF 3.7 envelope:
+    // { error: { id, code, subCode, message, scope, timestamp } }
+    const sifErrorBodies = [
+      'sec10NonAdminCreateZoneBody',
+      'sec10NonAdminCreateContextBody'
+    ];
+
+    for (const varName of sifErrorBodies) {
+      const raw = bru.getVar(varName);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        expect(parsed, varName + ' missing error envelope').to.have.property('error');
+        expect(parsed.error, varName + ' missing code').to.have.property('code');
+        expect(parsed.error, varName + ' missing message').to.have.property('message');
+        expect(parsed.error, varName + ' missing scope').to.have.property('scope');
+        expect(parsed.error, varName + ' missing timestamp').to.have.property('timestamp');
       }
     }
   });

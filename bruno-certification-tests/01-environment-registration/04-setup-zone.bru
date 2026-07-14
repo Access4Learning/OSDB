@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{gatewayUrl}}/{{sec01DomainId}}/{{sec01SolutionId}}/zones
+  url: {{gatewayUrl}}/{{sec01DomainId}}/{{sec01SolutionId}}/zones/zone
   body: json
   auth: none
 }
@@ -19,8 +19,10 @@ headers {
 
 body:json {
   {
-    "zoneId": "EnvRegTestZone-{{$timestamp}}",
-    "description": "Zone for environment registration certification tests"
+    "zone": {
+      "id": "EnvRegTestZone-{{$timestamp}}",
+      "description": "Zone for environment registration certification tests"
+    }
   }
 }
 
@@ -39,7 +41,7 @@ script:post-response {
   }
 
   const data = res.getBody();
-  bru.setVar('sec01ZoneId', data.zoneId || data.id);
+  bru.setVar('sec01ZoneId', data.zone.id);
   console.log('✓ Section 01 zone created: ' + bru.getVar('sec01ZoneId'));
 }
 
@@ -52,9 +54,10 @@ tests {
     expect(res.getStatus()).to.equal(201);
   });
 
-  test("Response contains zone identifier", function() {
+  test("Response contains wrapped zone with id", function() {
     const data = res.getBody();
-    expect(data).to.have.property('zoneId');
+    expect(data).to.have.property('zone');
+    expect(data.zone).to.have.property('id');
   });
 }
 

@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/zones
+  url: {{gatewayUrl}}/{{sec11DomainId}}/{{sec11SolutionId}}/zones/zone
   body: json
   auth: none
 }
@@ -19,8 +19,10 @@ headers {
 
 body:json {
   {
-    "zoneId": "environment-global",
-    "description": "Environment-global zone for alerts service registration"
+    "zone": {
+      "id": "environment-global",
+      "description": "Environment-global zone for alerts service registration"
+    }
   }
 }
 

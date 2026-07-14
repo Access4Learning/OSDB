@@ -29,7 +29,9 @@ body:json {
 
 assert {
   res.status: eq 404
-  res.body.message: isDefined
+  res.body.error.id: isDefined
+  res.body.error.code: isDefined
+  res.body.error.message: isDefined
 }
 
 script:pre-request {
@@ -49,20 +51,22 @@ tests {
 
   test("Error response contains message field", function() {
     const data = res.getBody();
-    expect(data).to.have.property('message');
-    expect(data.message).to.be.a('string');
-    expect(data.message.length).to.be.greaterThan(0);
+    expect(data).to.have.property('error');
+    expect(data.error).to.have.property('message');
+    expect(data.error.message).to.be.a('string');
+    expect(data.error.message.length).to.be.greaterThan(0);
   });
 
   test("Error response contains error code", function() {
     const data = res.getBody();
-    expect(data).to.have.property('code');
+    expect(data.error).to.have.property('code');
+    expect(data.error).to.have.property('subCode');
   });
 
   test("Error response scope is BROKER", function() {
     const data = res.getBody();
-    expect(data).to.have.property('scope');
-    expect(data.scope).to.equal('BROKER');
+    expect(data.error).to.have.property('scope');
+    expect(data.error.scope).to.equal('BROKER');
   });
 
   test("No subscription was created (list unchanged)", function() {

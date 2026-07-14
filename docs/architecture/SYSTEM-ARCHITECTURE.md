@@ -6369,33 +6369,32 @@ This section describes the extension point architecture, how each layer works, a
 
 ### Extension Point Overview
 
-The broker exposes four categories of extension points, each targeting a different layer of the request lifecycle:
+The broker exposes three categories of extension points, each targeting a different layer of the request lifecycle:
 
 ```mermaid
 graph TD
     Client[External Client] --> GW[API Gateway]
-    
+
     subgraph "Extension Points"
-        GW --> GF[Gateway Filters<br/>GlobalFilter / GatewayFilterFactory]
+        GW --> GF[Gateway Filters<br/>GlobalFilter + Ordered]
         GF --> Conn[Connector]
-        Conn --> IC[Interceptor Chain<br/>BrokerRequestInterceptor]
-        IC --> Core[Core Business Logic]
-        Core --> LE[Lifecycle Events<br/>ApplicationEvent]
+        Conn --> EM[Drop-in Extension Modules<br/>inbound servlet Filter /<br/>outbound WebClient ExchangeFilterFunction]
+        EM --> Core[Core Business Logic]
         Core --> PB[Pluggable Backends<br/>Interface + ConditionalOnProperty]
     end
-    
+
     style GF fill:#e1f5ff,stroke:#01579b,stroke-width:2px
-    style IC fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    style LE fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    style EM fill:#fff3e0,stroke:#e65100,stroke-width:2px
     style PB fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
 ```
 
 | Extension Point | Layer | Mechanism | Ordering | Scope |
 |----------------|-------|-----------|----------|-------|
-| Gateway filters | Request routing | `GlobalFilter` / `GatewayFilterFactory` | `@Order` annotation | All requests through the gateway |
-| Connector interceptors | Message processing | `BrokerRequestInterceptor` chain | `@Order` annotation | Connector-specific (events, requests, responses, services) |
-| Lifecycle events | Cross-cutting | `ApplicationEvent` + `@EventListener` | Publication order | Any module |
+| Gateway filters | Request routing | `GlobalFilter` (+ `Ordered`) | `@Order` / `Ordered` | All requests through the gateway |
+| Drop-in extension modules | Message processing | Spring Boot auto-config JAR: inbound Jakarta servlet `Filter` or outbound WebClient `ExchangeFilterFunction`, activated per-solution via entity tags | `@Order` / registration order | The connector service the JAR is added to |
 | Pluggable backends | Infrastructure | Interface + `@ConditionalOnProperty` | Configuration-driven | Storage, secrets, future backends |
+
+> See [`SPOTLIGHT-EXTENSIBILITY.md`](SPOTLIGHT-EXTENSIBILITY.md) for the end-to-end pattern and two worked examples (message sequencing and an outbound transport-translation extension).
 
 ### Gateway Extension Points
 
@@ -6432,43 +6431,22 @@ spring:
             - CustomPayloadValidator
 ```
 
-### Connector Interceptor Chain
+### Drop-in Extension Modules
 
-Each connector (Events, Requests, Responses, Services) supports an ordered interceptor chain for pre- and post-processing of messages. This is the primary extension point for message-level logic.
+The broker's message-level extension mechanism is a **drop-in Spring Boot auto-configured JAR** added to a connector service's classpath. There is no custom interceptor interface — extensions hook into the standard Spring/Servlet/WebClient machinery that the connectors already use:
 
-#### BrokerRequestInterceptor
+- **Inbound** — a Jakarta servlet `Filter` that inspects/modifies incoming requests before the connector handles them (e.g., the message-sequencing extension injects an `x-sif-sequenceId` header).
+- **Outbound** — a WebClient `ExchangeFilterFunction`, registered via a `WebClientCustomizer`, that intercepts the connector's outbound calls to a provider (e.g., a transport extension rewrites auth and pagination for a non-SIF, REST/JSON provider).
 
-The `BrokerRequestInterceptor` interface defines two methods:
+Common characteristics of both styles:
 
-- `preProcess(BrokerRequest request)` � called before the connector processes the message. Can inspect, modify, or reject the request.
-- `postProcess(BrokerRequest request, BrokerResponse response)` � called after processing. Can inspect or modify the response, trigger side effects, or log outcomes.
+- **Auto-discovery**: the JAR ships a `@Configuration` class listed in `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`, gated by `@ConditionalOnProperty(name = "sif.extensions.<name>.enabled", matchIfMissing = true)`. Adding the JAR is all that is required — no core code changes.
+- **Per-solution activation via entity tags**: extensions check a feature toggle (an entity tag on the solution or environment, looked up against the environment-service and cached in Caffeine) so behavior can be turned on for specific tenants at runtime.
+- **Fail-open**: an extension failure must never block message processing — on error the extension logs and passes the message through unchanged.
 
-Use cases:
-- Payload validation (e.g., schema validation against SIF XSD, business rule checks)
-- Data enrichment (e.g., adding default values, normalizing fields)
-- Data transformation (e.g., format conversion, field mapping)
-- Audit logging (e.g., recording every message that passes through)
-- Analytics and metrics collection
-- Content filtering (e.g., redacting sensitive fields)
+Use cases: header injection and total-ordering (sequencing), outbound transport/format translation (e.g. mapping a non-SIF provider's offset/limit paging to SIF navigation headers), payload validation, data enrichment, audit logging, analytics.
 
-Multiple interceptors can be registered and are executed in `@Order` sequence. Each interceptor can short-circuit the chain by returning an error response from `preProcess`, preventing downstream interceptors and the core logic from executing.
-
-### Lifecycle Events
-
-The broker publishes Spring `ApplicationEvent` instances at key lifecycle points. Any bean annotated with `@EventListener` (or implementing `ApplicationListener`) can react to these events asynchronously.
-
-Event categories:
-
-| Event | Published When | Typical Extension Use |
-|-------|---------------|----------------------|
-| `EnvironmentRegisteredEvent` | New environment registers | Provision external resources, send welcome notifications |
-| `EnvironmentDeregisteredEvent` | Environment deregisters | Clean up external resources, archive data |
-| `MessagePublishedEvent` | Event/request published to queue | External audit trail, analytics pipeline, webhook triggers |
-| `MessageDeliveredEvent` | Message delivered to consumer | Delivery confirmation, SLA tracking |
-| `SubscriptionCreatedEvent` | New subscription registered | Notify administrators, update dashboards |
-| `JobStateChangedEvent` | Job transitions state | External workflow orchestration, status notifications |
-
-Lifecycle events are fire-and-forget from the broker's perspective � a failing listener does not affect the core operation. Listeners run asynchronously by default and should handle their own error recovery.
+The message-sequencing module (`extensions`) is the shipped reference implementation. An outbound transport-translation extension (mapping SIF to a non-SIF REST/JSON provider) is documented as an additional reference pattern. See [`SPOTLIGHT-EXTENSIBILITY.md`](SPOTLIGHT-EXTENSIBILITY.md) for the full walkthrough.
 
 ### Pluggable Backends
 
@@ -6495,7 +6473,7 @@ This pattern keeps the core code decoupled from any specific infrastructure prov
 Implementors package their extensions as a Spring Boot starter JAR:
 
 1. **Create a Maven module** with a dependency on `sif-broker-common` (for shared interfaces and DTOs)
-2. **Implement extension beans** � filters, interceptors, event listeners, or backend implementations
+2. **Implement extension beans** — an inbound servlet filter, an outbound WebClient exchange filter, or a pluggable-backend implementation
 3. **Register for auto-discovery** via `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` (Spring Boot 3.x) or `spring.factories` (Spring Boot 2.x)
 4. **Add the JAR as a Maven dependency** of the target broker module
 5. Spring Boot auto-discovers and wires the beans at startup � no core code changes needed
@@ -6504,7 +6482,7 @@ Implementors package their extensions as a Spring Boot starter JAR:
 
 Extensions should follow Spring Boot conventions for configuration:
 
-- Define configuration properties with a unique prefix (e.g., `osdb.extensions.my-extension.*`)
+- Define configuration properties with a unique prefix (e.g., `sif.extensions.<name>.*`)
 - Use `@ConditionalOnProperty` to enable/disable the extension via configuration
 - Provide sensible defaults so the extension works out of the box
 - Document all configuration properties in the extension's README

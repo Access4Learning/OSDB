@@ -250,16 +250,15 @@ OSDB is designed as an open-source broker that implementors can extend without f
 
 This matters because implementors will want to add value on top of the base broker: custom payload validation, data enrichment, audit logging, analytics, or proprietary business rules. They should be able to do this by registering their own Spring beans, not by modifying core broker code.
 
-The extension model has three layers:
+The extension model has three layers, all wired through Spring's IoC container:
 
 | Extension Point | Mechanism | Example Use Case |
 |----------------|-----------|-----------------|
-| Gateway filters | Spring Cloud Gateway `GlobalFilter` / `GatewayFilterFactory` | Custom authentication, header enrichment, request logging |
-| Connector interceptors | Ordered `BrokerRequestInterceptor` chain (pre/post processing) | Payload validation, data enrichment, transformation |
-| Lifecycle events | Spring `ApplicationEvent` + `@EventListener` | Audit trails, analytics, external notifications |
-| Pluggable backends | Interface + `@ConditionalOnProperty` | Storage (S3/filesystem), secrets (Vault/AWS SM/Encrypted DB Fields) |
+| Gateway filters | Spring Cloud Gateway `GlobalFilter` (+ `Ordered`) | Custom authentication, header enrichment, request logging, rate limiting |
+| Drop-in extension modules | Spring Boot auto-config JAR on a connector classpath — an inbound Jakarta servlet `Filter` or an outbound WebClient `ExchangeFilterFunction`, activated per-solution via entity tags, fail-open | Header injection (message sequencing), outbound transport translation (non-SIF REST/JSON provider) |
+| Pluggable backends | Interface + `@ConditionalOnProperty` | Storage (S3/filesystem), secrets (Vault / AWS SM / AES-256-GCM DB) |
 
-An implementor packages their extensions as a Spring Boot starter JAR, adds it as a Maven dependency, and Spring auto-discovers the beans. The core broker code is untouched. Extensions are ordered via `@Order` and can be enabled/disabled via configuration properties.
+An implementor packages their extension as a Spring Boot auto-configured JAR, adds it as a Maven dependency (or drops it on the classpath), and Spring auto-discovers the beans. The core broker code is untouched. Extensions are ordered via `@Order` and enabled/disabled via configuration properties, and per-solution activation is driven by entity tags. See [`SPOTLIGHT-EXTENSIBILITY.md`](SPOTLIGHT-EXTENSIBILITY.md) for the end-to-end pattern and worked examples.
 
 ---
 

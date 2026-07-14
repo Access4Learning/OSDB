@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{gatewayUrl}}/{{sec07DomainId}}/{{sec07SolutionId}}/zones
+  url: {{gatewayUrl}}/{{sec07DomainId}}/{{sec07SolutionId}}/zones/zone
   body: json
   auth: none
 }
@@ -19,8 +19,10 @@ headers {
 
 body:json {
   {
-    "zoneId": "cert-svcops-{{$timestamp}}",
-    "description": "Zone for service operations certification tests"
+    "zone": {
+      "id": "cert-svcops-{{$timestamp}}",
+      "description": "Zone for service operations certification tests"
+    }
   }
 }
 
@@ -52,7 +54,7 @@ script:post-response {
   }
 
   const data = res.getBody();
-  bru.setVar('sec07ZoneId', data.zoneId || data.id);
+  bru.setVar('sec07ZoneId', data.zone.id);
   console.log('Ã¢Å“â€œ Created zone:', bru.getVar('sec07ZoneId'));
 }
 

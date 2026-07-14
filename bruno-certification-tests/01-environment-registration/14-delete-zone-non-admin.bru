@@ -11,7 +11,6 @@ delete {
 }
 
 headers {
-  Content-Type: application/json
   Authorization: {{authorizationHeader}}
   timestamp: {{timestampHeader}}
 }
@@ -41,6 +40,17 @@ assert {
 tests {
   test("Non-admin zone deletion returns 403 Forbidden", function() {
     expect(res.getStatus()).to.equal(403);
+  });
+
+  test("Error body is a SIF 3.7 errorCommon", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('error');
+    expect(data.error).to.have.property('id');
+    expect(data.error).to.have.property('code');
+    expect(data.error).to.have.property('subCode');
+    expect(data.error).to.have.property('message');
+    expect(data.error).to.have.property('scope');
+    expect(data.error).to.have.property('timestamp');
   });
 
   test("Zone still exists after rejected deletion", function() {

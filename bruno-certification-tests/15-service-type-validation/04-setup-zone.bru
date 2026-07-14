@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{gatewayUrl}}/{{sec15DomainId}}/{{sec15SolutionId}}/zones
+  url: {{gatewayUrl}}/{{sec15DomainId}}/{{sec15SolutionId}}/zones/zone
   body: json
   auth: none
 }
@@ -19,8 +19,10 @@ headers {
 
 body:json {
   {
-    "zoneId": "cert-svctype-{{$timestamp}}",
-    "description": "Zone for service-type-validation certification tests"
+    "zone": {
+      "id": "cert-svctype-{{$timestamp}}",
+      "description": "Zone for service-type-validation certification tests"
+    }
   }
 }
 
@@ -52,7 +54,7 @@ script:post-response {
   }
 
   const data = res.getBody();
-  bru.setVar('sec15ZoneId', data.zoneId || data.id);
+  bru.setVar('sec15ZoneId', data.zone.id);
   console.log('Created zone:', bru.getVar('sec15ZoneId'));
 }
 

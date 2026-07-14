@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{gatewayUrl}}/{{sec02DomainId}}/{{sec02SolutionId}}/zones
+  url: {{gatewayUrl}}/{{sec02DomainId}}/{{sec02SolutionId}}/zones/zone
   body: json
   auth: none
 }
@@ -19,8 +19,10 @@ headers {
 
 body:json {
   {
-    "zoneId": "CertSubMgmtZone-{{$timestamp}}",
-    "description": "Subscription management certification test zone"
+    "zone": {
+      "id": "CertSubMgmtZone-{{$timestamp}}",
+      "description": "Subscription management certification test zone"
+    }
   }
 }
 
@@ -43,7 +45,7 @@ script:post-response {
   }
 
   const data = res.getBody();
-  bru.setVar('sec02ZoneId', data.zoneId || data.id);
+  bru.setVar('sec02ZoneId', data.zone.id);
 
   console.log('âœ“ Zone created: ' + bru.getVar('sec02ZoneId'));
 }

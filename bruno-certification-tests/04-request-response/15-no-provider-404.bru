@@ -59,12 +59,8 @@ tests {
   test("Error response contains message", function() {
     const body = res.getBody();
     expect(body).to.exist;
-    // SIF brokers should return an error body indicating no provider found
-    if (body.message) {
-      expect(body.message).to.be.a('string');
-    } else if (body.error) {
-      expect(body.error).to.be.a('string');
-    }
+    expect(body.error).to.exist;
+    expect(body.error.message).to.be.a('string');
   });
 }
 

@@ -67,14 +67,15 @@ tests {
 
   test("Response contains error code", function() {
     const body = res.getBody();
-    expect(body.code).to.be.a('string');
-    expect(body.code).to.not.be.empty;
+    expect(body.error).to.exist;
+    expect(body.error.subCode).to.be.a('string');
+    expect(body.error.subCode).to.not.be.empty;
   });
 
   test("Response description mentions valid values", function() {
     const body = res.getBody();
-    expect(body.description).to.be.a('string');
-    expect(body.description).to.include('FUNCTIONAL');
+    expect(body.error.description).to.be.a('string');
+    expect(body.error.description).to.include('FUNCTIONAL');
   });
 }
 

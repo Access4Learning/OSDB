@@ -11,7 +11,6 @@ delete {
 }
 
 headers {
-  Content-Type: application/json
   Authorization: {{authorizationHeader}}
   timestamp: {{timestampHeader}}
   X-Run-As-Environment: broker-services
@@ -29,6 +28,17 @@ assert {
 tests {
   test("Protected zone deletion returns 409 Conflict", function() {
     expect(res.getStatus()).to.equal(409);
+  });
+
+  test("Error body is a SIF 3.7 errorCommon", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('error');
+    expect(data.error).to.have.property('id');
+    expect(data.error).to.have.property('code');
+    expect(data.error).to.have.property('subCode');
+    expect(data.error).to.have.property('message');
+    expect(data.error).to.have.property('scope');
+    expect(data.error).to.have.property('timestamp');
   });
 }
 

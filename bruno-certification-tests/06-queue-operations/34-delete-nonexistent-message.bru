@@ -53,7 +53,8 @@ tests {
   test("Response contains error body with message", function() {
     const body = res.getBody();
     expect(body).to.exist;
-    expect(body).to.have.property('message');
+    expect(body.error).to.exist;
+    expect(body.error).to.have.property('message');
   });
 }
 

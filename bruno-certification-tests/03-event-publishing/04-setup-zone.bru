@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{gatewayUrl}}/{{sec03DomainId}}/{{sec03SolutionId}}/zones
+  url: {{gatewayUrl}}/{{sec03DomainId}}/{{sec03SolutionId}}/zones/zone
   body: json
   auth: none
 }
@@ -19,8 +19,10 @@ headers {
 
 body:json {
   {
-    "zoneId": "sec03-event-zone-{{$timestamp}}",
-    "description": "Certification test zone for 03-event-publishing"
+    "zone": {
+      "id": "sec03-event-zone-{{$timestamp}}",
+      "description": "Certification test zone for 03-event-publishing"
+    }
   }
 }
 
@@ -49,8 +51,8 @@ script:post-response {
   }
 
   const data = res.getBody();
-  bru.setVar('sec03ZoneId', data.zoneId || data.id);
-  console.log('Ã¢Å“â€œ Zone created: ' + (data.zoneId || data.id));
+  bru.setVar('sec03ZoneId', data.zone.id);
+  console.log('Ã¢Å“â€œ Zone created: ' + data.zone.id);
 }
 
 tests {

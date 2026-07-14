@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/zones
+  url: {{gatewayUrl}}/{{sec14DomainId}}/{{sec14SolutionId}}/zones/zone
   body: json
   auth: none
 }
@@ -19,8 +19,10 @@ headers {
 
 body:json {
   {
-    "zoneId": "NamedQueryTestZone-{{$timestamp}}",
-    "description": "Zone for named query support certification tests"
+    "zone": {
+      "id": "NamedQueryTestZone-{{$timestamp}}",
+      "description": "Zone for named query support certification tests"
+    }
   }
 }
 
@@ -39,7 +41,7 @@ script:post-response {
   }
 
   const data = res.getBody();
-  bru.setVar('sec14ZoneId', data.zoneId || data.id);
+  bru.setVar('sec14ZoneId', data.zone.id);
   console.log('✓ Section 14 zone created: ' + bru.getVar('sec14ZoneId'));
 }
 
@@ -52,9 +54,10 @@ tests {
     expect(res.getStatus()).to.equal(201);
   });
 
-  test("Response contains zone identifier", function() {
+  test("Response contains wrapped zone with id", function() {
     const data = res.getBody();
-    expect(data).to.have.property('zoneId');
+    expect(data).to.have.property('zone');
+    expect(data.zone).to.have.property('id');
   });
 }
 

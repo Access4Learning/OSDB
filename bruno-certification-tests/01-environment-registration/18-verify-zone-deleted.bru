@@ -38,29 +38,36 @@ assert {
 }
 
 tests {
-  // GET /zones returns the SIF double-nested collection wrapper:
+  // GET /zones returns the SIF 3.7 double-nested collection wrapper:
   //   { "zones": { "zone": [ ... ] } }
-  // Fall back to a few shapes for robustness.
-  function extractZones(body) {
-    if (Array.isArray(body)) return body;
-    if (body && body.zones && Array.isArray(body.zones.zone)) return body.zones.zone;
-    if (body && Array.isArray(body.zones)) return body.zones;
-    if (body && Array.isArray(body.zone)) return body.zone;
-    if (body && Array.isArray(body.data)) return body.data;
-    return [];
-  }
+  // We assert exactly this shape — no fallbacks for non-SIF shapes.
+
+  test("Response uses SIF collection wrapper: zones.zone", function() {
+    const body = res.getBody();
+    expect(body).to.have.property('zones');
+    expect(body.zones).to.have.property('zone');
+    expect(body.zones.zone).to.be.an('array');
+  });
+
+  test("Zone objects use SIF field name 'id' (not 'zoneId')", function() {
+    const zones = res.getBody().zones.zone;
+    if (zones.length > 0) {
+      expect(zones[0]).to.have.property('id');
+      expect(zones[0]).to.not.have.property('zoneId');
+    }
+  });
 
   test("Deleted zone is NOT in the response list", function() {
-    const zones = extractZones(res.getBody());
+    const zones = res.getBody().zones.zone;
     const deletedZoneId = bru.getVar('sec01DeleteTestZoneId');
-    const found = zones.some(z => z.zoneId === deletedZoneId || z.id === deletedZoneId);
+    const found = zones.some(z => z.id === deletedZoneId);
     expect(found).to.be.false;
   });
 
   test("Primary zone sec01ZoneId is still present (sibling isolation)", function() {
-    const zones = extractZones(res.getBody());
+    const zones = res.getBody().zones.zone;
     const primaryZoneId = bru.getVar('sec01ZoneId');
-    const found = zones.some(z => z.zoneId === primaryZoneId || z.id === primaryZoneId);
+    const found = zones.some(z => z.id === primaryZoneId);
     expect(found).to.be.true;
   });
 }

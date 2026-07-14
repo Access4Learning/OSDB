@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{gatewayUrl}}/{{sec10DomainId}}/{{sec10SolutionId}}/zones
+  url: {{gatewayUrl}}/{{sec10DomainId}}/{{sec10SolutionId}}/zones/zone
   body: json
   auth: none
 }
@@ -18,14 +18,18 @@ headers {
 
 body:json {
   {
-    "zoneId": "UnauthorizedZone-{{$timestamp}}",
-    "description": "This zone creation should be rejected"
+    "zone": {
+      "id": "UnauthorizedZone-{{$timestamp}}",
+      "description": "This zone creation should be rejected"
+    }
   }
 }
 
 assert {
   res.status: eq 403
-  res.body.message: isDefined
+  res.body.error.id: isDefined
+  res.body.error.code: isDefined
+  res.body.error.message: isDefined
 }
 
 script:pre-request {
@@ -52,11 +56,17 @@ tests {
     expect(res.getStatus()).to.equal(403);
   });
 
-  test("Error response contains message field", function() {
+  test("Error body is a SIF 3.7 errorCommon", function() {
     const data = res.getBody();
-    expect(data).to.have.property('message');
-    expect(data.message).to.be.a('string');
-    expect(data.message.length).to.be.greaterThan(0);
+    expect(data).to.have.property('error');
+    expect(data.error).to.have.property('id');
+    expect(data.error).to.have.property('code');
+    expect(data.error).to.have.property('subCode');
+    expect(data.error).to.have.property('message');
+    expect(data.error).to.have.property('scope');
+    expect(data.error).to.have.property('timestamp');
+    expect(data.error.message).to.be.a('string');
+    expect(data.error.message.length).to.be.greaterThan(0);
   });
 
   test("Only admin environments can create zones", function() {
@@ -80,5 +90,6 @@ docs {
   ## Expected Result
 
   - HTTP 403 Forbidden
-  - Response body contains `message` field indicating admin-only restriction
+  - Response body is a `SifErrorResponse` (`code`, `message`, `scope`, `timestamp`)
+    indicating admin-only restriction
 }

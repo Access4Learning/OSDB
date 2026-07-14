@@ -56,9 +56,10 @@ tests {
 
   test("Error response contains message", function() {
     const data = res.getBody();
-    expect(data).to.have.property('message');
-    expect(data.message).to.be.a('string');
-    expect(data.message.length).to.be.greaterThan(0);
+    expect(data).to.have.property('error');
+    expect(data.error).to.have.property('message');
+    expect(data.error.message).to.be.a('string');
+    expect(data.error.message.length).to.be.greaterThan(0);
   });
 }
 

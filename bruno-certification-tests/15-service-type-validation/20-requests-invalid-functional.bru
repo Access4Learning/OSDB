@@ -58,19 +58,19 @@ tests {
 
   test("Error response contains invalid value", function() {
     const body = res.getBody();
-    expect(body.description).to.contain('FUNCTIONAL');
+    expect(body.error.description).to.contain('FUNCTIONAL');
   });
 
   test("Error response contains valid values for /requests path", function() {
     const body = res.getBody();
-    expect(body.description).to.contain('OBJECT');
-    expect(body.description).to.contain('SERVICEPATH');
-    expect(body.description).to.contain('XQUERYTEMPLATE');
+    expect(body.error.description).to.contain('OBJECT');
+    expect(body.error.description).to.contain('SERVICEPATH');
+    expect(body.error.description).to.contain('XQUERYTEMPLATE');
   });
 
   test("Error response contains path info", function() {
     const body = res.getBody();
-    expect(body.description).to.contain('/requests');
+    expect(body.error.description).to.contain('/requests');
   });
 }
 
