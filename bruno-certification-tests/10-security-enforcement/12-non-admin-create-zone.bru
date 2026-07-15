@@ -64,7 +64,7 @@ tests {
     expect(data.error).to.have.property('subCode');
     expect(data.error).to.have.property('message');
     expect(data.error).to.have.property('scope');
-    expect(data.error).to.have.property('timestamp');
+    expect(data.error).to.not.have.property('timestamp');
     expect(data.error.message).to.be.a('string');
     expect(data.error.message.length).to.be.greaterThan(0);
   });
@@ -90,6 +90,6 @@ docs {
   ## Expected Result
 
   - HTTP 403 Forbidden
-  - Response body is a `SifErrorResponse` (`code`, `message`, `scope`, `timestamp`)
+  - Response body is a `SifErrorResponse` (`code`, `message`, `scope`)
     indicating admin-only restriction
 }

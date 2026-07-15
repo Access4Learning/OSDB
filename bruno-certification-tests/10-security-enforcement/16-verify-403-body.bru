@@ -97,7 +97,7 @@ tests {
 
   test("Zone/context admin-rejection bodies are SifErrorResponse", function() {
     // The zone/context create-rejection bodies use the SIF 3.7 envelope:
-    // { error: { id, code, subCode, message, scope, timestamp } }
+    // { error: { id, code, subCode, message, scope } }
     const sifErrorBodies = [
       'sec10NonAdminCreateZoneBody',
       'sec10NonAdminCreateContextBody'
@@ -111,7 +111,7 @@ tests {
         expect(parsed.error, varName + ' missing code').to.have.property('code');
         expect(parsed.error, varName + ' missing message').to.have.property('message');
         expect(parsed.error, varName + ' missing scope').to.have.property('scope');
-        expect(parsed.error, varName + ' missing timestamp').to.have.property('timestamp');
+        expect(parsed.error, varName + ' should not have timestamp').to.not.have.property('timestamp');
       }
     }
   });

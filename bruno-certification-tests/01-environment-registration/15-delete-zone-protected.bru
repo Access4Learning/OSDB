@@ -38,7 +38,7 @@ tests {
     expect(data.error).to.have.property('subCode');
     expect(data.error).to.have.property('message');
     expect(data.error).to.have.property('scope');
-    expect(data.error).to.have.property('timestamp');
+    expect(data.error).to.not.have.property('timestamp');
   });
 }
 
