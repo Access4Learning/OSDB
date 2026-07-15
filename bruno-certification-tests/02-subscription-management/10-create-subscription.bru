@@ -34,7 +34,6 @@ assert {
   res.body.subscription.serviceName: isDefined
   res.body.subscription.zoneId: isDefined
   res.body.subscription.messageType: isDefined
-  res.body.subscription.createdAt: isDefined
 }
 
 script:pre-request {
@@ -110,10 +109,9 @@ tests {
     expect(data.messageType).to.equal('EVENT');
   });
 
-  test("Response contains createdAt timestamp", function() {
+  test("Response does NOT contain createdAt (not in SIF 3.7 spec)", function() {
     const data = res.getBody().subscription;
-    expect(data).to.have.property('createdAt');
-    expect(data.createdAt).to.be.a('string');
+    expect(data).to.not.have.property('createdAt');
   });
 }
 
@@ -137,7 +135,7 @@ docs {
 
   - HTTP 201 Created
   - Response body wrapped in {"subscription": {...}} envelope
-  - Subscription contains: id, queueId, serviceName, zoneId, contextId, messageType, createdAt
+  - Subscription contains: id, queueId, serviceName, zoneId, contextId, messageType
   - serviceName is "StudentPersonal" (resolved from ACL entry)
   - messageType is "EVENT" (as requested)
   - queueId matches the queue created in setup
