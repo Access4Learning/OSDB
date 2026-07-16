@@ -26,8 +26,8 @@ body:json {
 
 assert {
   res.status: eq 201
-  res.body.id: isDefined
-  res.body.sessionToken: isDefined
+  res.body.environment.id: isDefined
+  res.body.environment.sessionToken: isDefined
 }
 
 script:pre-request {
@@ -52,7 +52,7 @@ script:post-response {
     );
   }
 
-  const data = res.getBody();
+  const data = res.getBody().environment;
   bru.setVar('sec02ConsumerEnvId', data.id);
   bru.setVar('sec02ConsumerSessionToken', data.sessionToken);
   bru.setVar('sec02ConsumerSharedSecret', data.sharedSecret);

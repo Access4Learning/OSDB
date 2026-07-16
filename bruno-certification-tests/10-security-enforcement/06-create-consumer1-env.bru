@@ -38,7 +38,7 @@ script:post-response {
     );
   }
 
-  const data = res.getBody();
+  const data = res.getBody().environment;
   bru.setVar('sec10Consumer1EnvId', data.id);
   bru.setVar('sec10Consumer1SessionToken', data.sessionToken);
   bru.setVar('sec10Consumer1SharedSecret', data.sharedSecret);
@@ -65,8 +65,8 @@ script:post-response {
 
 assert {
   res.status: eq 201
-  res.body.id: isDefined
-  res.body.sessionToken: isDefined
+  res.body.environment.id: isDefined
+  res.body.environment.sessionToken: isDefined
 }
 
 tests {
@@ -75,14 +75,14 @@ tests {
   });
 
   test("Response contains credentials", function() {
-    const data = res.getBody();
+    const data = res.getBody().environment;
     expect(data).to.have.property('id');
     expect(data).to.have.property('sessionToken');
     expect(data).to.have.property('sharedSecret');
   });
 
   test("Environment type is BROKERED", function() {
-    const data = res.getBody();
+    const data = res.getBody().environment;
     expect(data.type).to.equal('BROKERED');
   });
 }

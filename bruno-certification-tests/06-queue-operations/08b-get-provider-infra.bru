@@ -35,7 +35,7 @@ script:post-response {
     throw new Error('Failed to fetch provider environment: status ' + status);
   }
 
-  const envData = res.getBody();
+  const envData = res.getBody().environment;
   if (envData.infrastructureServices && envData.infrastructureServices.infrastructureService) {
     const services = envData.infrastructureServices.infrastructureService;
     const eventsConnector = services.find(s => s.name === 'eventsConnector');

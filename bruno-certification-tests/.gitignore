@@ -20,6 +20,3 @@ Thumbs.db
 
 # Logs
 *.log
-
-# Test result files
-results-*.json

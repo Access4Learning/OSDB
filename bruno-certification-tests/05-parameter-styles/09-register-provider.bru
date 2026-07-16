@@ -1,7 +1,7 @@
 meta {
   name: 09 Register Provider
   type: http
-  seq: 10.2
+  seq: 12
 }
 
 post {
@@ -33,7 +33,7 @@ body:json {
 
 assert {
   res.status: eq 201
-  res.body.id: isDefined
+  res.body.provider.id: isDefined
 }
 
 script:pre-request {

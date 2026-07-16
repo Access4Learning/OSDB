@@ -30,7 +30,7 @@ script:pre-request {
 
 assert {
   res.status: eq 200
-  res.body.infrastructureServices: isDefined
+  res.body.environment.infrastructureServices: isDefined
 }
 
 tests {
@@ -39,14 +39,14 @@ tests {
   });
 
   test("BROKERED environment has exactly 8 infrastructure services", function() {
-    const data = res.getBody();
+    const data = res.getBody().environment;
     const services = data.infrastructureServices.infrastructureService;
     expect(services).to.be.an('array');
     expect(services).to.have.lengthOf(8);
   });
 
   test("All 8 required service names are present", function() {
-    const data = res.getBody();
+    const data = res.getBody().environment;
     const services = data.infrastructureServices.infrastructureService;
     const serviceNames = services.map(s => s.name);
 
@@ -67,7 +67,7 @@ tests {
   });
 
   test("Each infrastructure service has a non-blank URL value", function() {
-    const data = res.getBody();
+    const data = res.getBody().environment;
     const services = data.infrastructureServices.infrastructureService;
 
     services.forEach(function(svc) {
@@ -78,7 +78,7 @@ tests {
   });
 
   test("Service URLs contain expected path patterns", function() {
-    const data = res.getBody();
+    const data = res.getBody().environment;
     const services = data.infrastructureServices.infrastructureService;
 
     // Each URL should be a valid-looking HTTP(S) URL

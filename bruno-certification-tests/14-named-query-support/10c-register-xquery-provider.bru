@@ -33,7 +33,7 @@ body:json {
 
 assert {
   res.status: eq 201
-  res.body.id: isDefined
+  res.body.provider.id: isDefined
 }
 
 script:pre-request {
@@ -67,7 +67,7 @@ script:post-response {
     );
   }
 
-  const data = res.getBody();
+  const data = res.getBody().provider;
   bru.setVar('sec14ProviderRegistrationId', data.id);
   console.log('✓ Provider registered for StudentSnapshot xQuery: ' + data.id);
   console.log('  Endpoint: ' + data.endpoint);
@@ -77,7 +77,7 @@ script:post-response {
 tests {
   test("Provider registration for XQUERYTEMPLATE created", function() {
     expect(res.getStatus()).to.equal(201);
-    const data = res.getBody();
+    const data = res.getBody().provider;
     expect(data.id).to.exist;
   });
 }

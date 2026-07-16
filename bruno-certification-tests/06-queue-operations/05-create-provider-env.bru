@@ -38,7 +38,7 @@ script:post-response {
     );
   }
 
-  const data = res.getBody();
+  const data = res.getBody().environment;
   bru.setVar('sec06ProviderEnvId', data.id);
   bru.setVar('sec06ProviderSessionToken', data.sessionToken);
   bru.setVar('sec06ProviderSharedSecret', data.sharedSecret);
@@ -53,14 +53,14 @@ tests {
   });
 
   test("Response contains credentials", function() {
-    const data = res.getBody();
+    const data = res.getBody().environment;
     expect(data).to.have.property('id');
     expect(data).to.have.property('sessionToken');
     expect(data).to.have.property('sharedSecret');
   });
 
   test("Environment type is BROKERED", function() {
-    const data = res.getBody();
+    const data = res.getBody().environment;
     expect(data.type).to.equal('BROKERED');
   });
 }

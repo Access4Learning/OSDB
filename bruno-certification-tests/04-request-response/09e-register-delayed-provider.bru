@@ -33,7 +33,7 @@ body:json {
 
 assert {
   res.status: eq 201
-  res.body.id: isDefined
+  res.body.provider.id: isDefined
 }
 
 script:pre-request {
@@ -68,7 +68,7 @@ script:post-response {
     );
   }
 
-  const data = res.getBody();
+  const data = res.getBody().provider;
   bru.setVar('sec04DelayedProviderRegistrationId', data.id);
   console.log('✓ Registered DELAYED provider:', data.id);
 }
@@ -76,7 +76,7 @@ script:post-response {
 tests {
   test("DELAYED provider registration created", function() {
     expect(res.getStatus()).to.equal(201);
-    expect(res.getBody().id).to.exist;
+    expect(res.getBody().provider).to.have.property('id');
   });
 }
 

@@ -55,8 +55,8 @@ script:post-response {
   }
 
   if (status === 201) {
-    bru.setVar('sec11ProviderRegistrationId', res.getBody().id);
-    console.log('✓ Alerts provider registered: ' + res.getBody().id);
+    bru.setVar('sec11ProviderRegistrationId', res.getBody().provider.id);
+    console.log('✓ Alerts provider registered: ' + res.getBody().provider.id);
   } else {
     console.log('✓ Alerts provider already registered (409 — auto-created during solution setup)');
   }

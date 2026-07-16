@@ -25,7 +25,7 @@ script:pre-request {
 }
 
 script:post-response {
-  const envData = res.getBody();
+  const envData = res.getBody().environment;
   if (envData.infrastructureServices && envData.infrastructureServices.infrastructureService) {
     const services = envData.infrastructureServices.infrastructureService;
     const queuesService = services.find(s => s.name === 'queues');

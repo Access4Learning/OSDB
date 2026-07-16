@@ -30,9 +30,9 @@ script:pre-request {
 
 assert {
   res.status: eq 200
-  res.body.id: isDefined
-  res.body.type: isDefined
-  res.body.infrastructureServices: isDefined
+  res.body.environment.id: isDefined
+  res.body.environment.type: isDefined
+  res.body.environment.infrastructureServices: isDefined
 }
 
 tests {
@@ -41,7 +41,7 @@ tests {
   });
 
   test("Response contains required environment fields", function() {
-    const data = res.getBody();
+    const data = res.getBody().environment;
     expect(data).to.have.property('id');
     expect(data).to.have.property('type');
     expect(data).to.have.property('defaultZone');
@@ -50,25 +50,25 @@ tests {
   });
 
   test("Environment ID matches requested ID", function() {
-    const data = res.getBody();
+    const data = res.getBody().environment;
     const expectedId = bru.getVar('sec01ProviderEnvId');
     expect(data.id).to.equal(expectedId);
   });
 
   test("Environment type is BROKERED", function() {
-    const data = res.getBody();
+    const data = res.getBody().environment;
     expect(data.type).to.equal('BROKERED');
   });
 
   test("Infrastructure services list is non-empty", function() {
-    const data = res.getBody();
+    const data = res.getBody().environment;
     expect(data.infrastructureServices).to.have.property('infrastructureService');
     expect(data.infrastructureServices.infrastructureService).to.be.an('array');
     expect(data.infrastructureServices.infrastructureService.length).to.be.greaterThan(0);
   });
 
   test("Each infrastructure service has name and value", function() {
-    const data = res.getBody();
+    const data = res.getBody().environment;
     const services = data.infrastructureServices.infrastructureService;
     services.forEach(function(svc) {
       expect(svc).to.have.property('name');
