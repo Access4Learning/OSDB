@@ -18,6 +18,7 @@ headers {
   requestType: DELAYED
   queueId: {{sec04QueueId}}
   serviceType: OBJECT
+  requestId: {{sec04ImmediateRequestId}}
 }
 
 assert {
@@ -27,6 +28,11 @@ assert {
 script:pre-request {
   const auth = require('./common/auth.js');
   auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Consumer' });
+
+  // Generate a known consumer requestId token for D-I round-trip assertion
+  var uuid = require('uuid');
+  var token = 'cert-imm-' + uuid.v4().substring(0, 8);
+  bru.setVar('sec04ImmediateRequestId', token);
 
   const requestsUrl = bru.getVar('sec04ConsumerRequestsUrl');
   const queueId = bru.getVar('sec04QueueId');

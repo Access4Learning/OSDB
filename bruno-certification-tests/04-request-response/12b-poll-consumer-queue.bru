@@ -54,6 +54,14 @@ tests {
       expect(messageId).to.exist;
     }
   });
+
+  test("Delivered D-I response carries the consumer's requestId token", function() {
+    if (res.getStatus() === 200) {
+      const receivedRequestId = res.getHeader('requestid') || res.getHeader('requestId');
+      const expectedToken = bru.getVar('sec04ImmediateRequestId');
+      expect(receivedRequestId).to.equal(expectedToken);
+    }
+  });
 }
 
 docs {

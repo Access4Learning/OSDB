@@ -18,6 +18,7 @@ headers {
   requestType: DELAYED
   queueId: {{sec04QueueId}}
   serviceType: OBJECT
+  requestId: {{sec04DelayedRequestId}}
 }
 
 assert {
@@ -27,6 +28,11 @@ assert {
 script:pre-request {
   const auth = require('./common/auth.js');
   auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Consumer' });
+
+  // Generate a known consumer requestId token for round-trip correlation assertion
+  var uuid = require('uuid');
+  var token = 'cert-delayed-' + uuid.v4().substring(0, 8);
+  bru.setVar('sec04DelayedRequestId', token);
 
   const requestsUrl = bru.getVar('sec04ConsumerRequestsUrl');
   const queueId = bru.getVar('sec04QueueId');

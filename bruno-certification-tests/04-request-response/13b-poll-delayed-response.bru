@@ -59,6 +59,14 @@ tests {
       console.log('NOTE: No delayed response received — ensure a DELAYED provider is running');
     }
   });
+
+  test("Delivered response carries the consumer's requestId token", function() {
+    if (res.getStatus() === 200) {
+      const receivedRequestId = res.getHeader('requestid') || res.getHeader('requestId');
+      const expectedToken = bru.getVar('sec04DelayedRequestId');
+      expect(receivedRequestId).to.equal(expectedToken);
+    }
+  });
 }
 
 docs {

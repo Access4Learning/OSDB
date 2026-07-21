@@ -64,6 +64,13 @@ tests {
   test("The enqueued DELAYED request was processed and answered", function() {
     expect(res.getBody().messageProcessed).to.equal(true);
   });
+
+  test("Provider received requestId header on DELAYED request message", function() {
+    const data = res.getBody();
+    const expectedToken = bru.getVar('sec04DelayedRequestId');
+    expect(data.receivedRequestId).to.be.a('string');
+    expect(data.receivedRequestId).to.equal(expectedToken);
+  });
 }
 
 docs {
