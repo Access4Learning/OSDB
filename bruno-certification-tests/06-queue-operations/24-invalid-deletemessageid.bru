@@ -31,24 +31,25 @@ script:pre-request {
 
 script:post-response {
   const status = res.getStatus();
-  if (status === 404) {
-    console.log('âœ“ Invalid deleteMessageId correctly rejected with 404');
+  if (status === 410) {
+    console.log('âœ“ Invalid deleteMessageId correctly rejected with 410');
     const body = res.getBody();
     if (body && body.message) {
       console.log('  Error message: ' + body.message);
     }
   } else {
-    console.error('Unexpected status: ' + status + '. Expected 404 for invalid deleteMessageId.');
+    console.error('Unexpected status: ' + status + '. Expected 410 for invalid deleteMessageId.');
   }
 }
 
 assert {
-  res.status: eq 404
+  res.status: eq 410
 }
 
 tests {
-  test("Invalid deleteMessageId returns 404", function() {
-    expect(res.getStatus()).to.equal(404);
+  test("Invalid deleteMessageId returns 410", function() {
+    // D7 (2.14): the broker returns 410 here, matching the DELETE path. NOTE: infraPaths.yaml#/queueMessageGet declares only 200, so neither 404 nor 410 is actually declared for this operation, and this file previously cited SIF 9.3.1 for 404. That citation could not be verified against the 3.7 narrative (only the 3-3 text is vendored). Consistency with DELETE is the reason for 410 here; if 9.3.1 does mandate 404, this and MessageController's GET path both need revisiting.
+    expect(res.getStatus()).to.equal(410);
   });
 
   test("Response contains error body", function() {
@@ -62,13 +63,19 @@ tests {
 docs {
   ## Summary
 
-  Verifies that a GET with a non-existent deleteMessageId returns 404.
+  Verifies that a GET with a non-existent deleteMessageId returns 410.
 
   ## Rationale
 
-  SIF Â§9.3.1 specifies that if a consumer provides a deleteMessageId that does not
-  match any message in that consumer's pending delivery list, the broker must return
-  a 404 response with an error body indicating the message was not found.
+  If a consumer provides a deleteMessageId that does not match any message in that
+  consumer's pending delivery list, the broker returns 410 Gone with an error body.
+
+  UNRESOLVED: this file previously cited SIF §9.3.1 as requiring 404. That citation could
+  not be verified -- only the 3-3 narrative is vendored, and
+  infraPaths.yaml#/queueMessageGet declares only 200, so neither 404 nor 410 is declared
+  for this operation. 410 is used for consistency with queueMessageDelete, which does
+  declare it. If §9.3.1 mandates 404, this and MessageController's GET path both need
+  revisiting.
 
   This prevents consumers from accidentally acknowledging messages they haven't
   received and protects against invalid or stale message IDs.
@@ -78,6 +85,6 @@ docs {
 
   ## Expected Result
 
-  - HTTP 404 Not Found
+  - HTTP 410 Gone
   - Response body contains an error message indicating the message was not found
 }

@@ -18,16 +18,29 @@ headers {
 
 body:json {
   {
-    "environmentId": "{{sec04ProviderEnvId}}",
-    "contextServiceUuid": "{{sec04ContextServiceUuid}}",
-    "endpoint": "{{immediateProviderEndpointUrl}}/{{immediateProviderServiceName}}",
-    "serviceType": "OBJECT",
-    "supportedRequestTypes": [
-      {
-        "requestType": "IMMEDIATE",
-        "operations": ["CREATE", "QUERY", "UPDATE", "DELETE"]
+    "provider": {
+      "environmentId": "{{sec04ProviderEnvId}}",
+      "contextServiceUuid": "{{sec04ContextServiceUuid}}",
+      "serviceType": "OBJECT",
+      "endPoint": {
+        "location": "{{immediateProviderEndpointUrl}}/{{immediateProviderServiceName}}"
+      },
+      "supportedRequestTypes": {
+        "supportedRequestType": [
+          {
+            "requestType": "IMMEDIATE",
+            "operations": {
+              "operation": [
+                "CREATE",
+                "QUERY",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          }
+        ]
       }
-    ]
+    }
   }
 }
 
@@ -73,7 +86,7 @@ script:post-response {
   bru.setVar('sec04ProviderRegistrationId', data.id);
   console.log('✓ Registered provider:', data.id);
   console.log('  Service:', data.serviceName);
-  console.log('  Endpoint:', data.endpoint);
+  console.log('  Endpoint:', data.endPoint.location);
 }
 
 docs {

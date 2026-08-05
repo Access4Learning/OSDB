@@ -18,9 +18,13 @@ headers {
 
 body:json {
   {
-    "applicationName": "CertReqRespConsumer-{{$timestamp}}",
-    "type": "BROKERED",
-    "defaultZoneId": "{{sec04ZoneId}}"
+    "environment": {
+      "consumerName": "CertReqRespConsumer-{{$timestamp}}",
+      "type": "BROKERED",
+      "defaultZone": {
+        "id": "{{sec04ZoneId}}"
+      }
+    }
   }
 }
 

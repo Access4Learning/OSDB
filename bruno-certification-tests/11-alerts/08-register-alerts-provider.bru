@@ -18,16 +18,27 @@ headers {
 
 body:json {
   {
-    "environmentId": "{{sec11ProviderEnvId}}",
-    "contextServiceUuid": "{{sec11ContextServiceUuid}}",
-    "endpoint": "http://localhost:8080/internal/alerts",
-    "serviceType": "UTILITY",
-    "supportedRequestTypes": [
-      {
-        "requestType": "IMMEDIATE",
-        "operations": ["CREATE", "QUERY"]
+    "provider": {
+      "environmentId": "{{sec11ProviderEnvId}}",
+      "contextServiceUuid": "{{sec11ContextServiceUuid}}",
+      "serviceType": "UTILITY",
+      "endPoint": {
+        "location": "http://localhost:8080/internal/alerts"
+      },
+      "supportedRequestTypes": {
+        "supportedRequestType": [
+          {
+            "requestType": "IMMEDIATE",
+            "operations": {
+              "operation": [
+                "CREATE",
+                "QUERY"
+              ]
+            }
+          }
+        ]
       }
-    ]
+    }
   }
 }
 

@@ -18,9 +18,13 @@ headers {
 
 body:json {
   {
-    "applicationName": "sec10-consumer1-{{$timestamp}}",
-    "type": "BROKERED",
-    "defaultZoneId": "{{sec10ZoneId}}"
+    "environment": {
+      "consumerName": "sec10-consumer1-{{$timestamp}}",
+      "type": "BROKERED",
+      "defaultZone": {
+        "id": "{{sec10ZoneId}}"
+      }
+    }
   }
 }
 

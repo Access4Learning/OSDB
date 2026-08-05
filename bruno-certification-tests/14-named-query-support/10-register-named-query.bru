@@ -18,29 +18,33 @@ headers {
 
 body:json {
   {
-    "id": "StudentSnapshot",
-    "type": "SINGULAR",
-    "status": "APPROVED",
-    "qualifier": null,
-    "description": "Returns a snapshot of student data filtered by parameters",
-    "script": "SELECT * FROM students WHERE grade = :grade",
-    "parameters": [
-      {
-        "name": "grade",
-        "type": "xs:string",
-        "defaultValue": null,
-        "description": "Grade level to filter by",
-        "required": true
+    "xquery": {
+      "id": "StudentSnapshot",
+      "type": "SINGULAR",
+      "status": "APPROVED",
+      "qualifier": null,
+      "description": "Returns a snapshot of student data filtered by parameters",
+      "script": "SELECT * FROM students WHERE grade = :grade",
+      "parameters": {
+        "parameter": [
+          {
+            "name": "grade",
+            "type": "xs:string",
+            "defaultValue": null,
+            "description": "Grade level to filter by",
+            "required": true
+          },
+          {
+            "name": "schoolYear",
+            "type": "xs:string",
+            "defaultValue": "2024",
+            "description": "School year for the snapshot",
+            "required": false
+          }
+        ]
       },
-      {
-        "name": "schoolYear",
-        "type": "xs:string",
-        "defaultValue": "2024",
-        "description": "School year for the snapshot",
-        "required": false
-      }
-    ],
-    "returnType": "http://www.sifassociation.org/datamodel/na/4.x/StudentPersonal"
+      "returnType": "http://www.sifassociation.org/datamodel/na/4.x/StudentPersonal"
+    }
   }
 }
 

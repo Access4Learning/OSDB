@@ -28,7 +28,7 @@ body:json {
 }
 
 assert {
-  res.status: eq 404
+  res.status: eq 400
   res.body.error.id: isDefined
   res.body.error.code: isDefined
   res.body.error.message: isDefined
@@ -45,8 +45,9 @@ script:pre-request {
 }
 
 tests {
-  test("Subscription creation rejected with 404 for nonexistent ACL", function() {
-    expect(res.getStatus()).to.equal(404);
+  test("Subscription creation rejected with 400 for an unresolvable ACL reference", function() {
+    // D7 (2.16): POST /subscriptions/subscription declares no 404. A caller-supplied aclEntryId that does not resolve is a malformed reference, not a missing resource, so the broker returns 400. "Caller holds no matching grant" is the separate 403 case.
+    expect(res.getStatus()).to.equal(400);
   });
 
   test("Error response contains message field", function() {
@@ -70,9 +71,9 @@ tests {
   });
 
   test("No subscription was created (list unchanged)", function() {
-    // The subscription list should not have grown from this failed attempt
-    // This is implicitly verified by the 404 status â€” the broker rejected the request
-    expect(res.getStatus()).to.equal(404);
+    // The subscription list should not have grown from this failed attempt; implied by
+    // the 400 rejection.
+    expect(res.getStatus()).to.equal(400);
   });
 }
 
@@ -80,18 +81,20 @@ docs {
   ## Summary
 
   Attempts to create a subscription with a nonexistent ACL entry ID and verifies
-  the broker rejects the request with 404.
+  the broker rejects the request with 400.
 
   ## Rationale
 
   Subscriptions are bound to ACL entries. If the referenced ACL entry does not exist,
   the broker cannot resolve the service name, zone, and context. A compliant broker
-  must reject such requests with a 404 error rather than creating an invalid subscription.
+  must reject such requests with a 400 error rather than creating an invalid subscription.
+  400 and not 404: this operation declares no 404, and an aclEntryId that does not resolve
+  is a malformed reference rather than a missing resource.
   This prevents orphaned subscriptions that can never receive messages.
 
   ## Expected Result
 
-  - HTTP 404 Not Found
+  - HTTP 400 Bad Request
   - Error response body contains: message (describing the ACL entry was not found),
     code (error code), and scope ("BROKER")
   - No subscription is created

@@ -18,9 +18,13 @@ headers {
 
 body:json {
   {
-    "applicationName": "sec06-provider-{{$timestamp}}",
-    "type": "BROKERED",
-    "defaultZoneId": "{{sec06ZoneId}}"
+    "environment": {
+      "consumerName": "sec06-provider-{{$timestamp}}",
+      "type": "BROKERED",
+      "defaultZone": {
+        "id": "{{sec06ZoneId}}"
+      }
+    }
   }
 }
 
@@ -43,7 +47,7 @@ script:post-response {
   bru.setVar('sec06ProviderSessionToken', data.sessionToken);
   bru.setVar('sec06ProviderSharedSecret', data.sharedSecret);
   console.log('âœ“ Provider environment created: ' + data.id);
-  console.log('  Application Name: ' + data.applicationName);
+  console.log('  Application Name: ' + data.consumerName);
   console.log('  Type: ' + data.type);
 }
 

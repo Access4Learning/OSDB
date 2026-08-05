@@ -18,16 +18,29 @@ headers {
 
 body:json {
   {
-    "environmentId": "{{sec04ProviderEnvId}}",
-    "contextServiceUuid": "{{sec04DelayedContextServiceUuid}}",
-    "endpoint": "{{immediateProviderEndpointUrl}}/{{delayedProviderServiceName}}",
-    "serviceType": "OBJECT",
-    "supportedRequestTypes": [
-      {
-        "requestType": "DELAYED",
-        "operations": ["CREATE", "QUERY", "UPDATE", "DELETE"]
+    "provider": {
+      "environmentId": "{{sec04ProviderEnvId}}",
+      "contextServiceUuid": "{{sec04DelayedContextServiceUuid}}",
+      "serviceType": "OBJECT",
+      "endPoint": {
+        "location": "{{immediateProviderEndpointUrl}}/{{delayedProviderServiceName}}"
+      },
+      "supportedRequestTypes": {
+        "supportedRequestType": [
+          {
+            "requestType": "DELAYED",
+            "operations": {
+              "operation": [
+                "CREATE",
+                "QUERY",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          }
+        ]
       }
-    ]
+    }
   }
 }
 

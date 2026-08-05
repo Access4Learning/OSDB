@@ -18,16 +18,29 @@ headers {
 
 body:json {
   {
-    "environmentId": "{{sec15ProviderEnvId}}",
-    "contextServiceUuid": "{{sec15ContextServiceUuid}}",
-    "endpoint": "{{immediateProviderEndpointUrl}}/StudentPersonals",
-    "serviceType": "OBJECT",
-    "supportedRequestTypes": [
-      {
-        "requestType": "IMMEDIATE",
-        "operations": ["CREATE", "QUERY", "UPDATE", "DELETE"]
+    "provider": {
+      "environmentId": "{{sec15ProviderEnvId}}",
+      "contextServiceUuid": "{{sec15ContextServiceUuid}}",
+      "serviceType": "OBJECT",
+      "endPoint": {
+        "location": "{{immediateProviderEndpointUrl}}/StudentPersonals"
+      },
+      "supportedRequestTypes": {
+        "supportedRequestType": [
+          {
+            "requestType": "IMMEDIATE",
+            "operations": {
+              "operation": [
+                "CREATE",
+                "QUERY",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          }
+        ]
       }
-    ]
+    }
   }
 }
 
@@ -68,11 +81,11 @@ script:post-response {
     );
   }
 
-  const data = res.getBody();
+  const data = res.getBody().provider;
   bru.setVar('sec15ProviderRegistrationId', data.id);
   console.log('Registered provider:', data.id);
   console.log('  Service: StudentPersonals');
-  console.log('  Endpoint:', data.endpoint);
+  console.log('  Endpoint:', data.endPoint.location);
 }
 
 docs {

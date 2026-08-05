@@ -30,24 +30,25 @@ script:pre-request {
 
 script:post-response {
   const status = res.getStatus();
-  if (status === 404) {
-    console.log('✓ Nonexistent messageId correctly rejected with 404');
+  if (status === 410) {
+    console.log('✓ Nonexistent messageId correctly rejected with 410');
     const body = res.getBody();
     if (body && body.message) {
       console.log('  Error message: ' + body.message);
     }
   } else {
-    console.error('Unexpected status: ' + status + '. Expected 404 for nonexistent messageId.');
+    console.error('Unexpected status: ' + status + '. Expected 410 for nonexistent messageId.');
   }
 }
 
 assert {
-  res.status: eq 404
+  res.status: eq 410
 }
 
 tests {
-  test("Delete nonexistent message returns 404", function() {
-    expect(res.getStatus()).to.equal(404);
+  test("Delete nonexistent message returns 410", function() {
+    // D7 (2.15): infraPaths.yaml#/queueMessageDelete declares 204, 401, 403 and 410 -- not 404. A message that is not in the pending list is Gone.
+    expect(res.getStatus()).to.equal(410);
   });
 
   test("Response contains error body with message", function() {
@@ -66,14 +67,17 @@ docs {
   ## Rationale
 
   When a consumer tries to delete a messageId that is not present in the queue,
-  the broker must return 404 Not Found with an error body. This prevents silent
-  failures and helps consumers detect stale or invalid message references.
+  the broker returns 410 Gone with an error body. This prevents silent failures and helps
+  consumers detect stale or invalid message references.
+
+  410 and not 404: infraPaths.yaml#/queueMessageDelete declares 204, 401, 403 and 410,
+  and does not declare 404.
 
   The UUID `00000000-0000-0000-0000-000000000000` is used as a guaranteed-invalid
   message ID since no real message would have this identifier.
 
   ## Expected Result
 
-  - HTTP 404 Not Found
+  - HTTP 410 Gone
   - Response body contains an error message indicating the message was not found
 }

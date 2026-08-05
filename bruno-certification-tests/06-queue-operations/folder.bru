@@ -34,7 +34,7 @@ docs {
   | Ack and advance | `GET /queues/{id}/messages?deleteMessageId={id}` | 200 + next message |
   | Ack last message | `GET /queues/{id}/messages?deleteMessageId={id}` | 204 (queue empty) |
   | Empty queue | `GET /queues/{id}/messages` | 204 (no body) |
-  | Invalid deleteMessageId | `GET /queues/{id}/messages?deleteMessageId=bogus` | 404 |
+  | Invalid deleteMessageId | `GET /queues/{id}/messages?deleteMessageId=bogus` | 410 |
 
   ## Test Purpose
 
@@ -43,7 +43,7 @@ docs {
   2. Consecutive peeks without ack are idempotent (return same message)
   3. GET with valid deleteMessageId removes that message and returns the next one
   4. GET on an empty queue returns 204 with no body
-  5. GET with a non-existent deleteMessageId returns 404
+  5. GET with a non-existent deleteMessageId returns 410
   6. Queue message count decreases by 1 per acknowledgment
 
   ## Prerequisites
@@ -60,7 +60,7 @@ docs {
   - Second peek returns same message (idempotent) â†’ 200
   - Ack-and-advance removes first message, returns second â†’ 200
   - After consuming all messages, queue returns empty â†’ 204
-  - Invalid deleteMessageId â†’ 404
+  - Invalid deleteMessageId â†’ 410
   - Queue stats show count decreasing by 1 per acknowledgment
   - Teardown removes all resources created by this section
 

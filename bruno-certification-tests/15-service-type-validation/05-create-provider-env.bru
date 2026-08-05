@@ -18,9 +18,13 @@ headers {
 
 body:json {
   {
-    "applicationName": "CertSvcTypeProvider-{{$timestamp}}",
-    "type": "BROKERED",
-    "defaultZoneId": "{{sec15ZoneId}}"
+    "environment": {
+      "consumerName": "CertSvcTypeProvider-{{$timestamp}}",
+      "type": "BROKERED",
+      "defaultZone": {
+        "id": "{{sec15ZoneId}}"
+      }
+    }
   }
 }
 

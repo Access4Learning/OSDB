@@ -18,8 +18,10 @@ headers {
 
 body:json {
   {
-    "applicationName": "CertConsumer-CodeSets-{{$timestamp}}",
-    "type": "BROKERED"
+    "environment": {
+      "consumerName": "CertConsumer-CodeSets-{{$timestamp}}",
+      "type": "BROKERED"
+    }
   }
 }
 

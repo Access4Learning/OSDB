@@ -18,16 +18,26 @@ headers {
 
 body:json {
   {
-    "environmentId": "{{sec14ProviderEnvId}}",
-    "contextServiceUuid": "{{sec14ContextServiceUuid}}",
-    "endpoint": "{{immediateProviderEndpointUrl}}/StudentSnapshot",
-    "serviceType": "XQUERYTEMPLATE",
-    "supportedRequestTypes": [
-      {
-        "requestType": "IMMEDIATE",
-        "operations": ["QUERY"]
+    "provider": {
+      "environmentId": "{{sec14ProviderEnvId}}",
+      "contextServiceUuid": "{{sec14ContextServiceUuid}}",
+      "serviceType": "XQUERYTEMPLATE",
+      "endPoint": {
+        "location": "{{immediateProviderEndpointUrl}}/StudentSnapshot"
+      },
+      "supportedRequestTypes": {
+        "supportedRequestType": [
+          {
+            "requestType": "IMMEDIATE",
+            "operations": {
+              "operation": [
+                "QUERY"
+              ]
+            }
+          }
+        ]
       }
-    ]
+    }
   }
 }
 
@@ -70,7 +80,7 @@ script:post-response {
   const data = res.getBody().provider;
   bru.setVar('sec14ProviderRegistrationId', data.id);
   console.log('✓ Provider registered for StudentSnapshot xQuery: ' + data.id);
-  console.log('  Endpoint: ' + data.endpoint);
+  console.log('  Endpoint: ' + data.endPoint.location);
   console.log('  ServiceType: XQUERYTEMPLATE');
 }
 
