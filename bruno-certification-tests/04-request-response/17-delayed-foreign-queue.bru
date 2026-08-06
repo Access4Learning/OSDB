@@ -1,0 +1,140 @@
+meta {
+  name: 17 Delayed Foreign Queue
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{sec04ConsumerRequestsUrl}}/{{immediateProviderServiceName}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec04ZoneId}}
+  contextId: DEFAULT
+  requestType: DELAYED
+  queueId: {{sec04ProviderQueueId}}
+  serviceType: OBJECT
+}
+
+assert {
+  res.status: eq 404
+  res.body.error.subCode: eq QUEUE_NOT_FOUND
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Consumer' });
+
+  const requestsUrl = bru.getVar('sec04ConsumerRequestsUrl');
+  const providerQueueId = bru.getVar('sec04ProviderQueueId');
+  if (!requestsUrl || !providerQueueId) {
+    throw new Error(
+      '04-request-response/17-delayed-foreign-queue: Missing sec04ConsumerRequestsUrl or sec04ProviderQueueId. ' +
+      'Run setup steps first (consumer env + provider queue must both exist).'
+    );
+  }
+
+  // Canary: this step asserts 404, which a gate rejecting EVERY delayed request would also
+  // satisfy — exactly what happened during the strict-Jackson regression, when this step
+  // stayed green while all delayed traffic was broken. Refuse to report a meaningful result
+  // unless step 12 has proven a legitimate DELAYED request still succeeds.
+  if (bru.getVar('sec04DelayedPositivePathProven') !== 'true') {
+    throw new Error(
+      '04-request-response/17-delayed-foreign-queue: the positive DELAYED path is unproven ' +
+      '(step 12 did not return 202). A 404 here proves nothing, because an over-blocking gate ' +
+      'returns 404 for everything. Fix steps 12/13/14 first, then re-run.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Foreign queue DELAYED request status:', status);
+
+  if (status === 404) {
+    console.log('✓ Correctly rejected — consumer cannot name provider\'s queue as response destination');
+    const body = res.getBody();
+    if (body && body.error) {
+      console.log('  subCode:', body.error.subCode);
+      console.log('  message:', body.error.message);
+    }
+  } else if (status === 202) {
+    console.error('✗ BUG: Request accepted with 202 — cross-tenant queue hijack is possible');
+  }
+}
+
+tests {
+  test("DELAYED request naming another environment's queue returns 404", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+
+  test("Rejection is specifically an ownership denial (subCode QUEUE_NOT_FOUND)", function() {
+    // Asserted POSITIVELY and unconditionally. Two earlier weaknesses are deliberately
+    // avoided here:
+    //   1. A bare 404 does not prove the gate works — a gate that denied EVERY delayed
+    //      request would also return 404 here. The exact subCode at least distinguishes an
+    //      ownership denial from NO_PROVIDER / NO_SUBSCRIPTION / a routing 404.
+    //   2. Wrapping these assertions in `if (body && body.error)` made the test pass
+    //      vacuously whenever the body was absent or reshaped. Assert the shape instead.
+    const body = res.getBody();
+    expect(body, 'response body must be present').to.exist;
+    expect(body.error, 'response must use the SIF 3.7 error envelope').to.exist;
+    expect(body.error.subCode).to.equal('QUEUE_NOT_FOUND');
+    expect(body.error.code).to.equal(404);
+  });
+
+  test("Error response does not reveal queue owner or queue existence", function() {
+    const body = res.getBody();
+    expect(body.error.message).to.not.include('owned');
+    expect(body.error.message).to.not.include('environment');
+    // Must not echo the foreign queue id back to the caller.
+    expect(JSON.stringify(body)).to.not.include(bru.getVar('sec04ProviderQueueId'));
+  });
+}
+
+docs {
+  ## Summary
+
+  Verifies that a consumer cannot direct a DELAYED response into another
+  environment's queue by naming that queue in the `queueId` header.
+
+  ## READ THIS BEFORE TRUSTING A GREEN RESULT
+
+  **This step passing is necessary but NOT sufficient.** It is a negative test: it
+  asserts a request is *denied*. A broken gate that denied **every** DELAYED request —
+  including legitimate ones — would also produce the 404 this step expects, and would
+  also return `QUEUE_NOT_FOUND`. Step 17 green, on its own, cannot distinguish
+  "the gate works" from "the gate denies everything".
+
+  The real proof is this step green **together with** the positive DELAYED steps
+  beside it — 12 (Delayed Immediate), 13/13a/13b (Delayed Delayed), and
+  14/14b (Delayed With Query Params). Those exercise a consumer naming its OWN
+  queue and must still reach 202 and deliver a response.
+
+  If step 17 goes green while 12/13/14 go red, the gate is over-blocking, not working.
+  Always read them as a set.
+
+  ## Rationale
+
+  The consumer (`sec04Consumer`) sends a DELAYED request but supplies
+  `sec04ProviderQueueId` — a queue owned by the provider environment, not
+  the consumer. The broker must reject this with 404 (not 202) so that
+  cross-tenant data cannot be written into foreign queues.
+
+  ## Bug Condition (on unfixed code)
+
+  The request is accepted with HTTP 202 and the foreign queueId is embedded
+  in the SIF envelope as the response destination. This is the counterexample
+  proving the cross-tenant queue hijack bug.
+
+  ## Expected Result (after fix)
+
+  - HTTP 404 Not Found
+  - `error.subCode` is exactly `QUEUE_NOT_FOUND` and `error.code` is 404
+  - Error body does NOT reveal queue owner or existence information, and does not
+    echo the foreign queue id back to the caller
+}

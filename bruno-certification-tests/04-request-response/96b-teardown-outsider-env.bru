@@ -1,0 +1,57 @@
+meta {
+  name: 96b Teardown Outsider Environment
+  type: http
+  seq: 96
+}
+
+delete {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/environments/{{sec04OutsiderEnvId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Admin' });
+}
+
+script:post-response {
+  // Surgical teardown: delete the ACL-less outsider environment created in 18a.
+  // Deleting the environment cascades its queues, including the outsider queue from 18b.
+  // Tolerant by design — teardown must never fail the run.
+  const status = res.getStatus();
+  const envId = bru.getVar('sec04OutsiderEnvId');
+  if (!envId) {
+    console.log('• No sec04OutsiderEnvId to delete — skipping');
+  } else if (status === 200 || status === 204) {
+    console.log('✓ Outsider environment deleted: ' + envId);
+  } else if (status === 404) {
+    console.log('✓ Outsider environment already gone (404): ' + envId);
+  } else {
+    console.error('⚠ Unexpected status ' + status + ' deleting outsider env ' + envId + ' — continuing');
+  }
+  bru.setVar('sec04OutsiderEnvId', null);
+  bru.setVar('sec04OutsiderQueueId', null);
+  bru.setVar('sec04OutsiderSessionToken', null);
+  bru.setVar('sec04ForgedResponseRequestId', null);
+  bru.setVar('sec04DelayedResponseDeliveredProven', null);
+}
+
+docs {
+  ## Summary
+
+  Deletes the unentitled outsider environment created in step 18a. Deleting the environment
+  cascades the outsider queue created in 18b.
+
+  ## Expected Result
+
+  - HTTP 200/204: environment deleted
+  - HTTP 404: already removed
+  - Missing variable: skipped (no-op)
+}

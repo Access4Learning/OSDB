@@ -1,0 +1,170 @@
+meta {
+  name: 18c Response To Unentitled Destination
+  type: http
+  seq: 26
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/responses
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{sec04ZoneId}}
+  contextId: DEFAULT
+  queueId: {{sec04OutsiderQueueId}}
+  requestId: {{sec04ForgedResponseRequestId}}
+  relativeServicePath: {{delayedProviderServiceName}}
+  serviceType: OBJECT
+}
+
+body:json {
+  {
+    "serviceName": "{{delayedProviderServiceName}}",
+    "serviceType": "OBJECT",
+    "payload": {
+      "refId": "cert-forged-response",
+      "note": "must never reach an unentitled queue"
+    }
+  }
+}
+
+assert {
+  res.status: eq 404
+  res.body.error.subCode: eq RESPONSE_DESTINATION_DENIED
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  // The PROVIDER is the caller: it legitimately holds PROVIDE on the service (step 09a), so the
+  // gateway's own ACL check on /responses passes and the request reaches the destination gate.
+  // Using an unentitled caller instead would produce a 403 from the gateway and certify nothing
+  // about this gate.
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Provider' });
+
+  const outsiderQueueId = bru.getVar('sec04OutsiderQueueId');
+  const serviceName = bru.getEnvVar('delayedProviderServiceName');
+  if (!outsiderQueueId || !serviceName) {
+    throw new Error(
+      '04-request-response/18c-response-unentitled-destination: Missing sec04OutsiderQueueId or ' +
+      'delayedProviderServiceName. Run 18a/18b and the provider registration steps first.'
+    );
+  }
+
+  // requestId is mandatory on public response ingress. Its value is deliberately arbitrary: this
+  // gate is an entitlement check on the DESTINATION, not a correlation check, so no prior request
+  // needs to exist. If this step ever starts failing with a correlation error, the design has
+  // drifted toward the per-request state the spec explicitly rejected.
+  bru.setVar('sec04ForgedResponseRequestId',
+    '00000000-0000-4000-8000-' + String(Date.now()).slice(-12).padStart(12, '0'));
+
+  // Canary — the same discipline as step 17. This step asserts a 404, and a destination gate that
+  // denied EVERY response would satisfy that too while silently breaking all delayed delivery.
+  // Refuse to report a meaningful result unless the positive response leg has been proven.
+  if (bru.getVar('sec04DelayedResponseDeliveredProven') !== 'true') {
+    throw new Error(
+      '04-request-response/18c-response-unentitled-destination: the positive response leg is ' +
+      'unproven (step 13b did not confirm a delivered delayed response). A 404 here proves ' +
+      'nothing, because an over-denying gate returns 404 for every response. Fix 13/13a/13b first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Response to unentitled destination status:', status);
+
+  if (status === 404) {
+    const body = res.getBody();
+    console.log('✓ Correctly denied — destination owner holds no grant on the service');
+    if (body && body.error) {
+      console.log('  subCode:', body.error.subCode);
+    }
+  } else if (status >= 200 && status < 300) {
+    console.error(
+      '✗ BUG: response accepted (' + status + ') into a queue whose owner has NO grant on ' +
+      bru.getEnvVar('delayedProviderServiceName') + ' — cross-tenant response injection is possible'
+    );
+  } else if (status === 403) {
+    console.error(
+      '✗ Got 403, not 404. That is the GATEWAY rejecting the caller, so the destination gate was ' +
+      'never reached and this step certifies nothing. Check the provider PROVIDE grant (step 09a).'
+    );
+  }
+}
+
+tests {
+  test("Response naming an unentitled environment's queue is rejected with 404", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+
+  test("Rejection is specifically a destination-entitlement denial", function() {
+    // Asserted POSITIVELY and unconditionally — a bare 404 cannot distinguish this gate working
+    // from this gate denying everything, and cannot distinguish it from a routing 404 or the
+    // gateway's own rejection. The exact subCode is the only thing that pins the right branch.
+    const body = res.getBody();
+    expect(body, 'response body must be present').to.exist;
+    expect(body.error, 'response must use the SIF 3.7 error envelope').to.exist;
+    expect(body.error.subCode).to.equal('RESPONSE_DESTINATION_DENIED');
+    expect(body.error.code).to.equal(404);
+  });
+
+  test("Denial does not disclose whether the queue exists or who owns it", function() {
+    // Requirement 2.4: both denial reasons (unresolvable owner, unentitled owner) share one code
+    // and one message, so the response cannot be used to probe queue existence or ownership.
+    const body = res.getBody();
+    const serialized = JSON.stringify(body);
+    expect(serialized).to.not.include(bru.getVar('sec04OutsiderQueueId'));
+    expect(serialized).to.not.include(bru.getVar('sec04OutsiderEnvId'));
+    expect(body.error.message).to.not.include('owner');
+    expect(body.error.message).to.not.include('entitle');
+  });
+}
+
+docs {
+  ## Summary
+
+  Certifies the **response leg** of the destination gate: a provider posting a well-formed
+  response cannot deliver it into a queue whose owning environment holds no ACL grant on the
+  service being delivered.
+
+  ## READ THIS BEFORE TRUSTING A GREEN RESULT
+
+  This is a negative test. On its own it cannot distinguish "the gate works" from "the gate
+  denies every response" — both produce the 404 and both would produce
+  `RESPONSE_DESTINATION_DENIED`. The pre-request script therefore refuses to run unless
+  `sec04DelayedResponseDeliveredProven` is set, i.e. unless the positive delayed response leg
+  (13/13a/13b) has actually delivered a response.
+
+  Read this step together with 12, 13, 13a, 13b, 14 and 14b. If 18c is green while those are red,
+  the gate is over-denying, not working.
+
+  ## Why the caller is the provider, not the outsider
+
+  The gateway independently requires the caller to hold PROVIDE on `/responses`. An unentitled
+  caller is rejected with **403 by the gateway**, before the destination gate runs — that would
+  certify the gateway, not this fix. So the caller is the legitimately-entitled provider and the
+  only thing wrong with the request is the destination it names.
+
+  ## Why the destination is a third environment
+
+  The consumer's queue is entitled (DELAYED QUERY grant, step 09b) and the provider's own queue is
+  entitled too, because the check is access-type-agnostic and PROVIDE counts. Only the ACL-less
+  outsider environment from 18a exercises the denial. See 18a's docs.
+
+  ## Bug Condition (on unfixed code)
+
+  The response is accepted (2xx) and enqueued into the outsider's queue: the public endpoint took
+  the destination `queueId` straight from the caller and the broker enqueued with its own
+  privileges, so a provider could write data into any environment's queue.
+
+  ## Expected Result (after fix)
+
+  - HTTP 404 Not Found
+  - `error.subCode` is exactly `RESPONSE_DESTINATION_DENIED` and `error.code` is 404
+  - the body does not echo the queue id, the owner id, or any ownership/entitlement wording
+}

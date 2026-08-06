@@ -1,0 +1,97 @@
+meta {
+  name: 18a Create Outsider Environment
+  type: http
+  seq: 24
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/environments/environment
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environment": {
+      "consumerName": "CertReqRespOutsider-{{$timestamp}}",
+      "type": "BROKERED",
+      "defaultZone": {
+        "id": "{{sec04ZoneId}}"
+      }
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.environment.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Admin' });
+
+  const zoneId = bru.getVar('sec04ZoneId');
+  if (!zoneId) {
+    throw new Error(
+      '04-request-response/18a-create-outsider-env: Missing sec04ZoneId. ' +
+      'Run 04-setup-zone first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '04-request-response/18a-create-outsider-env FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  const env = res.getBody().environment;
+  bru.setVar('sec04OutsiderEnvId', env.id);
+  bru.setVar('sec04OutsiderSessionToken', env.sessionToken);
+
+  console.log('Outsider environment created (deliberately NO ACLs):', env.id);
+}
+
+tests {
+  test("Outsider environment is created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().environment.id).to.be.a('string');
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates an environment that is deliberately granted **no ACLs at all**. It exists solely to
+  own a queue that is not entitled to any service, so step 18c can prove the response-leg
+  destination gate rejects delivery into it.
+
+  ## Why a third environment is required
+
+  Neither existing environment can play this role:
+
+  - the **consumer** holds a DELAYED QUERY grant on `{{delayedProviderServiceName}}` (step 09b),
+    so its queue is legitimately entitled — delivery there must SUCCEED, which is what steps
+    13/13b already certify;
+  - the **provider** holds a PROVIDE grant on the same service (step 09a), and the entitlement
+    check is deliberately access-type-agnostic ("any approved grant"), so PROVIDE counts. Its
+    queue is entitled too.
+
+  Only an environment with no grant on the service exercises the denial. Do not "simplify" this
+  step away by reusing the provider's queue — that would turn step 18c green for the wrong
+  reason if the gate ever stopped working, because the provider is entitled.
+
+  ## Teardown
+
+  Removed by `96b-teardown-outsider-env`.
+}

@@ -20,3 +20,10 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Bruno CLI run reports - contain HMAC Authorization headers, session tokens,
+# and one-time sharedSecret values in plaintext. Never commit.
+*bruno-report*.json
+kiro-bruno-report.json
+report.json
+results.json

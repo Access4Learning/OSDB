@@ -1,0 +1,78 @@
+meta {
+  name: 18b Create Outsider Queue
+  type: http
+  seq: 25
+}
+
+post {
+  url: {{gatewayUrl}}/{{sec04DomainId}}/{{sec04SolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "cert-reqresp-outsider-queue",
+      "ownerId": "{{sec04OutsiderEnvId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.queue.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Admin' });
+
+  const outsiderEnvId = bru.getVar('sec04OutsiderEnvId');
+  if (!outsiderEnvId) {
+    throw new Error(
+      '04-request-response/18b-create-outsider-queue: Missing sec04OutsiderEnvId. ' +
+      'Run 18a-create-outsider-env first.'
+    );
+  }
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status !== 201) {
+    throw new Error(
+      '04-request-response/18b-create-outsider-queue FAILED: expected 201, got ' + status + '. ' +
+      'Response: ' + JSON.stringify(res.getBody())
+    );
+  }
+
+  bru.setVar('sec04OutsiderQueueId', res.getBody().queue.id);
+  console.log('Outsider queue created:', res.getBody().queue.id);
+}
+
+tests {
+  test("Outsider queue is created and owned by the outsider environment", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().queue.id).to.be.a('string');
+  });
+}
+
+docs {
+  ## Summary
+
+  Creates a queue owned by the unentitled outsider environment from 18a. This queue is a valid,
+  existing queue — the point of step 18c is that the destination gate rejects delivery on
+  **entitlement** grounds, not because the queue is missing.
+
+  That distinction matters: if the queue did not exist, 18c would get its 404 from the
+  queue-owner lookup failing, which is a different code path (the fail-closed branch) and would
+  leave the entitlement branch uncertified.
+}

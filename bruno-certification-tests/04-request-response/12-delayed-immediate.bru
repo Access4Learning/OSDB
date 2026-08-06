@@ -50,6 +50,10 @@ script:post-response {
 
   if (status === 202) {
     console.log('✓ Request accepted (202) — response will be delivered to queue');
+    // Canary for the negative ownership steps (17, 17b). Those assert 404, which a gate
+    // that rejected EVERY delayed request would also satisfy — so they are only meaningful
+    // once a legitimate DELAYED request has been proven to succeed. Recording that here.
+    bru.setVar('sec04DelayedPositivePathProven', 'true');
   } else {
     console.error('✗ Expected 202, got:', status, JSON.stringify(res.getBody()));
   }

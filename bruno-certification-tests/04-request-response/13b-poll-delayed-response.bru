@@ -34,11 +34,17 @@ script:post-response {
     bru.setVar('sec04DelayedDelMessageId', messageId);
     console.log('✓ Delayed response delivered to queue, messageid:', messageId);
 
+    // Canary for step 18c. A response actually reached an entitled consumer queue, which proves
+    // the destination gate is not denying everything. 18c asserts a 404 and refuses to run
+    // without this, because an over-denying gate would satisfy that assertion too.
+    bru.setVar('sec04DelayedResponseDeliveredProven', 'true');
+
     const body = res.getBody();
     console.log('  Response body:', JSON.stringify(body).substring(0, 200));
   } else if (status === 204) {
     console.log('  Queue empty — provider may not have responded yet');
     console.log('  (This is expected if no DELAYED provider is running)');
+    console.log('  NOTE: step 18c will refuse to run — the positive response leg is unproven.');
   }
 }
 
