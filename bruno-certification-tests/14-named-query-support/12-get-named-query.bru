@@ -59,11 +59,11 @@ tests {
     expect(data.xquery.status).to.equal("APPROVED");
     expect(data.xquery.description).to.equal("Returns a snapshot of student data filtered by parameters");
     expect(data.xquery.script).to.exist;
-    expect(data.xquery.parameters).to.be.an("array").with.lengthOf(2);
-    expect(data.xquery.parameters[0].name).to.equal("grade");
-    expect(data.xquery.parameters[0].required).to.equal(true);
-    expect(data.xquery.parameters[1].name).to.equal("schoolYear");
-    expect(data.xquery.parameters[1].defaultValue).to.equal("2024");
+    expect(data.xquery.parameters.parameter).to.be.an("array").with.lengthOf(2);
+    expect(data.xquery.parameters.parameter[0].name).to.equal("grade");
+    expect(data.xquery.parameters.parameter[0].required).to.equal(true);
+    expect(data.xquery.parameters.parameter[1].name).to.equal("schoolYear");
+    expect(data.xquery.parameters.parameter[1]["default"]).to.equal("2024");
     expect(data.xquery.returnType).to.equal("http://www.sifassociation.org/datamodel/na/4.x/StudentPersonal");
   });
 }
