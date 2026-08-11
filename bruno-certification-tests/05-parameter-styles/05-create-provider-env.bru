@@ -60,6 +60,7 @@ script:post-response {
   bru.setVar('sec05ProviderEnvId', data.id);
   bru.setVar('sec05ProviderSessionToken', data.sessionToken);
   bru.setVar('sec05ProviderSharedSecret', data.sharedSecret);
+  bru.setVar('sec05ProviderName', data.consumerName);
 
   // Extract eventsConnector URL from infrastructure services
   if (data.infrastructureServices && data.infrastructureServices.infrastructureService) {

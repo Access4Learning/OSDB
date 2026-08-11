@@ -60,6 +60,7 @@ script:post-response {
   bru.setVar('sec08ProviderEnvId', data.id);
   bru.setVar('sec08ProviderSessionToken', data.sessionToken);
   bru.setVar('sec08ProviderSharedSecret', data.sharedSecret);
+  bru.setVar('sec08ProviderName', data.consumerName);
   console.log('âœ“ Created provider environment (DIRECT):', data.id);
 }
 

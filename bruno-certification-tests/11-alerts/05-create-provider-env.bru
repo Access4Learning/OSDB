@@ -54,6 +54,7 @@ script:post-response {
   bru.setVar('sec11ProviderEnvId', data.id);
   bru.setVar('sec11ProviderSessionToken', data.sessionToken);
   bru.setVar('sec11ProviderSharedSecret', data.sharedSecret);
+  bru.setVar('sec11ProviderName', data.consumerName);
   console.log('✓ Provider environment created: ' + data.id);
 }
 
