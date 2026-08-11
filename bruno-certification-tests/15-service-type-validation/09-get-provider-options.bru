@@ -49,6 +49,9 @@ script:post-response {
   }
 
   bru.setVar('sec15ContextServiceUuid', option.contextServiceUuid);
+  bru.setVar('sec15ServiceName', option.serviceName);
+  bru.setVar('sec15ZoneId', option.zoneId);
+  bru.setVar('sec15ContextId', option.contextId);
   console.log('Found contextServiceUuid for StudentPersonals: ' + option.contextServiceUuid);
 }
 

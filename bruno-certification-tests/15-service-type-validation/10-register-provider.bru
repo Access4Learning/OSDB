@@ -20,7 +20,10 @@ body:json {
   {
     "provider": {
       "environmentId": "{{sec15ProviderEnvId}}",
-      "contextServiceUuid": "{{sec15ContextServiceUuid}}",
+      "serviceName": "{{sec15ServiceName}}",
+      "zoneId": "{{sec15ZoneId}}",
+      "contextId": "{{sec15ContextId}}",
+      "querySupport": {},
       "serviceType": "OBJECT",
       "endPoint": {
         "location": "{{immediateProviderEndpointUrl}}/StudentPersonals"
@@ -54,11 +57,12 @@ script:pre-request {
   auth.setAuthHeaders(req, bru, { varPrefix: 'sec15Admin' });
 
   const providerEnvId = bru.getVar('sec15ProviderEnvId');
-  const zoneId = bru.getVar('sec15ZoneId');
-  const contextServiceUuid = bru.getVar('sec15ContextServiceUuid');
-  if (!providerEnvId || !zoneId || !contextServiceUuid) {
+  const sec15ServiceName = bru.getVar('sec15ServiceName');
+  const sec15ZoneId = bru.getVar('sec15ZoneId');
+  const sec15ContextId = bru.getVar('sec15ContextId');
+  if (!providerEnvId || !sec15ServiceName || !sec15ZoneId || !sec15ContextId) {
     throw new Error(
-      '15-service-type-validation/10-register-provider: Missing sec15ProviderEnvId, sec15ZoneId, or sec15ContextServiceUuid. ' +
+      '15-service-type-validation/10-register-provider: Missing sec15ProviderEnvId, sec15ServiceName, sec15ZoneId, or sec15ContextId. ' +
       'Run previous setup steps first.'
     );
   }

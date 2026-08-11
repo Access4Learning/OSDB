@@ -20,7 +20,10 @@ body:json {
   {
     "provider": {
       "environmentId": "{{sec04ProviderEnvId}}",
-      "contextServiceUuid": "{{sec04ContextServiceUuid}}",
+      "serviceName": "{{sec04ServiceName}}",
+      "zoneId": "{{sec04ZoneId}}",
+      "contextId": "{{sec04ContextId}}",
+      "querySupport": {},
       "serviceType": "OBJECT",
       "endPoint": {
         "location": "{{immediateProviderEndpointUrl}}/{{immediateProviderServiceName}}"
@@ -54,11 +57,12 @@ script:pre-request {
   auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Admin' });
 
   const providerEnvId = bru.getVar('sec04ProviderEnvId');
-  const zoneId = bru.getVar('sec04ZoneId');
-  const contextServiceUuid = bru.getVar('sec04ContextServiceUuid');
-  if (!providerEnvId || !zoneId || !contextServiceUuid) {
+  const sec04ServiceName = bru.getVar('sec04ServiceName');
+  const sec04ZoneId = bru.getVar('sec04ZoneId');
+  const sec04ContextId = bru.getVar('sec04ContextId');
+  if (!providerEnvId || !sec04ServiceName || !sec04ZoneId || !sec04ContextId) {
     throw new Error(
-      '04-request-response/09-register-provider: Missing sec04ProviderEnvId, sec04ZoneId, or sec04ContextServiceUuid. ' +
+      '04-request-response/09-register-provider: Missing sec04ProviderEnvId, sec04ServiceName, sec04ZoneId, or sec04ContextId. ' +
       'Run previous setup steps first.'
     );
   }
@@ -97,7 +101,7 @@ docs {
   ## Rationale
 
   The provider registration tells the broker where to forward IMMEDIATE requests.
-  The contextServiceUuid was obtained from the previous step (08b-get-provider-options).
+  The serviceName, zoneId and contextId were obtained from the previous step (08b-get-provider-options).
 
   ## Expected Result
 

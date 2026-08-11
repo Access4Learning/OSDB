@@ -20,7 +20,10 @@ body:json {
   {
     "provider": {
       "environmentId": "{{sec11ProviderEnvId}}",
-      "contextServiceUuid": "{{sec11ContextServiceUuid}}",
+      "serviceName": "{{sec11ServiceName}}",
+      "zoneId": "{{sec11ZoneId}}",
+      "contextId": "{{sec11ContextId}}",
+      "querySupport": {},
       "serviceType": "UTILITY",
       "endPoint": {
         "location": "http://localhost:8080/internal/alerts"
@@ -47,10 +50,12 @@ script:pre-request {
   auth.setAuthHeaders(req, bru, { varPrefix: 'sec11Admin' });
 
   const providerEnvId = bru.getVar('sec11ProviderEnvId');
-  const contextServiceUuid = bru.getVar('sec11ContextServiceUuid');
-  if (!providerEnvId || !contextServiceUuid) {
+  const sec11ServiceName = bru.getVar('sec11ServiceName');
+  const sec11ZoneId = bru.getVar('sec11ZoneId');
+  const sec11ContextId = bru.getVar('sec11ContextId');
+  if (!providerEnvId || !sec11ServiceName || !sec11ZoneId || !sec11ContextId) {
     throw new Error(
-      '11-alerts/08: Missing sec11ProviderEnvId or sec11ContextServiceUuid. ' +
+      '11-alerts/08: Missing sec11ProviderEnvId, sec11ServiceName, sec11ZoneId, or sec11ContextId. ' +
       'Run previous setup steps first.'
     );
   }

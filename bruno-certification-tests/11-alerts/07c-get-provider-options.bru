@@ -49,6 +49,9 @@ script:post-response {
   }
 
   bru.setVar('sec11ContextServiceUuid', option.contextServiceUuid);
+  bru.setVar('sec11ServiceName', option.serviceName);
+  bru.setVar('sec11ZoneId', option.zoneId);
+  bru.setVar('sec11ContextId', option.contextId);
   console.log('✓ Found contextServiceUuid for alerts: ' + option.contextServiceUuid);
 }
 

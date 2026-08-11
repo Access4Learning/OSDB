@@ -50,6 +50,9 @@ script:post-response {
   }
 
   bru.setVar('sec05ContextServiceUuid', option.contextServiceUuid);
+  bru.setVar('sec05ServiceName', option.serviceName);
+  bru.setVar('sec05ZoneId', option.zoneId);
+  bru.setVar('sec05ContextId', option.contextId);
   console.log('✓ Found contextServiceUuid for ' + serviceName + ': ' + option.contextServiceUuid);
 }
 

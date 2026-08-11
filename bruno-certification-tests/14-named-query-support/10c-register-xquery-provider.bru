@@ -20,7 +20,10 @@ body:json {
   {
     "provider": {
       "environmentId": "{{sec14ProviderEnvId}}",
-      "contextServiceUuid": "{{sec14ContextServiceUuid}}",
+      "serviceName": "{{sec14ServiceName}}",
+      "zoneId": "{{sec14ZoneId}}",
+      "contextId": "{{sec14ContextId}}",
+      "querySupport": {},
       "serviceType": "XQUERYTEMPLATE",
       "endPoint": {
         "location": "{{immediateProviderEndpointUrl}}/StudentSnapshot"
@@ -51,10 +54,12 @@ script:pre-request {
   auth.setAuthHeaders(req, bru, { varPrefix: 'sec14Admin' });
 
   const providerEnvId = bru.getVar('sec14ProviderEnvId');
-  const contextServiceUuid = bru.getVar('sec14ContextServiceUuid');
-  if (!providerEnvId || !contextServiceUuid) {
+  const sec14ServiceName = bru.getVar('sec14ServiceName');
+  const sec14ZoneId = bru.getVar('sec14ZoneId');
+  const sec14ContextId = bru.getVar('sec14ContextId');
+  if (!providerEnvId || !sec14ServiceName || !sec14ZoneId || !sec14ContextId) {
     throw new Error(
-      '14-named-query-support/10c-register-xquery-provider: Missing sec14ProviderEnvId or sec14ContextServiceUuid. ' +
+      '14-named-query-support/10c-register-xquery-provider: Missing sec14ProviderEnvId, sec14ServiceName, sec14ZoneId, or sec14ContextId. ' +
       'Steps 05 and 10b must run successfully first.'
     );
   }
@@ -103,7 +108,7 @@ docs {
   the template in step 10, the provider separately registers to serve it here.
 
   The provider specifies:
-  - contextServiceUuid: obtained from available-options in step 10b
+  - serviceName, zoneId, contextId: obtained from available-options in step 10b
   - endpoint: the URL where the provider handles query requests
   - serviceType: XQUERYTEMPLATE
   - supportedRequestTypes: IMMEDIATE with QUERY operation

@@ -20,7 +20,10 @@ body:json {
   {
     "provider": {
       "environmentId": "{{sec05ProviderEnvId}}",
-      "contextServiceUuid": "{{sec05ContextServiceUuid}}",
+      "serviceName": "{{sec05ServiceName}}",
+      "zoneId": "{{sec05ZoneId}}",
+      "contextId": "{{sec05ContextId}}",
+      "querySupport": {},
       "serviceType": "OBJECT",
       "endPoint": {
         "location": "{{immediateProviderEndpointUrl}}/{{immediateProviderServiceName}}"
@@ -54,10 +57,12 @@ script:pre-request {
   auth.setAuthHeaders(req, bru, { varPrefix: 'sec05Admin' });
 
   const providerEnvId = bru.getVar('sec05ProviderEnvId');
-  const contextServiceUuid = bru.getVar('sec05ContextServiceUuid');
-  if (!providerEnvId || !contextServiceUuid) {
+  const sec05ServiceName = bru.getVar('sec05ServiceName');
+  const sec05ZoneId = bru.getVar('sec05ZoneId');
+  const sec05ContextId = bru.getVar('sec05ContextId');
+  if (!providerEnvId || !sec05ServiceName || !sec05ZoneId || !sec05ContextId) {
     throw new Error(
-      '05-parameter-styles/09-register-provider: Missing sec05ProviderEnvId or sec05ContextServiceUuid. ' +
+      '05-parameter-styles/09-register-provider: Missing sec05ProviderEnvId, sec05ServiceName, sec05ZoneId, or sec05ContextId. ' +
       'Run previous setup steps first.'
     );
   }

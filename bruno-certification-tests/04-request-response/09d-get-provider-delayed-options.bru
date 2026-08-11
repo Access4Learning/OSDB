@@ -50,6 +50,9 @@ script:post-response {
   }
 
   bru.setVar('sec04DelayedContextServiceUuid', option.contextServiceUuid);
+  bru.setVar('sec04DelayedServiceName', option.serviceName);
+  bru.setVar('sec04DelayedZoneId', option.zoneId);
+  bru.setVar('sec04DelayedContextId', option.contextId);
   console.log('✓ Found contextServiceUuid for ' + serviceName + ': ' + option.contextServiceUuid);
 }
 

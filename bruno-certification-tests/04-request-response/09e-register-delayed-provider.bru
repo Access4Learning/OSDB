@@ -20,7 +20,10 @@ body:json {
   {
     "provider": {
       "environmentId": "{{sec04ProviderEnvId}}",
-      "contextServiceUuid": "{{sec04DelayedContextServiceUuid}}",
+      "serviceName": "{{sec04DelayedServiceName}}",
+      "zoneId": "{{sec04DelayedZoneId}}",
+      "contextId": "{{sec04DelayedContextId}}",
+      "querySupport": {},
       "serviceType": "OBJECT",
       "endPoint": {
         "location": "{{immediateProviderEndpointUrl}}/{{delayedProviderServiceName}}"
@@ -54,11 +57,13 @@ script:pre-request {
   auth.setAuthHeaders(req, bru, { varPrefix: 'sec04Admin' });
 
   const providerEnvId = bru.getVar('sec04ProviderEnvId');
-  const contextServiceUuid = bru.getVar('sec04DelayedContextServiceUuid');
-  if (!providerEnvId || !contextServiceUuid) {
+  const sec04DelayedServiceName = bru.getVar('sec04DelayedServiceName');
+  const sec04DelayedZoneId = bru.getVar('sec04DelayedZoneId');
+  const sec04DelayedContextId = bru.getVar('sec04DelayedContextId');
+  if (!providerEnvId || !sec04DelayedServiceName || !sec04DelayedZoneId || !sec04DelayedContextId) {
     throw new Error(
-      '04-request-response/09e-register-delayed-provider: Missing sec04ProviderEnvId or ' +
-      'sec04DelayedContextServiceUuid. Run 09a and 09d first.'
+      '04-request-response/09e-register-delayed-provider: Missing sec04ProviderEnvId, ' +
+      'sec04DelayedServiceName, sec04DelayedZoneId, or sec04DelayedContextId. Run 09a and 09d first.'
     );
   }
 
