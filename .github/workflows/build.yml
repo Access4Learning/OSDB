@@ -1,0 +1,48 @@
+# GitHub Actions CI for SIF Unity Broker
+# Mirrors the Bitbucket pipeline: build all modules with Testcontainers support.
+
+name: Build
+
+on:
+  push:
+    branches: [ main, 'feature/**', 'implementations/**' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build All Modules
+    runs-on: ubuntu-latest
+
+    services:
+      # Testcontainers needs Docker — GitHub-hosted runners have it pre-installed,
+      # but we declare nothing extra here because the runner's Docker daemon is
+      # already available at /var/run/docker.sock.
+      postgres:
+        # Not used directly — Testcontainers spins its own containers.
+        # This is a placeholder to document that Docker is required.
+        image: alpine
+        options: --entrypoint /bin/true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Display tool versions
+        run: |
+          mvn --version
+          java -version
+          docker info
+
+      - name: Build with Maven
+        run: mvn clean install
+        env:
+          # Testcontainers configuration for GitHub Actions
+          TESTCONTAINERS_RYUK_DISABLED: 'true'
