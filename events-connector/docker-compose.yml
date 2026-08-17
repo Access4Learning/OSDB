@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # Mock Subscription Service (for testing)
+  # In production, this would be the actual subscription-service
+  mock-subscription-service:
+    image: mockserver/mockserver:latest
+    container_name: events-connector-mock-subscription
+    environment:
+      MOCKSERVER_INITIALIZATION_JSON_PATH: /config/mockserver-subscription-init.json
+    ports:
+      - "8082:1080"
+    volumes:
+      - ./docker/mockserver-subscription-init.json:/config/mockserver-subscription-init.json:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Mock Queue Service (for testing)
+  # In production, this would be the actual queue-service
+  mock-queue-service:
+    image: mockserver/mockserver:latest
+    container_name: events-connector-mock-queue
+    environment:
+      MOCKSERVER_INITIALIZATION_JSON_PATH: /config/mockserver-queue-init.json
+    ports:
+      - "8081:1080"
+    volumes:
+      - ./docker/mockserver-queue-init.json:/config/mockserver-queue-init.json:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Events Connector Service
+  events-connector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: events-connector
+    environment:
+      # Subscription Service client configuration
+      SUBSCRIPTION_SERVICE_URL: http://mock-subscription-service:1080
+      # Queue Service client configuration
+      QUEUE_SERVICE_URL: http://mock-queue-service:1080
+      # Server configuration
+      SERVER_PORT: 8084
+      # Logging
+      LOGGING_LEVEL_ORG_SIFUNITY_EVENTSCONNECTOR: INFO
+    ports:
+      - "8084:8084"
+    depends_on:
+      mock-subscription-service:
+        condition: service_healthy
+      mock-queue-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  default:
+    name: sif-broker-network
+    driver: bridge

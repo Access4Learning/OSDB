@@ -1,0 +1,78 @@
+# Observability Configuration for Development Environment
+# Import this file in your application.yml with:
+# spring:
+#   config:
+#     import: classpath:observability-dev.yml
+
+observability:
+  enabled: true
+  
+  tracing:
+    enabled: true
+    jaeger:
+      endpoint: http://localhost:14250
+      timeout: 10
+      max-queue-size: 2048
+      max-export-batch-size: 512
+      schedule-delay: 5
+    sampling:
+      # 100% sampling in development for complete visibility
+      probability: 1.0
+    propagation:
+      format: w3c
+      include-baggage: true
+  
+  logging:
+    logstash:
+      host: localhost
+      port: 5000
+    async:
+      queue-size: 512
+      discarding-threshold: 0
+      # Include caller data in development for better debugging
+      include-caller-data: true
+    json:
+      enabled: true
+      include-mdc: true
+      include-stack-trace: true
+  
+  metrics:
+    enabled: true
+    cardinality:
+      # Higher limit in development
+      limit: 200
+      action: replace-with-other
+
+# Development logging - verbose output
+logging:
+  level:
+    root: INFO
+    org.sifunity: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.data: DEBUG
+    org.hibernate: INFO
+    io.opentelemetry: DEBUG
+    io.micrometer: DEBUG
+    io.lettuce: DEBUG
+
+# Actuator endpoints - expose all in development
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    enable:
+      jvm: true
+      process: true
+      system: true
+      tomcat: true
+      logback: true
+      jdbc: true

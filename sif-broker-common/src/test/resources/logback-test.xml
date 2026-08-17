@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Disable status messages from Logback itself (suppresses appender warnings) -->
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+    
+    <!-- Simple console appender for tests - avoids Logstash connection attempts -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    
+    <!-- Root logger - INFO to support LogbackConfigurationTest which verifies multi-level logging -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+    
+    <!-- Reduce noise from Spring and infrastructure during tests -->
+    <logger name="org.springframework" level="WARN"/>
+    <logger name="org.springframework.boot" level="WARN"/>
+    <logger name="org.springframework.test" level="WARN"/>
+    <logger name="org.hibernate" level="WARN"/>
+    <logger name="org.testcontainers" level="WARN"/>
+    <logger name="com.github.dockerjava" level="WARN"/>
+    
+    <!-- Completely suppress Logstash appender warnings and errors -->
+    <logger name="net.logstash.logback" level="OFF"/>
+    <logger name="net.logstash.logback.appender" level="OFF"/>
+    
+    <!-- Suppress warnings from ResilientLogstashTcpSocketAppenderTest -->
+    <logger name="org.sifunity.broker.common.logging.ResilientLogstashTcpSocketAppenderTest" level="ERROR"/>
+    
+    <!-- Keep our application logs at DEBUG so LogbackConfigurationTest can verify
+         multi-level logging works. The pipeline noise reduction comes from the root=WARN
+         and infrastructure loggers above (Spring, Hibernate, Testcontainers). -->
+    <logger name="org.sifunity.broker.common" level="DEBUG"/>
+</configuration>

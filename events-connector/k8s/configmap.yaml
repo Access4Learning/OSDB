@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: events-connector-config
+  labels:
+    app: events-connector
+    component: connector-service
+data:
+  # Subscription Service Configuration
+  subscription.service.url: "http://subscription-service:8083"
+  
+  # Queue Service Configuration
+  queue.service.url: "http://queue-service:8082"
+  
+  # Retry Configuration
+  retry.max.attempts: "3"

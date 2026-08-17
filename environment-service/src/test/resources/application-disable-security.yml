@@ -1,0 +1,18 @@
+# Properties for tests using @ActiveProfiles("disable-security").
+# The shared InternalServiceTokenAutoConfiguration startup validator requires this.
+broker:
+  internal-service-token: test-internal-token
+
+# BrokerInfrastructureConfig needs these URLs to bind
+sif:
+  broker:
+    infrastructure:
+      gateway-base-url: http://localhost:8080
+      environment: http://localhost:8081
+      provision-requests: http://localhost:8081
+      requests-connector: http://localhost:8085
+      events-connector: http://localhost:8084
+      queues: http://localhost:8082
+      subscriptions: http://localhost:8083
+      services-connector: http://localhost:8087
+      responses-connector: http://localhost:8088

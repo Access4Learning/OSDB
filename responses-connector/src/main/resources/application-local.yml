@@ -1,0 +1,29 @@
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+    password: ""
+
+server:
+  port: 8088
+
+# Service URLs
+queue:
+  service:
+    url: http://localhost:8082
+
+# Observability configuration
+observability:
+  enabled: true
+  tracing:
+    otlp:
+      endpoint: http://localhost:4318/v1/traces
+    sampling:
+      probability: 1.0
+
+logging:
+  level:
+    org.sifunity.responsesconnector: DEBUG
+    org.springframework.web: INFO
+

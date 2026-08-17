@@ -1,0 +1,108 @@
+# Observability Configuration for Production Environment
+# Import this file in your application.yml with:
+# spring:
+#   config:
+#     import: classpath:observability-prod.yml
+
+observability:
+  enabled: true
+  
+  tracing:
+    enabled: true
+    otlp:
+      endpoint: ${OTLP_ENDPOINT:http://otel-collector:4318/v1/traces}
+      timeout: 10
+      max-queue-size: 4096
+      max-export-batch-size: 1024
+      schedule-delay: 5
+      retry:
+        enabled: true
+        initial-delay: 1
+        max-delay: 60
+        multiplier: 2.0
+        max-attempts: 5
+    sampling:
+      # 10% sampling in production to balance observability and performance
+      # Adjust based on traffic volume and storage capacity
+      probability: ${TRACING_SAMPLING_RATE:0.1}
+    propagation:
+      format: w3c
+      include-baggage: false  # Disable baggage in production for performance
+
+  logging:
+    logstash:
+      host: ${LOGSTASH_HOST:logstash}
+      port: ${LOGSTASH_PORT:5000}
+      connection-timeout: 5000
+      retry:
+        enabled: true
+        initial-delay: 1000
+        max-delay: 60000
+        multiplier: 2.0
+    async:
+      queue-size: 1024  # Larger queue for production
+      discarding-threshold: 0
+      include-caller-data: false  # Disable for performance
+    json:
+      enabled: true
+      include-mdc: true
+      include-stack-trace: true
+  
+  metrics:
+    enabled: true
+    cardinality:
+      # Strict limit in production to prevent memory issues
+      limit: 100
+      action: replace-with-other
+
+# Production logging - minimal verbosity
+logging:
+  level:
+    root: WARN
+    org.sifunity: INFO
+    org.springframework.web: WARN
+    org.springframework.data: WARN
+    org.hibernate: WARN
+    io.opentelemetry: WARN
+    io.micrometer: WARN
+    io.lettuce: WARN
+
+# Actuator endpoints - expose only necessary endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+        step: 1m
+    # Enable cardinality limiting in production
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99
+      # Service Level Objectives (SLO) boundaries for histograms
+      slo:
+        http.server.requests: 10ms,50ms,100ms,200ms,500ms,1s,2s,5s
+      # Set maximum expected value for histograms (in seconds)
+      maximum-expected-value:
+        http.server.requests: 60s
+      # Set minimum expected value for histograms (in milliseconds)
+      minimum-expected-value:
+        http.server.requests: 1ms
+    enable:
+      jvm: true
+      process: true
+      system: true
+      tomcat: true
+      logback: true
+      jdbc: true

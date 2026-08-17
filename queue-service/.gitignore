@@ -1,0 +1,12 @@
+# Service-specific ignores
+# (Most patterns are handled by root .gitignore)
+
+# Service-specific logs
+*.log
+
+# Service-specific temporary files
+*.tmp
+
+# Queue service data
+data/messages/*
+!data/messages/.gitkeep

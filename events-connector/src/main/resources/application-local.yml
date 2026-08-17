@@ -1,0 +1,37 @@
+# Events Connector - Local Development Profile
+
+server:
+  port: 8084
+
+spring:
+  web:
+    resources:
+      add-mappings: false
+
+# Subscription Service (port 8083)
+subscription-service:
+  url: http://localhost:8083
+
+# Environment Service (port 8081)
+environment-service:
+  url: http://localhost:8081
+
+# Queue Service (port 8082)
+queue-service:
+  url: http://localhost:8082
+
+# Logging
+logging:
+  level:
+    root: INFO
+    org.sifunity.eventsconnector: DEBUG
+    org.springframework.web: INFO
+
+# Observability configuration
+observability:
+  enabled: true
+  tracing:
+    otlp:
+      endpoint: http://localhost:4318/v1/traces
+    sampling:
+      probability: 1.0

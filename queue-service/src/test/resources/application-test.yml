@@ -1,0 +1,87 @@
+# Test Configuration for Queue Service
+
+# Internal service token for test context startup
+broker:
+  internal-service-token: test-internal-token
+
+spring:
+  application:
+    name: queue-service-test
+
+  # Allow bean definition overriding for tests
+  # This is needed because unit tests define TestConfig with @EnableJpaRepositories
+  # which conflicts with the main application's @EnableJpaRepositories
+  main:
+    allow-bean-definition-overriding: true
+
+  # Testcontainers PostgreSQL Configuration
+  datasource:
+    url: jdbc:tc:postgresql:15-alpine:///queuetestdb
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 10000
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Use Flyway migrations, validate schema matches entities
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        show_sql: false
+    open-in-view: false
+
+  # Flyway Configuration
+  flyway:
+    enabled: true
+    locations: classpath:db/migration,classpath:db/test-data
+
+  # Test Redis Configuration
+  # Uses Docker Redis container on port 6379
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+
+  # Jackson Configuration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+# Message Storage Configuration for Tests
+message:
+  storage:
+    type: filesystem
+    key-prefix: ""  # Empty prefix for tests
+    payload-ttl: 1d  # Short TTL for tests
+    filesystem:
+      path: ./target/test-messages
+
+# Queue Configuration
+queue:
+  base-url: ""  # Empty for tests
+  defaults:
+    maxRetries: 3
+    retryDelayMs: 5000
+    visibilityTimeoutSeconds: 30
+
+# Server Configuration
+server:
+  port: 0  # Random port for tests
+
+# Logging Configuration
+logging:
+  level:
+    root: WARN
+    org.sifunity: WARN
+    org.springframework: WARN
+    org.springframework.cloud.gateway: WARN
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+    net.jqwik: WARN

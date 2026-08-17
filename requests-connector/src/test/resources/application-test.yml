@@ -1,0 +1,65 @@
+# Test Configuration for Requests Connector
+
+# Internal service token for test context startup
+broker:
+  internal-service-token: test-internal-token
+
+spring:
+  application:
+    name: requests-connector-test
+  
+  # Redis Configuration (will be overridden by Testcontainers)
+  redis:
+    host: localhost
+    port: 6379
+  
+  cache:
+    type: redis
+    redis:
+      time-to-live: 60000  # 1 minute for tests
+
+# Server Configuration
+server:
+  port: 0  # Random port for tests
+
+# Service URLs - Mock Services
+environment:
+  service:
+    url: http://localhost:8081
+
+queue:
+  service:
+    url: http://localhost:8082
+
+subscription:
+  service:
+    url: http://localhost:8083
+
+responses:
+  connector:
+    url: http://localhost:8084
+
+# Provider Call Timeouts (shorter for tests)
+provider:
+  timeout:
+    connection: 2000  # 2 seconds
+    read: 5000  # 5 seconds
+
+# Proxy Worker Configuration
+proxy:
+  worker:
+    enabled: false  # Disabled by default in tests
+    max-retries: 2
+    poll-interval: 100  # 100ms for faster tests
+    thread-pool-size: 2
+
+# Logging Configuration
+logging:
+  level:
+    root: WARN
+    org.sifunity: WARN
+    org.springframework: WARN
+    org.springframework.cloud.gateway: WARN
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+    net.jqwik: WARN

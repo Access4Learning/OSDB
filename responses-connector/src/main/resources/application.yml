@@ -1,0 +1,106 @@
+spring:
+  application:
+    name: responses-connector
+  
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+  # Disable static resource handling to prevent conflicts with controller mappings
+  web:
+    resources:
+      add-mappings: false
+
+server:
+  port: 8088
+
+# SIF Header Passthrough Configuration
+sif:
+  headers:
+    blacklist: []
+  legacy-tag:
+    cache-ttl: 5m
+  # Queue ownership is immutable (set only at queue creation), so this TTL can be generous. It is
+  # deliberately far longer than the ~30s entitlement cache in environment-service, where grants are
+  # revocable — do not align the two.
+  queue-owner:
+    cache-ttl: 5m
+    cache-max-size: 10000
+  # ACL grants are revocable, so this mirrors the gateway's 30s permission cache. A revoked grant
+  # must stop admitting responses promptly. Intentionally much shorter than queue-owner above.
+  destination-entitlement:
+    cache-ttl: 30s
+    cache-max-size: 10000
+
+# Environment Service Configuration
+environment:
+  service:
+    url: ${ENVIRONMENT_SERVICE_URL:http://localhost:8081}
+
+# Queue Service Configuration
+queue:
+  service:
+    url: http://localhost:8082
+    connection-timeout: 5000
+    read-timeout: 10000
+    max-retries: 3
+    retry-delay: 100
+    health-check-timeout: 3000  # milliseconds
+
+# Broker Configuration
+broker:
+  internal-service-token: ${INTERNAL_SERVICE_TOKEN:}
+
+# Logging Configuration
+logging:
+  level:
+    org.sifunity.responsesconnector: INFO
+    org.springframework.web: INFO
+  pattern:
+    # Structured logging pattern with correlation ID
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [correlationId=%X{correlationId}] - %msg%n"
+    # JSON format for production (can be enabled via profile)
+    # console: '{"timestamp":"%d{yyyy-MM-dd HH:mm:ss.SSS}","level":"%level","thread":"%thread","logger":"%logger{36}","correlationId":"%X{correlationId}","message":"%msg"}%n'
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      service: responses-connector
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  health:
+    defaults:
+      enabled: true
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true

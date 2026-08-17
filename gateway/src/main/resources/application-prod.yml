@@ -1,0 +1,159 @@
+# Production Profile Configuration
+# Services are reached via ECS Service Connect DNS names (e.g., http://environment-service:8081)
+
+spring:
+  cloud:
+    gateway:
+      httpclient:
+        connect-timeout: 10000
+        response-timeout: 120s
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            exposedHeaders: "Location, X-Correlation-Id"
+            allowCredentials: false
+      routes:
+        # OpenAPI documentation routes
+        - id: environment-service-api-docs
+          uri: ${ENVIRONMENT_SERVICE_URL:http://environment-service:8081}
+          predicates:
+            - Path=/v3/api-docs/environment-service
+          filters:
+            - RewritePath=/v3/api-docs/environment-service, /v3/api-docs
+        
+        - id: queue-service-api-docs
+          uri: ${SIF_BROKER_SERVICES_QUEUE_SERVICE_URL:http://queue-service:8082}
+          predicates:
+            - Path=/v3/api-docs/queue-service
+          filters:
+            - RewritePath=/v3/api-docs/queue-service, /v3/api-docs
+        
+        - id: subscription-service-api-docs
+          uri: ${SIF_BROKER_SERVICES_SUBSCRIPTION_SERVICE_URL:http://subscription-service:8083}
+          predicates:
+            - Path=/v3/api-docs/subscription-service
+          filters:
+            - RewritePath=/v3/api-docs/subscription-service, /v3/api-docs
+        
+        - id: job-service-api-docs
+          uri: ${SIF_BROKER_SERVICES_JOB_SERVICE_URL:http://job-service:8084}
+          predicates:
+            - Path=/v3/api-docs/job-service
+          filters:
+            - RewritePath=/v3/api-docs/job-service, /v3/api-docs
+        
+        - id: events-connector-api-docs
+          uri: ${SIF_BROKER_SERVICES_EVENTS_CONNECTOR_URL:http://events-connector:8084}
+          predicates:
+            - Path=/v3/api-docs/events-connector
+          filters:
+            - RewritePath=/v3/api-docs/events-connector, /v3/api-docs
+        
+        # Domain management
+        - id: domain-service
+          uri: ${ENVIRONMENT_SERVICE_URL:http://environment-service:8081}
+          predicates:
+            - Path=/domains/**
+
+        # Admin user management (root level)
+        - id: admin-users
+          uri: ${ENVIRONMENT_SERVICE_URL:http://environment-service:8081}
+          predicates:
+            - Path=/admin-users/**,/admin-users
+
+        # Admin tag definitions (root level)
+        - id: admin-tag-definitions
+          uri: ${ENVIRONMENT_SERVICE_URL:http://environment-service:8081}
+          predicates:
+            - Path=/admin/tag-definitions/**,/admin/tag-definitions
+
+        # Admin proxy (session-based API forwarding for admin console)
+        - id: admin-proxy
+          uri: ${ENVIRONMENT_SERVICE_URL:http://environment-service:8081}
+          predicates:
+            - Path=/admin-proxy/**
+
+        # Solution management
+        - id: solution-service
+          uri: ${ENVIRONMENT_SERVICE_URL:http://environment-service:8081}
+          predicates:
+            - Path=/{domainId}/solutions/**
+
+        # Environment Service resources (under domain/solution)
+        - id: environment-service-prefixed
+          uri: ${ENVIRONMENT_SERVICE_URL:http://environment-service:8081}
+          predicates:
+            - Path=/{domainId}/{solutionId}/environments/**,/{domainId}/{solutionId}/acl-entries/**,/{domainId}/{solutionId}/providers/**,/{domainId}/{solutionId}/zones/**,/{domainId}/{solutionId}/tags/**,/{domainId}/{solutionId}/alerts/**,/{domainId}/{solutionId}/codeSets/**,/{domainId}/{solutionId}/namespaces/**,/{domainId}/{solutionId}/solution-services/**,/{domainId}/{solutionId}/context-services/**,/{domainId}/{solutionId}/admin-users/**,/{domainId}/{solutionId}/xquerys,/{domainId}/{solutionId}/xquerys/**
+
+        # Connector routes (prefixed)
+        - id: requests-connector-prefixed
+          uri: ${SIF_BROKER_SERVICES_REQUESTS_CONNECTOR_URL:http://requests-connector:8085}
+          predicates:
+            - Path=/{domainId}/{solutionId}/requests,/{domainId}/{solutionId}/requests/**
+
+        - id: responses-connector-prefixed
+          uri: ${SIF_BROKER_SERVICES_RESPONSES_CONNECTOR_URL:http://responses-connector:8088}
+          predicates:
+            - Path=/{domainId}/{solutionId}/responses,/{domainId}/{solutionId}/responses/**
+
+        - id: events-connector-prefixed
+          uri: ${SIF_BROKER_SERVICES_EVENTS_CONNECTOR_URL:http://events-connector:8084}
+          predicates:
+            - Path=/{domainId}/{solutionId}/events,/{domainId}/{solutionId}/events/**
+
+        - id: services-connector-prefixed
+          uri: ${SIF_BROKER_SERVICES_SERVICES_CONNECTOR_URL:http://services-connector:8087}
+          predicates:
+            - Path=/{domainId}/{solutionId}/services,/{domainId}/{solutionId}/services/**
+
+        # Core service routes (prefixed)
+        - id: queue-service-prefixed
+          uri: ${SIF_BROKER_SERVICES_QUEUE_SERVICE_URL:http://queue-service:8082}
+          predicates:
+            - Path=/{domainId}/{solutionId}/queues/**
+
+        - id: subscription-service-prefixed
+          uri: ${SIF_BROKER_SERVICES_SUBSCRIPTION_SERVICE_URL:http://subscription-service:8083}
+          predicates:
+            - Path=/{domainId}/{solutionId}/subscriptions/**
+
+        - id: job-service-prefixed
+          uri: ${SIF_BROKER_SERVICES_JOB_SERVICE_URL:http://job-service:8084}
+          predicates:
+            - Path=/{domainId}/{solutionId}/jobs/**
+
+  # Redis configuration (ElastiCache endpoint via env var)
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+# Environment Service URL for auth filter
+environment-service:
+  url: ${ENVIRONMENT_SERVICE_URL:http://environment-service:8081}
+
+# Logging
+logging:
+  level:
+    root: WARN
+    org.sifunity.gateway: INFO
+    org.springframework.cloud.gateway: WARN
+
+# Disable Logstash (no ELK in this deployment)
+observability:
+  logging:
+    logstash:
+      enabled: false
+      host: "localhost"
+      port: 5000
+
+# Disable OpenAPI documentation in production
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

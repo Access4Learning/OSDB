@@ -1,0 +1,1860 @@
+# // Data Model Example file for:
+# // Locale: IN
+# // SIF Datamodel Version: 3.7
+# // Limited to Objects: 
+
+
+# /////////////////////
+# // Object Examples //
+# /////////////////////
+objectExamples:
+  #//
+  #// environment
+  #//
+  environment:
+    pesc:
+      summary: PESC notation for environment
+      value:
+        {"environment" : {"type" : "DIRECT", "id" : "B5Fd5DfB-ca3b-162a-5657-dDf31E32cE92", "fingerprint" : "f5688c40-97d2-11e6-ae22-56b6b6499611", "sessionToken" : "a579ff69-0148-1000-007f-14109fdcaf83", "solutionId" : "production", "defaultZone" : {"id" : "District", "description" : "The zone for the local school district.", "properties" : {"property" : [{"name" : "email", "value" : "john.smith@district.k12.wa.us"}, {"name" : "phone", "value" : "(360)555-1234"}]}}, "authenticationMethod" : "SIF_HMACSHA256", "instanceId" : "1", "userToken" : "MmZkMjVmODItYjAxMC00NTFiLWFjZTEtNmRjNTI4MWYwZjdlOmhpdHNAbnNpcA==", "consumerName" : "Example Consumer", "applicationInfo" : {"applicationKey" : "Example", "supportedInfrastructureVersion" : "3.1", "dataModelNamespace" : "http://www.sifassociation.org/datamodel/na/3.3", "transport" : "REST", "applicationProduct" : {"vendorName" : "SIF Association", "productName" : "Fingertips Classroom App", "productVersion" : "1.0.4", "iconURI" : "https://www.sifassociation.org/PublishingImages/SIF%20Assoc%20symbol_LARGE.png"}}, "infrastructureServices" : {"infrastructureService" : [{"name" : "environment", "value" : "https://testharness.sifassociation.org/SIFConnector/AdaptorServer/0f 21cf0b-014c-1000-007f-00505686707f/environment/0f21cf0b-014c-1000-007f00505686707f"}, {"name" : "requestsConnector", "value" : "https://testharness.sifassociation.org/SIFConnector/AdaptorSer ver/0f21cf0b-014c-1000-007f-00505686707f/requests"}]}, "provisionedZones" : {"provisionedZone" : [{"id" : "District", "services" : {"service" : [{"name" : "students", "contextId" : "DEFAULT", "type" : "OBJECT", "rights" : {"right" : [{"type" : "QUERY", "value" : "APPROVED"}]}}, {"name" : "sections", "contextId" : "DEFAULT", "type" : "OBJECT", "rights" : {"right" : [{"type" : "QUERY", "value" : "APPROVED"}]}}]}}]}}}
+    goessner:
+      summary: Goessner notation for environment
+      value:
+        {"environment" : {"@type" : "DIRECT","@id" : "B5Fd5DfB-ca3b-162a-5657-dDf31E32cE92", "fingerprint" : "f5688c40-97d2-11e6-ae22-56b6b6499611", "sessionToken" : "a579ff69-0148-1000-007f-14109fdcaf83", "solutionId" : "production", "defaultZone" : {"@id" : "District", "description" : "The zone for the local school district.", "properties" : {"property" : [{"@name" : "email", "#text" : "john.smith@district.k12.wa.us"}, {"@name" : "phone", "#text" : "(360)555-1234"}]}}, "authenticationMethod" : "SIF_HMACSHA256", "instanceId" : "1", "userToken" : "MmZkMjVmODItYjAxMC00NTFiLWFjZTEtNmRjNTI4MWYwZjdlOmhpdHNAbnNpcA==", "consumerName" : "Example Consumer", "applicationInfo" : {"applicationKey" : "Example", "supportedInfrastructureVersion" : "3.1", "dataModelNamespace" : "http://www.sifassociation.org/datamodel/na/3.3", "transport" : "REST", "applicationProduct" : {"vendorName" : "SIF Association", "productName" : "Fingertips Classroom App", "productVersion" : "1.0.4", "iconURI" : "https://www.sifassociation.org/PublishingImages/SIF%20Assoc%20symbol_LARGE.png"}}, "infrastructureServices" : {"infrastructureService" : [{"@name" : "environment", "#text" : "https://testharness.sifassociation.org/SIFConnector/AdaptorServer/0f 21cf0b-014c-1000-007f-00505686707f/environment/0f21cf0b-014c-1000-007f00505686707f"}, {"@name" : "requestsConnector", "#text" : "https://testharness.sifassociation.org/SIFConnector/AdaptorSer ver/0f21cf0b-014c-1000-007f-00505686707f/requests"}]}, "provisionedZones" : {"provisionedZone" : {"@id" : "District", "services" : {"service" : [{"@name" : "students","@contextId" : "DEFAULT","@type" : "OBJECT", "rights" : {"right" : {"@type" : "QUERY", "#text" : "APPROVED"}}}, {"@name" : "sections","@contextId" : "DEFAULT","@type" : "OBJECT", "rights" : {"right" : {"@type" : "QUERY", "#text" : "APPROVED"}}}]}}}}}
+    xml:
+      summary: XML environment
+      value: >-
+        <environment type="DIRECT" id="B5Fd5DfB-ca3b-162a-5657-dDf31E32cE92">
+          <fingerprint>f5688c40-97d2-11e6-ae22-56b6b6499611</fingerprint>
+          <sessionToken>a579ff69-0148-1000-007f-14109fdcaf83</sessionToken>
+          <solutionId>production</solutionId>
+          <defaultZone id="District">
+            <description>The zone for the local school district.</description>
+            <properties>
+              <property name="email">john.smith@district.k12.wa.us</property>
+              <property name="phone">(360)555-1234</property>
+            </properties>
+          </defaultZone>
+          <authenticationMethod>SIF_HMACSHA256</authenticationMethod>
+          <instanceId>1</instanceId>
+          <userToken>MmZkMjVmODItYjAxMC00NTFiLWFjZTEtNmRjNTI4MWYwZjdlOmhpdHNAbnNpcA==</userToken>
+          <consumerName>Example Consumer</consumerName>
+          <applicationInfo>
+            <applicationKey>Example</applicationKey>
+            <supportedInfrastructureVersion>3.1</supportedInfrastructureVersion>
+            <dataModelNamespace>http://www.sifassociation.org/datamodel/na/3.3</dataModelNamespace>
+            <transport>REST</transport>
+            <applicationProduct>
+              <vendorName>SIF Association</vendorName>
+              <productName>Fingertips Classroom App</productName>
+              <productVersion>1.0.4</productVersion>
+              <iconURI>https://www.sifassociation.org/PublishingImages/SIF%20Assoc%20symbol_LARGE.png</iconURI>
+            </applicationProduct>
+          </applicationInfo>
+          <infrastructureServices>
+            <infrastructureService name="environment">https://testharness.sifassociation.org/SIFConnector/AdaptorServer/0f 21cf0b-014c-1000-007f-00505686707f/environment/0f21cf0b-014c-1000-007f00505686707f</infrastructureService>
+            <infrastructureService name="requestsConnector">https://testharness.sifassociation.org/SIFConnector/AdaptorSer ver/0f21cf0b-014c-1000-007f-00505686707f/requests</infrastructureService>
+          </infrastructureServices>
+          <provisionedZones>
+            <provisionedZone id="District">
+              <services>
+                <service name="students" contextId="DEFAULT" type="OBJECT">
+                  <rights>
+                    <right type="QUERY">APPROVED</right>
+                  </rights>
+                </service>
+                <service name="sections" contextId="DEFAULT" type="OBJECT">
+                  <rights>
+                    <right type="QUERY">APPROVED</right>
+                  </rights>
+                </service>
+              </services>
+            </provisionedZone>
+          </provisionedZones>
+        </environment>
+
+  #//
+  #// environments
+  #//
+  environments:
+    pesc:
+      summary: PESC notation for environments
+      value:
+        {"environments": {"environment": [{"type" : "DIRECT", "id" : "B5Fd5DfB-ca3b-162a-5657-dDf31E32cE92", "fingerprint" : "f5688c40-97d2-11e6-ae22-56b6b6499611", "sessionToken" : "a579ff69-0148-1000-007f-14109fdcaf83", "solutionId" : "production", "defaultZone" : {"id" : "District", "description" : "The zone for the local school district.", "properties" : {"property" : [{"name" : "email", "value" : "john.smith@district.k12.wa.us"}, {"name" : "phone", "value" : "(360)555-1234"}]}}, "authenticationMethod" : "SIF_HMACSHA256", "instanceId" : "1", "userToken" : "MmZkMjVmODItYjAxMC00NTFiLWFjZTEtNmRjNTI4MWYwZjdlOmhpdHNAbnNpcA==", "consumerName" : "Example Consumer", "applicationInfo" : {"applicationKey" : "Example", "supportedInfrastructureVersion" : "3.1", "dataModelNamespace" : "http://www.sifassociation.org/datamodel/na/3.3", "transport" : "REST", "applicationProduct" : {"vendorName" : "SIF Association", "productName" : "Fingertips Classroom App", "productVersion" : "1.0.4", "iconURI" : "https://www.sifassociation.org/PublishingImages/SIF%20Assoc%20symbol_LARGE.png"}}, "infrastructureServices" : {"infrastructureService" : [{"name" : "environment", "value" : "https://testharness.sifassociation.org/SIFConnector/AdaptorServer/0f 21cf0b-014c-1000-007f-00505686707f/environment/0f21cf0b-014c-1000-007f00505686707f"}, {"name" : "requestsConnector", "value" : "https://testharness.sifassociation.org/SIFConnector/AdaptorSer ver/0f21cf0b-014c-1000-007f-00505686707f/requests"}]}, "provisionedZones" : {"provisionedZone" : [{"id" : "District", "services" : {"service" : [{"name" : "students", "contextId" : "DEFAULT", "type" : "OBJECT", "rights" : {"right" : [{"type" : "QUERY", "value" : "APPROVED"}]}}, {"name" : "sections", "contextId" : "DEFAULT", "type" : "OBJECT", "rights" : {"right" : [{"type" : "QUERY", "value" : "APPROVED"}]}}]}}]}}]}}
+    goessner:
+      summary: Goessner notation for environments
+      value:
+        {"environments": {"environment" : {"@type" : "DIRECT","@id" : "B5Fd5DfB-ca3b-162a-5657-dDf31E32cE92", "fingerprint" : "f5688c40-97d2-11e6-ae22-56b6b6499611", "sessionToken" : "a579ff69-0148-1000-007f-14109fdcaf83", "solutionId" : "production", "defaultZone" : {"@id" : "District", "description" : "The zone for the local school district.", "properties" : {"property" : [{"@name" : "email", "#text" : "john.smith@district.k12.wa.us"}, {"@name" : "phone", "#text" : "(360)555-1234"}]}}, "authenticationMethod" : "SIF_HMACSHA256", "instanceId" : "1", "userToken" : "MmZkMjVmODItYjAxMC00NTFiLWFjZTEtNmRjNTI4MWYwZjdlOmhpdHNAbnNpcA==", "consumerName" : "Example Consumer", "applicationInfo" : {"applicationKey" : "Example", "supportedInfrastructureVersion" : "3.1", "dataModelNamespace" : "http://www.sifassociation.org/datamodel/na/3.3", "transport" : "REST", "applicationProduct" : {"vendorName" : "SIF Association", "productName" : "Fingertips Classroom App", "productVersion" : "1.0.4", "iconURI" : "https://www.sifassociation.org/PublishingImages/SIF%20Assoc%20symbol_LARGE.png"}}, "infrastructureServices" : {"infrastructureService" : [{"@name" : "environment", "#text" : "https://testharness.sifassociation.org/SIFConnector/AdaptorServer/0f 21cf0b-014c-1000-007f-00505686707f/environment/0f21cf0b-014c-1000-007f00505686707f"}, {"@name" : "requestsConnector", "#text" : "https://testharness.sifassociation.org/SIFConnector/AdaptorSer ver/0f21cf0b-014c-1000-007f-00505686707f/requests"}]}, "provisionedZones" : {"provisionedZone" : {"@id" : "District", "services" : {"service" : [{"@name" : "students","@contextId" : "DEFAULT","@type" : "OBJECT", "rights" : {"right" : {"@type" : "QUERY", "#text" : "APPROVED"}}}, {"@name" : "sections","@contextId" : "DEFAULT","@type" : "OBJECT", "rights" : {"right" : {"@type" : "QUERY", "#text" : "APPROVED"}}}]}}}}}}
+    xml:
+      summary: XML environments
+      value: >-
+        <environments>
+          <environment type="DIRECT" id="B5Fd5DfB-ca3b-162a-5657-dDf31E32cE92">
+            <fingerprint>f5688c40-97d2-11e6-ae22-56b6b6499611</fingerprint>
+            <sessionToken>a579ff69-0148-1000-007f-14109fdcaf83</sessionToken>
+            <solutionId>production</solutionId>
+            <defaultZone id="District">
+              <description>The zone for the local school district.</description>
+              <properties>
+                <property name="email">john.smith@district.k12.wa.us</property>
+                <property name="phone">(360)555-1234</property>
+              </properties>
+            </defaultZone>
+            <authenticationMethod>SIF_HMACSHA256</authenticationMethod>
+            <instanceId>1</instanceId>
+            <userToken>MmZkMjVmODItYjAxMC00NTFiLWFjZTEtNmRjNTI4MWYwZjdlOmhpdHNAbnNpcA==</userToken>
+            <consumerName>Example Consumer</consumerName>
+            <applicationInfo>
+              <applicationKey>Example</applicationKey>
+              <supportedInfrastructureVersion>3.1</supportedInfrastructureVersion>
+              <dataModelNamespace>http://www.sifassociation.org/datamodel/na/3.3</dataModelNamespace>
+              <transport>REST</transport>
+              <applicationProduct>
+                <vendorName>SIF Association</vendorName>
+                <productName>Fingertips Classroom App</productName>
+                <productVersion>1.0.4</productVersion>
+                <iconURI>https://www.sifassociation.org/PublishingImages/SIF%20Assoc%20symbol_LARGE.png</iconURI>
+              </applicationProduct>
+            </applicationInfo>
+            <infrastructureServices>
+              <infrastructureService name="environment">https://testharness.sifassociation.org/SIFConnector/AdaptorServer/0f 21cf0b-014c-1000-007f-00505686707f/environment/0f21cf0b-014c-1000-007f00505686707f</infrastructureService>
+              <infrastructureService name="requestsConnector">https://testharness.sifassociation.org/SIFConnector/AdaptorSer ver/0f21cf0b-014c-1000-007f-00505686707f/requests</infrastructureService>
+            </infrastructureServices>
+            <provisionedZones>
+              <provisionedZone id="District">
+                <services>
+                  <service name="students" contextId="DEFAULT" type="OBJECT">
+                    <rights>
+                      <right type="QUERY">APPROVED</right>
+                    </rights>
+                  </service>
+                  <service name="sections" contextId="DEFAULT" type="OBJECT">
+                    <rights>
+                      <right type="QUERY">APPROVED</right>
+                    </rights>
+                  </service>
+                </services>
+              </provisionedZone>
+            </provisionedZones>
+          </environment>
+        </environments>
+
+  #//
+  #// provisionRequest
+  #//
+  provisionRequest:
+    pesc:
+      summary: PESC notation for provisionRequest
+      value:
+        {"provisionRequest" : {"id" : "D3E34B39-9D79-4019-8C39-00AA001A1659", "provisionedZones" : {"provisionedZone" : [{"id" : "SuffolkMiddleSchool", "services" : {"service" : [{"type" : "OBJECT", "name" : "students", "contextId" : "DEFAULT", "rights" : {"right" : [{"type" : "CREATE", "value" : "REQUESTED"}, {"type" : "UPDATE", "value" : "REQUESTED"}]}}]}}]}}}
+    goessner:
+      summary: Goessner notation for provisionRequest
+      value:
+        {"provisionRequest" : {"@id" : "D3E34B39-9D79-4019-8C39-00AA001A1659", "provisionedZones" : {"provisionedZone" : {"@id" : "SuffolkMiddleSchool", "services" : {"service" : {"@type" : "OBJECT","@name" : "students","@contextId" : "DEFAULT", "rights" : {"right" : [{"@type" : "CREATE", "#text" : "REQUESTED"}, {"@type" : "UPDATE", "#text" : "REQUESTED"}]}}}}}}}
+    xml:
+      summary: XML provisionRequest
+      value: >-
+        <provisionRequest id="D3E34B39-9D79-4019-8C39-00AA001A1659">
+          <provisionedZones>
+            <provisionedZone id="SuffolkMiddleSchool">
+              <services>
+                <service type="OBJECT" name="students" contextId="DEFAULT">
+                  <rights>
+                    <right type="CREATE">REQUESTED</right>
+                    <right type="UPDATE">REQUESTED</right>
+                  </rights>
+                </service>
+              </services>
+            </provisionedZone>
+          </provisionedZones>
+        </provisionRequest>
+
+  #//
+  #// provisionRequests
+  #//
+  provisionRequests:
+    pesc:
+      summary: PESC notation for provisionRequests
+      value:
+        {"provisionRequests": {"provisionRequest": [{"id" : "D3E34B39-9D79-4019-8C39-00AA001A1659", "provisionedZones" : {"provisionedZone" : [{"id" : "SuffolkMiddleSchool", "services" : {"service" : [{"type" : "OBJECT", "name" : "students", "contextId" : "DEFAULT", "rights" : {"right" : [{"type" : "CREATE", "value" : "REQUESTED"}, {"type" : "UPDATE", "value" : "REQUESTED"}]}}]}}]}}]}}
+    goessner:
+      summary: Goessner notation for provisionRequests
+      value:
+        {"provisionRequests": {"provisionRequest" : {"@id" : "D3E34B39-9D79-4019-8C39-00AA001A1659", "provisionedZones" : {"provisionedZone" : {"@id" : "SuffolkMiddleSchool", "services" : {"service" : {"@type" : "OBJECT","@name" : "students","@contextId" : "DEFAULT", "rights" : {"right" : [{"@type" : "CREATE", "#text" : "REQUESTED"}, {"@type" : "UPDATE", "#text" : "REQUESTED"}]}}}}}}}}
+    xml:
+      summary: XML provisionRequests
+      value: >-
+        <provisionRequests>
+          <provisionRequest id="D3E34B39-9D79-4019-8C39-00AA001A1659">
+            <provisionedZones>
+              <provisionedZone id="SuffolkMiddleSchool">
+                <services>
+                  <service type="OBJECT" name="students" contextId="DEFAULT">
+                    <rights>
+                      <right type="CREATE">REQUESTED</right>
+                      <right type="UPDATE">REQUESTED</right>
+                    </rights>
+                  </service>
+                </services>
+              </provisionedZone>
+            </provisionedZones>
+          </provisionRequest>
+        </provisionRequests>
+
+  #//
+  #// queue
+  #//
+  queue:
+    pesc:
+      summary: PESC notation for queue
+      value:
+        {"queue" : {"id" : "4c7cc042-71e6-11e9-a923-1681be663d3e", "polling" : "IMMEDIATE", "name" : "StudentConsumer", "maxConcurrentConnections" : 3}}
+    goessner:
+      summary: Goessner notation for queue
+      value:
+        {"queue" : {"@id" : "4c7cc042-71e6-11e9-a923-1681be663d3e", "polling" : "IMMEDIATE", "name" : "StudentConsumer", "maxConcurrentConnections" : "3"}}
+    xml:
+      summary: XML queue
+      value: >-
+        <queue id="4c7cc042-71e6-11e9-a923-1681be663d3e">
+          <polling>IMMEDIATE</polling>
+          <name>StudentConsumer</name>
+          <maxConcurrentConnections>3</maxConcurrentConnections>
+        </queue>
+
+  #//
+  #// queues
+  #//
+  queues:
+    pesc:
+      summary: PESC notation for queues
+      value:
+        {"queues": {"queue": [{"id" : "4c7cc042-71e6-11e9-a923-1681be663d3e", "polling" : "IMMEDIATE", "name" : "StudentConsumer", "maxConcurrentConnections" : 3}]}}
+    goessner:
+      summary: Goessner notation for queues
+      value:
+        {"queues": {"queue" : {"@id" : "4c7cc042-71e6-11e9-a923-1681be663d3e", "polling" : "IMMEDIATE", "name" : "StudentConsumer", "maxConcurrentConnections" : "3"}}}
+    xml:
+      summary: XML queues
+      value: >-
+        <queues>
+          <queue id="4c7cc042-71e6-11e9-a923-1681be663d3e">
+            <polling>IMMEDIATE</polling>
+            <name>StudentConsumer</name>
+            <maxConcurrentConnections>3</maxConcurrentConnections>
+          </queue>
+        </queues>
+
+  #//
+  #// subscription
+  #//
+  subscription:
+    pesc:
+      summary: PESC notation for subscription
+      value:
+        {"subscription" : {"id" : "4c7cc1f0-71e6-11e9-a923-1681be663d3e", "zoneId" : "auSchoolTestingZone", "contextId" : "DEFAULT", "serviceType" : "OBJECT", "serviceName" : "StudentPersonals", "queueId" : "e23fce44-7871-48eb-8952-e27733f59b30"}}
+    goessner:
+      summary: Goessner notation for subscription
+      value:
+        {"subscription" : {"@id" : "4c7cc1f0-71e6-11e9-a923-1681be663d3e", "zoneId" : "auSchoolTestingZone", "contextId" : "DEFAULT", "serviceType" : "OBJECT", "serviceName" : "StudentPersonals", "queueId" : "e23fce44-7871-48eb-8952-e27733f59b30"}}
+    xml:
+      summary: XML subscription
+      value: >-
+        <subscription id="4c7cc1f0-71e6-11e9-a923-1681be663d3e">
+          <zoneId>auSchoolTestingZone</zoneId>
+          <contextId>DEFAULT</contextId>
+          <serviceType>OBJECT</serviceType>
+          <serviceName>StudentPersonals</serviceName>
+          <queueId>e23fce44-7871-48eb-8952-e27733f59b30</queueId>
+        </subscription>
+
+  #//
+  #// subscriptions
+  #//
+  subscriptions:
+    pesc:
+      summary: PESC notation for subscriptions
+      value:
+        {"subscriptions": {"subscription": [{"id" : "4c7cc1f0-71e6-11e9-a923-1681be663d3e", "zoneId" : "auSchoolTestingZone", "contextId" : "DEFAULT", "serviceType" : "OBJECT", "serviceName" : "StudentPersonals", "queueId" : "e23fce44-7871-48eb-8952-e27733f59b30"}]}}
+    goessner:
+      summary: Goessner notation for subscriptions
+      value:
+        {"subscriptions": {"subscription" : {"@id" : "4c7cc1f0-71e6-11e9-a923-1681be663d3e", "zoneId" : "auSchoolTestingZone", "contextId" : "DEFAULT", "serviceType" : "OBJECT", "serviceName" : "StudentPersonals", "queueId" : "e23fce44-7871-48eb-8952-e27733f59b30"}}}
+    xml:
+      summary: XML subscriptions
+      value: >-
+        <subscriptions>
+          <subscription id="4c7cc1f0-71e6-11e9-a923-1681be663d3e">
+            <zoneId>auSchoolTestingZone</zoneId>
+            <contextId>DEFAULT</contextId>
+            <serviceType>OBJECT</serviceType>
+            <serviceName>StudentPersonals</serviceName>
+            <queueId>e23fce44-7871-48eb-8952-e27733f59b30</queueId>
+          </subscription>
+        </subscriptions>
+
+  #//
+  #// job
+  #//
+  job:
+    pesc:
+      summary: PESC notation for job
+      value:
+        {"job" : {"id" : "8dc59f05-4ed6-48e1-9985-f0ef27fed09d", "name" : "rolloverStudent", "description" : "Rollover Student from year X to year Y", "state" : "NOTSTARTED", "stateDescription" : "Not Started", "created" : "2018-09-04T09:06:56.362+08:00", "timeout" : "P30D", "phases" : {"phase" : [{"name" : "oldYearEnrolment", "states" : {"state" : [{"type" : "NOTSTARTED"}]}, "required" : true, "rights" : {"right" : [{"type" : "UPDATE", "value" : "APPROVED"}]}, "statesRights" : {"right" : [{"type" : "QUERY", "value" : "APPROVED"}, {"type" : "CREATE", "value" : "APPROVED"}]}}, {"name" : "newYearEnrolment", "states" : {"state" : [{"type" : "NOTSTARTED"}]}, "required" : true, "rights" : {"right" : [{"type" : "CREATE", "value" : "APPROVED"}]}, "statesRights" : {"right" : [{"type" : "QUERY", "value" : "APPROVED"}, {"type" : "CREATE", "value" : "APPROVED"}]}}]}}}
+    goessner:
+      summary: Goessner notation for job
+      value:
+        {"job" : {"@id" : "8dc59f05-4ed6-48e1-9985-f0ef27fed09d", "name" : "rolloverStudent", "description" : "Rollover Student from year X to year Y", "state" : "NOTSTARTED", "stateDescription" : "Not Started", "created" : "2018-09-04T09:06:56.362+08:00", "timeout" : "P30D", "phases" : {"phase" : [{"name" : "oldYearEnrolment", "states" : {"state" : {"type" : "NOTSTARTED"}}, "required" : "true", "rights" : {"right" : {"@type" : "UPDATE", "#text" : "APPROVED"}}, "statesRights" : {"right" : [{"@type" : "QUERY", "#text" : "APPROVED"}, {"@type" : "CREATE", "#text" : "APPROVED"}]}}, {"name" : "newYearEnrolment", "states" : {"state" : {"type" : "NOTSTARTED"}}, "required" : "true", "rights" : {"right" : {"@type" : "CREATE", "#text" : "APPROVED"}}, "statesRights" : {"right" : [{"@type" : "QUERY", "#text" : "APPROVED"}, {"@type" : "CREATE", "#text" : "APPROVED"}]}}]}}}
+    xml:
+      summary: XML job
+      value: >-
+        <job id="8dc59f05-4ed6-48e1-9985-f0ef27fed09d">
+          <name>rolloverStudent</name>
+          <description>Rollover Student from year X to year Y</description>
+          <state>NOTSTARTED</state>
+          <stateDescription>Not Started</stateDescription>
+          <created>2018-09-04T09:06:56.362+08:00</created>
+          <timeout>P30D</timeout>
+          <phases>
+            <phase>
+              <name>oldYearEnrolment</name>
+              <states>
+                <state>
+                  <type>NOTSTARTED</type>
+                </state>
+              </states>
+              <required>true</required>
+              <rights>
+                <right type="UPDATE">APPROVED</right>
+              </rights>
+              <statesRights>
+                <right type="QUERY">APPROVED</right>
+                <right type="CREATE">APPROVED</right>
+              </statesRights>
+            </phase>
+            <phase>
+              <name>newYearEnrolment</name>
+              <states>
+                <state>
+                  <type>NOTSTARTED</type>
+                </state>
+              </states>
+              <required>true</required>
+              <rights>
+                <right type="CREATE">APPROVED</right>
+              </rights>
+              <statesRights>
+                <right type="QUERY">APPROVED</right>
+                <right type="CREATE">APPROVED</right>
+              </statesRights>
+            </phase>
+          </phases>
+        </job>
+
+  #//
+  #// jobs
+  #//
+  jobs:
+    pesc:
+      summary: PESC notation for jobs
+      value:
+        {"jobs": {"job": [{"id" : "8dc59f05-4ed6-48e1-9985-f0ef27fed09d", "name" : "rolloverStudent", "description" : "Rollover Student from year X to year Y", "state" : "NOTSTARTED", "stateDescription" : "Not Started", "created" : "2018-09-04T09:06:56.362+08:00", "timeout" : "P30D", "phases" : {"phase" : [{"name" : "oldYearEnrolment", "states" : {"state" : [{"type" : "NOTSTARTED"}]}, "required" : true, "rights" : {"right" : [{"type" : "UPDATE", "value" : "APPROVED"}]}, "statesRights" : {"right" : [{"type" : "QUERY", "value" : "APPROVED"}, {"type" : "CREATE", "value" : "APPROVED"}]}}, {"name" : "newYearEnrolment", "states" : {"state" : [{"type" : "NOTSTARTED"}]}, "required" : true, "rights" : {"right" : [{"type" : "CREATE", "value" : "APPROVED"}]}, "statesRights" : {"right" : [{"type" : "QUERY", "value" : "APPROVED"}, {"type" : "CREATE", "value" : "APPROVED"}]}}]}}]}}
+    goessner:
+      summary: Goessner notation for jobs
+      value:
+        {"jobs": {"job" : {"@id" : "8dc59f05-4ed6-48e1-9985-f0ef27fed09d", "name" : "rolloverStudent", "description" : "Rollover Student from year X to year Y", "state" : "NOTSTARTED", "stateDescription" : "Not Started", "created" : "2018-09-04T09:06:56.362+08:00", "timeout" : "P30D", "phases" : {"phase" : [{"name" : "oldYearEnrolment", "states" : {"state" : {"type" : "NOTSTARTED"}}, "required" : "true", "rights" : {"right" : {"@type" : "UPDATE", "#text" : "APPROVED"}}, "statesRights" : {"right" : [{"@type" : "QUERY", "#text" : "APPROVED"}, {"@type" : "CREATE", "#text" : "APPROVED"}]}}, {"name" : "newYearEnrolment", "states" : {"state" : {"type" : "NOTSTARTED"}}, "required" : "true", "rights" : {"right" : {"@type" : "CREATE", "#text" : "APPROVED"}}, "statesRights" : {"right" : [{"@type" : "QUERY", "#text" : "APPROVED"}, {"@type" : "CREATE", "#text" : "APPROVED"}]}}]}}}}
+    xml:
+      summary: XML jobs
+      value: >-
+        <jobs>
+          <job id="8dc59f05-4ed6-48e1-9985-f0ef27fed09d">
+            <name>rolloverStudent</name>
+            <description>Rollover Student from year X to year Y</description>
+            <state>NOTSTARTED</state>
+            <stateDescription>Not Started</stateDescription>
+            <created>2018-09-04T09:06:56.362+08:00</created>
+            <timeout>P30D</timeout>
+            <phases>
+              <phase>
+                <name>oldYearEnrolment</name>
+                <states>
+                  <state>
+                    <type>NOTSTARTED</type>
+                  </state>
+                </states>
+                <required>true</required>
+                <rights>
+                  <right type="UPDATE">APPROVED</right>
+                </rights>
+                <statesRights>
+                  <right type="QUERY">APPROVED</right>
+                  <right type="CREATE">APPROVED</right>
+                </statesRights>
+              </phase>
+              <phase>
+                <name>newYearEnrolment</name>
+                <states>
+                  <state>
+                    <type>NOTSTARTED</type>
+                  </state>
+                </states>
+                <required>true</required>
+                <rights>
+                  <right type="CREATE">APPROVED</right>
+                </rights>
+                <statesRights>
+                  <right type="QUERY">APPROVED</right>
+                  <right type="CREATE">APPROVED</right>
+                </statesRights>
+              </phase>
+            </phases>
+          </job>
+        </jobs>
+
+  #//
+  #// alert
+  #//
+  alert:
+    pesc:
+      summary: PESC notation for alert
+      value:
+        {"alert" : {"id" : "d0b128e9-fcec-48e9-8ad7-206ded2ddd7f", "reporter" : "LovellSIS", "cause" : "KleinmanLMS", "exchange" : "REQUEST", "level" : "WARNING", "description" : "Unable to query assessment scores.", "messageID" : "24083F7F-6AB0-4912-B7AA-34C05540E2FA"}}
+    goessner:
+      summary: Goessner notation for alert
+      value:
+        {"alert" : {"@id" : "d0b128e9-fcec-48e9-8ad7-206ded2ddd7f", "reporter" : "LovellSIS", "cause" : "KleinmanLMS", "exchange" : "REQUEST", "level" : "WARNING", "description" : "Unable to query assessment scores.", "messageID" : "24083F7F-6AB0-4912-B7AA-34C05540E2FA"}}
+    xml:
+      summary: XML alert
+      value: >-
+        <alert id="d0b128e9-fcec-48e9-8ad7-206ded2ddd7f">
+          <reporter>LovellSIS</reporter>
+          <cause>KleinmanLMS</cause>
+          <exchange>REQUEST</exchange>
+          <level>WARNING</level>
+          <description>Unable to query assessment scores.</description>
+          <messageID>24083F7F-6AB0-4912-B7AA-34C05540E2FA</messageID>
+        </alert>
+
+  #//
+  #// alerts
+  #//
+  alerts:
+    pesc:
+      summary: PESC notation for alerts
+      value:
+        {"alerts": {"alert": [{"id" : "d0b128e9-fcec-48e9-8ad7-206ded2ddd7f", "reporter" : "LovellSIS", "cause" : "KleinmanLMS", "exchange" : "REQUEST", "level" : "WARNING", "description" : "Unable to query assessment scores.", "messageID" : "24083F7F-6AB0-4912-B7AA-34C05540E2FA"}]}}
+    goessner:
+      summary: Goessner notation for alerts
+      value:
+        {"alerts": {"alert" : {"@id" : "d0b128e9-fcec-48e9-8ad7-206ded2ddd7f", "reporter" : "LovellSIS", "cause" : "KleinmanLMS", "exchange" : "REQUEST", "level" : "WARNING", "description" : "Unable to query assessment scores.", "messageID" : "24083F7F-6AB0-4912-B7AA-34C05540E2FA"}}}
+    xml:
+      summary: XML alerts
+      value: >-
+        <alerts>
+          <alert id="d0b128e9-fcec-48e9-8ad7-206ded2ddd7f">
+            <reporter>LovellSIS</reporter>
+            <cause>KleinmanLMS</cause>
+            <exchange>REQUEST</exchange>
+            <level>WARNING</level>
+            <description>Unable to query assessment scores.</description>
+            <messageID>24083F7F-6AB0-4912-B7AA-34C05540E2FA</messageID>
+          </alert>
+        </alerts>
+
+  #//
+  #// codeSet
+  #//
+  codeSet:
+    pesc:
+      summary: PESC notation for codeSet
+      value:
+        {"codeSet" : {"id" : "FEDB3FEC-4066-4BC0-882B-DC42CF7C1C0F", "zone" : "CamasSchoolDistrict", "version" : "1.0", "timestamp" : "2022-07-02T14:26:58.762", "source" : "https://ceds.ed.gov/element/000328", "codeItems" : {"codeItem" : [{"code" : "Yes", "value" : "Yes", "definition" : "An indication that the school has students who are ability grouped for classroom instruction in mathematics or English/reading/language arts.", "action" : "ADD", "timestamp" : "2022-07-02T14:26:58.762"}, {"code" : "No", "value" : "No", "action" : "ADD", "timestamp" : "2022-07-02T14:26:58.762"}]}}}
+    goessner:
+      summary: Goessner notation for codeSet
+      value:
+        {"codeSet" : {"@id" : "FEDB3FEC-4066-4BC0-882B-DC42CF7C1C0F", "zone" : "CamasSchoolDistrict", "version" : "1.0", "timestamp" : "2022-07-02T14:26:58.762", "source" : "https://ceds.ed.gov/element/000328", "codeItems" : {"codeItem" : [{"code" : "Yes", "value" : "Yes", "definition" : "An indication that the school has students who are ability grouped for classroom instruction in mathematics or English/reading/language arts.", "action" : "ADD", "timestamp" : "2022-07-02T14:26:58.762"}, {"code" : "No", "value" : "No", "action" : "ADD", "timestamp" : "2022-07-02T14:26:58.762"}]}}}
+    xml:
+      summary: XML codeSet
+      value: >-
+        <codeSet id="FEDB3FEC-4066-4BC0-882B-DC42CF7C1C0F">
+          <zone>CamasSchoolDistrict</zone>
+          <version>1.0</version>
+          <timestamp>2022-07-02T14:26:58.762</timestamp>
+          <source>https://ceds.ed.gov/element/000328</source>
+          <codeItems>
+            <codeItem>
+              <code>Yes</code>
+              <value>Yes</value>
+              <definition>An indication that the school has students who are ability grouped for classroom instruction in mathematics or English/reading/language arts.</definition>
+              <action>ADD</action>
+              <timestamp>2022-07-02T14:26:58.762</timestamp>
+            </codeItem>
+            <codeItem>
+              <code>No</code>
+              <value>No</value>
+              <action>ADD</action>
+              <timestamp>2022-07-02T14:26:58.762</timestamp>
+            </codeItem>
+          </codeItems>
+        </codeSet>
+
+  #//
+  #// codeSets
+  #//
+  codeSets:
+    pesc:
+      summary: PESC notation for codeSets
+      value:
+        {"codeSets": {"codeSet": [{"id" : "FEDB3FEC-4066-4BC0-882B-DC42CF7C1C0F", "zone" : "CamasSchoolDistrict", "version" : "1.0", "timestamp" : "2022-07-02T14:26:58.762", "source" : "https://ceds.ed.gov/element/000328", "codeItems" : {"codeItem" : [{"code" : "Yes", "value" : "Yes", "definition" : "An indication that the school has students who are ability grouped for classroom instruction in mathematics or English/reading/language arts.", "action" : "ADD", "timestamp" : "2022-07-02T14:26:58.762"}, {"code" : "No", "value" : "No", "action" : "ADD", "timestamp" : "2022-07-02T14:26:58.762"}]}}]}}
+    goessner:
+      summary: Goessner notation for codeSets
+      value:
+        {"codeSets": {"codeSet" : {"@id" : "FEDB3FEC-4066-4BC0-882B-DC42CF7C1C0F", "zone" : "CamasSchoolDistrict", "version" : "1.0", "timestamp" : "2022-07-02T14:26:58.762", "source" : "https://ceds.ed.gov/element/000328", "codeItems" : {"codeItem" : [{"code" : "Yes", "value" : "Yes", "definition" : "An indication that the school has students who are ability grouped for classroom instruction in mathematics or English/reading/language arts.", "action" : "ADD", "timestamp" : "2022-07-02T14:26:58.762"}, {"code" : "No", "value" : "No", "action" : "ADD", "timestamp" : "2022-07-02T14:26:58.762"}]}}}}
+    xml:
+      summary: XML codeSets
+      value: >-
+        <codeSets>
+          <codeSet id="FEDB3FEC-4066-4BC0-882B-DC42CF7C1C0F">
+            <zone>CamasSchoolDistrict</zone>
+            <version>1.0</version>
+            <timestamp>2022-07-02T14:26:58.762</timestamp>
+            <source>https://ceds.ed.gov/element/000328</source>
+            <codeItems>
+              <codeItem>
+                <code>Yes</code>
+                <value>Yes</value>
+                <definition>An indication that the school has students who are ability grouped for classroom instruction in mathematics or English/reading/language arts.</definition>
+                <action>ADD</action>
+                <timestamp>2022-07-02T14:26:58.762</timestamp>
+              </codeItem>
+              <codeItem>
+                <code>No</code>
+                <value>No</value>
+                <action>ADD</action>
+                <timestamp>2022-07-02T14:26:58.762</timestamp>
+              </codeItem>
+            </codeItems>
+          </codeSet>
+        </codeSets>
+
+  #//
+  #// namespace
+  #//
+  namespace:
+    pesc:
+      summary: PESC notation for namespace
+      value:
+        {"namespace" : {"id" : "7D818589-364A-467C-800E-7049100A7663", "zone" : "CamasSchoolDistrict", "uri" : "http://www.sifassociation.org/infrastructure/3.7", "url" : "http://specification.sifassociation.org/Implementation/Infrastructure/3.7/XSD/Schema_NoIncludes_Annotated_Strict/SIF_Message.xsd"}}
+    goessner:
+      summary: Goessner notation for namespace
+      value:
+        {"namespace" : {"@id" : "7D818589-364A-467C-800E-7049100A7663", "zone" : "CamasSchoolDistrict", "uri" : "http://www.sifassociation.org/infrastructure/3.7", "url" : "http://specification.sifassociation.org/Implementation/Infrastructure/3.7/XSD/Schema_NoIncludes_Annotated_Strict/SIF_Message.xsd"}}
+    xml:
+      summary: XML namespace
+      value: >-
+        <namespace id="7D818589-364A-467C-800E-7049100A7663">
+          <zone>CamasSchoolDistrict</zone>
+          <uri>http://www.sifassociation.org/infrastructure/3.7</uri>
+          <url>http://specification.sifassociation.org/Implementation/Infrastructure/3.7/XSD/Schema_NoIncludes_Annotated_Strict/SIF_Message.xsd</url>
+        </namespace>
+
+  #//
+  #// namespaces
+  #//
+  namespaces:
+    pesc:
+      summary: PESC notation for namespaces
+      value:
+        {"namespaces": {"namespace": [{"id" : "7D818589-364A-467C-800E-7049100A7663", "zone" : "CamasSchoolDistrict", "uri" : "http://www.sifassociation.org/infrastructure/3.7", "url" : "http://specification.sifassociation.org/Implementation/Infrastructure/3.7/XSD/Schema_NoIncludes_Annotated_Strict/SIF_Message.xsd"}]}}
+    goessner:
+      summary: Goessner notation for namespaces
+      value:
+        {"namespaces": {"namespace" : {"@id" : "7D818589-364A-467C-800E-7049100A7663", "zone" : "CamasSchoolDistrict", "uri" : "http://www.sifassociation.org/infrastructure/3.7", "url" : "http://specification.sifassociation.org/Implementation/Infrastructure/3.7/XSD/Schema_NoIncludes_Annotated_Strict/SIF_Message.xsd"}}}
+    xml:
+      summary: XML namespaces
+      value: >-
+        <namespaces>
+          <namespace id="7D818589-364A-467C-800E-7049100A7663">
+            <zone>CamasSchoolDistrict</zone>
+            <uri>http://www.sifassociation.org/infrastructure/3.7</uri>
+            <url>http://specification.sifassociation.org/Implementation/Infrastructure/3.7/XSD/Schema_NoIncludes_Annotated_Strict/SIF_Message.xsd</url>
+          </namespace>
+        </namespaces>
+
+  #//
+  #// provider
+  #//
+  provider:
+    pesc:
+      summary: PESC notation for provider
+      value:
+        {"provider" : {"id" : "EA6F7130-0F61-42CF-8D9C-68A083060B9F", "serviceType" : "OBJECT", "serviceName" : "StudentPersonal", "contextId" : "DEFAULT", "zoneId" : "CamasSchoolDistrict", "providerName" : "LovellSIS", "querySupport" : {"dynamicQuery" : true, "queryByExample" : false, "changesSinceMarker" : false, "paged" : false, "maxPageSize" : 1000, "totalCount" : true, "applicationProduct" : {"vendorName" : "Lovell Software", "productName" : "LovellSIS", "productVersion" : "1.0"}, "adapterProduct" : {"vendorName" : "Kleinman Computers", "productName" : "ScalableREST", "productVersion" : "3.5"}}, "mimeTypes" : {"mediaType" : ["application/xml", "application/json"]}, "endPoint" : {"location" : "http://www.example.com/provider/"}, "supportedRequestTypes" : {"supportedRequestType" : [{"requestType" : "IMMEDIATE", "operations" : {"operation" : ["QUERY", "UPDATE", "DELETE"]}}, {"requestType" : "DELAYED", "operations" : {"operation" : ["CREATE"]}}]}}}
+    goessner:
+      summary: Goessner notation for provider
+      value:
+        {"provider" : {"@id" : "EA6F7130-0F61-42CF-8D9C-68A083060B9F", "serviceType" : "OBJECT", "serviceName" : "StudentPersonal", "contextId" : "DEFAULT", "zoneId" : "CamasSchoolDistrict", "providerName" : "LovellSIS", "querySupport" : {"dynamicQuery" : "true", "queryByExample" : "false", "changesSinceMarker" : "false", "paged" : "false", "maxPageSize" : "1000", "totalCount" : "true", "applicationProduct" : {"vendorName" : "Lovell Software", "productName" : "LovellSIS", "productVersion" : "1.0"}, "adapterProduct" : {"vendorName" : "Kleinman Computers", "productName" : "ScalableREST", "productVersion" : "3.5"}}, "mimeTypes" : {"mediaType" : [{"mediaType" : "application/xml"}, {"mediaType" : "application/json"}]}, "endPoint" : {"location" : "http://www.example.com/provider/"}, "supportedRequestTypes" : {"supportedRequestType" : [{"requestType" : "IMMEDIATE", "operations" : {"operation" : [{"operation" : "QUERY"}, {"operation" : "UPDATE"}, {"operation" : "DELETE"}]}}, {"requestType" : "DELAYED", "operations" : {"operation" : "CREATE"}}]}}}
+    xml:
+      summary: XML provider
+      value: >-
+        <provider id="EA6F7130-0F61-42CF-8D9C-68A083060B9F">
+          <serviceType>OBJECT</serviceType>
+          <serviceName>StudentPersonal</serviceName>
+          <contextId>DEFAULT</contextId>
+          <zoneId>CamasSchoolDistrict</zoneId>
+          <providerName>LovellSIS</providerName>
+          <querySupport>
+            <dynamicQuery>true</dynamicQuery>
+            <queryByExample>false</queryByExample>
+            <changesSinceMarker>false</changesSinceMarker>
+            <paged>false</paged>
+            <maxPageSize>1000</maxPageSize>
+            <totalCount>true</totalCount>
+            <applicationProduct>
+              <vendorName>Lovell Software</vendorName>
+              <productName>LovellSIS</productName>
+              <productVersion>1.0</productVersion>
+            </applicationProduct>
+            <adapterProduct>
+              <vendorName>Kleinman Computers</vendorName>
+              <productName>ScalableREST</productName>
+              <productVersion>3.5</productVersion>
+            </adapterProduct>
+          </querySupport>
+          <mimeTypes>
+            <mediaType>application/xml</mediaType>
+            <mediaType>application/json</mediaType>
+          </mimeTypes>
+          <endPoint>
+            <location>http://www.example.com/provider/</location>
+          </endPoint>
+          <supportedRequestTypes>
+            <supportedRequestType>
+              <requestType>IMMEDIATE</requestType>
+              <operations>
+                <operation>QUERY</operation>
+                <operation>UPDATE</operation>
+                <operation>DELETE</operation>
+              </operations>
+            </supportedRequestType>
+            <supportedRequestType>
+              <requestType>DELAYED</requestType>
+              <operations>
+                <operation>CREATE</operation>
+              </operations>
+            </supportedRequestType>
+          </supportedRequestTypes>
+        </provider>
+
+  #//
+  #// providers
+  #//
+  providers:
+    pesc:
+      summary: PESC notation for providers
+      value:
+        {"providers": {"provider": [{"id" : "EA6F7130-0F61-42CF-8D9C-68A083060B9F", "serviceType" : "OBJECT", "serviceName" : "StudentPersonal", "contextId" : "DEFAULT", "zoneId" : "CamasSchoolDistrict", "providerName" : "LovellSIS", "querySupport" : {"dynamicQuery" : true, "queryByExample" : false, "changesSinceMarker" : false, "paged" : false, "maxPageSize" : 1000, "totalCount" : true, "applicationProduct" : {"vendorName" : "Lovell Software", "productName" : "LovellSIS", "productVersion" : "1.0"}, "adapterProduct" : {"vendorName" : "Kleinman Computers", "productName" : "ScalableREST", "productVersion" : "3.5"}}, "mimeTypes" : {"mediaType" : ["application/xml", "application/json"]}, "endPoint" : {"location" : "http://www.example.com/provider/"}, "supportedRequestTypes" : {"supportedRequestType" : [{"requestType" : "IMMEDIATE", "operations" : {"operation" : ["QUERY", "UPDATE", "DELETE"]}}, {"requestType" : "DELAYED", "operations" : {"operation" : ["CREATE"]}}]}}]}}
+    goessner:
+      summary: Goessner notation for providers
+      value:
+        {"providers": {"provider" : {"@id" : "EA6F7130-0F61-42CF-8D9C-68A083060B9F", "serviceType" : "OBJECT", "serviceName" : "StudentPersonal", "contextId" : "DEFAULT", "zoneId" : "CamasSchoolDistrict", "providerName" : "LovellSIS", "querySupport" : {"dynamicQuery" : "true", "queryByExample" : "false", "changesSinceMarker" : "false", "paged" : "false", "maxPageSize" : "1000", "totalCount" : "true", "applicationProduct" : {"vendorName" : "Lovell Software", "productName" : "LovellSIS", "productVersion" : "1.0"}, "adapterProduct" : {"vendorName" : "Kleinman Computers", "productName" : "ScalableREST", "productVersion" : "3.5"}}, "mimeTypes" : {"mediaType" : [{"mediaType" : "application/xml"}, {"mediaType" : "application/json"}]}, "endPoint" : {"location" : "http://www.example.com/provider/"}, "supportedRequestTypes" : {"supportedRequestType" : [{"requestType" : "IMMEDIATE", "operations" : {"operation" : [{"operation" : "QUERY"}, {"operation" : "UPDATE"}, {"operation" : "DELETE"}]}}, {"requestType" : "DELAYED", "operations" : {"operation" : "CREATE"}}]}}}}
+    xml:
+      summary: XML providers
+      value: >-
+        <providers>
+          <provider id="EA6F7130-0F61-42CF-8D9C-68A083060B9F">
+            <serviceType>OBJECT</serviceType>
+            <serviceName>StudentPersonal</serviceName>
+            <contextId>DEFAULT</contextId>
+            <zoneId>CamasSchoolDistrict</zoneId>
+            <providerName>LovellSIS</providerName>
+            <querySupport>
+              <dynamicQuery>true</dynamicQuery>
+              <queryByExample>false</queryByExample>
+              <changesSinceMarker>false</changesSinceMarker>
+              <paged>false</paged>
+              <maxPageSize>1000</maxPageSize>
+              <totalCount>true</totalCount>
+              <applicationProduct>
+                <vendorName>Lovell Software</vendorName>
+                <productName>LovellSIS</productName>
+                <productVersion>1.0</productVersion>
+              </applicationProduct>
+              <adapterProduct>
+                <vendorName>Kleinman Computers</vendorName>
+                <productName>ScalableREST</productName>
+                <productVersion>3.5</productVersion>
+              </adapterProduct>
+            </querySupport>
+            <mimeTypes>
+              <mediaType>application/xml</mediaType>
+              <mediaType>application/json</mediaType>
+            </mimeTypes>
+            <endPoint>
+              <location>http://www.example.com/provider/</location>
+            </endPoint>
+            <supportedRequestTypes>
+              <supportedRequestType>
+                <requestType>IMMEDIATE</requestType>
+                <operations>
+                  <operation>QUERY</operation>
+                  <operation>UPDATE</operation>
+                  <operation>DELETE</operation>
+                </operations>
+              </supportedRequestType>
+              <supportedRequestType>
+                <requestType>DELAYED</requestType>
+                <operations>
+                  <operation>CREATE</operation>
+                </operations>
+              </supportedRequestType>
+            </supportedRequestTypes>
+          </provider>
+        </providers>
+
+  #//
+  #// xquery
+  #//
+  xquery:
+    pesc:
+      summary: PESC notation for xquery
+      value:
+        {"xquery" : {"id" : "CompanyPODs", "type" : "EXTENDED", "status" : "APPROVED", "description" : "Returns all PODs for the specified company.", "script" : "", "parameters" : {"parameter" : [{"name" : "companyid", "type" : "xs:unsignedInt", "default" : "63", "description" : "The companies unique ID from the Student Data Privacy Consortium (SDPC) registry.", "required" : true, "range" : {"start" : 0, "end" : 4294967295}, "minLength" : 1, "maxLength" : 10}]}, "returnType" : "http://www.sifassociation.org/infrastructure/3.7:pods"}}
+    goessner:
+      summary: Goessner notation for xquery
+      value:
+        {"xquery" : {"@id" : "CompanyPODs", "type" : "EXTENDED", "status" : "APPROVED", "description" : "Returns all PODs for the specified company.", "script" : "", "parameters" : {"parameter" : {"name" : "companyid", "type" : "xs:unsignedInt", "default" : "63", "description" : "The companies unique ID from the Student Data Privacy Consortium (SDPC) registry.", "required" : "true", "range" : {"start" : "0", "end" : "4294967295"}, "minLength" : "1", "maxLength" : "10"}}, "returnType" : "http://www.sifassociation.org/infrastructure/3.7:pods"}}
+    xml:
+      summary: XML xquery
+      value: >-
+        <xquery id="CompanyPODs">
+          <type>EXTENDED</type>
+          <status>APPROVED</status>
+          <description>Returns all PODs for the specified company.</description>
+          <script></script>
+          <parameters>
+            <parameter>
+              <name>companyid</name>
+              <type>xs:unsignedInt</type>
+              <default>63</default>
+              <description>The companies unique ID from the Student Data Privacy Consortium (SDPC) registry.</description>
+              <required>true</required>
+              <range>
+                <start>0</start>
+                <end>4294967295</end>
+              </range>
+              <minLength>1</minLength>
+              <maxLength>10</maxLength>
+            </parameter>
+          </parameters>
+          <returnType>http://www.sifassociation.org/infrastructure/3.7:pods</returnType>
+        </xquery>
+
+  #//
+  #// xquerys
+  #//
+  xquerys:
+    pesc:
+      summary: PESC notation for xquerys
+      value:
+        {"xquerys": {"xquery": [{"id" : "CompanyPODs", "type" : "EXTENDED", "status" : "APPROVED", "description" : "Returns all PODs for the specified company.", "script" : "", "parameters" : {"parameter" : [{"name" : "companyid", "type" : "xs:unsignedInt", "default" : "63", "description" : "The companies unique ID from the Student Data Privacy Consortium (SDPC) registry.", "required" : true, "range" : {"start" : 0, "end" : 4294967295}, "minLength" : 1, "maxLength" : 10}]}, "returnType" : "http://www.sifassociation.org/infrastructure/3.7:pods"}]}}
+    goessner:
+      summary: Goessner notation for xquerys
+      value:
+        {"xquerys": {"xquery" : {"@id" : "CompanyPODs", "type" : "EXTENDED", "status" : "APPROVED", "description" : "Returns all PODs for the specified company.", "script" : "", "parameters" : {"parameter" : {"name" : "companyid", "type" : "xs:unsignedInt", "default" : "63", "description" : "The companies unique ID from the Student Data Privacy Consortium (SDPC) registry.", "required" : "true", "range" : {"start" : "0", "end" : "4294967295"}, "minLength" : "1", "maxLength" : "10"}}, "returnType" : "http://www.sifassociation.org/infrastructure/3.7:pods"}}}
+    xml:
+      summary: XML xquerys
+      value: >-
+        <xquerys>
+          <xquery id="CompanyPODs">
+            <type>EXTENDED</type>
+            <status>APPROVED</status>
+            <description>Returns all PODs for the specified company.</description>
+            <script></script>
+            <parameters>
+              <parameter>
+                <name>companyid</name>
+                <type>xs:unsignedInt</type>
+                <default>63</default>
+                <description>The companies unique ID from the Student Data Privacy Consortium (SDPC) registry.</description>
+                <required>true</required>
+                <range>
+                  <start>0</start>
+                  <end>4294967295</end>
+                </range>
+                <minLength>1</minLength>
+                <maxLength>10</maxLength>
+              </parameter>
+            </parameters>
+            <returnType>http://www.sifassociation.org/infrastructure/3.7:pods</returnType>
+          </xquery>
+        </xquerys>
+
+  #//
+  #// zone
+  #//
+  zone:
+    pesc:
+      summary: PESC notation for zone
+      value:
+        {"zone" : {"id" : "District", "description" : "The zone for the local school district.", "properties" : {"property" : [{"name" : "email", "value" : "john.smith@district.k12.wa.us"}, {"name" : "phone", "value" : "(360)555-1234"}]}}}
+    goessner:
+      summary: Goessner notation for zone
+      value:
+        {"zone" : {"@id" : "District", "description" : "The zone for the local school district.", "properties" : {"property" : [{"@name" : "email", "#text" : "john.smith@district.k12.wa.us"}, {"@name" : "phone", "#text" : "(360)555-1234"}]}}}
+    xml:
+      summary: XML zone
+      value: >-
+        <zone id="District">
+          <description>The zone for the local school district.</description>
+          <properties>
+            <property name="email">john.smith@district.k12.wa.us</property>
+            <property name="phone">(360)555-1234</property>
+          </properties>
+        </zone>
+
+  #//
+  #// zones
+  #//
+  zones:
+    pesc:
+      summary: PESC notation for zones
+      value:
+        {"zones": {"zone": [{"id" : "District", "description" : "The zone for the local school district.", "properties" : {"property" : [{"name" : "email", "value" : "john.smith@district.k12.wa.us"}, {"name" : "phone", "value" : "(360)555-1234"}]}}]}}
+    goessner:
+      summary: Goessner notation for zones
+      value:
+        {"zones": {"zone" : {"@id" : "District", "description" : "The zone for the local school district.", "properties" : {"property" : [{"@name" : "email", "#text" : "john.smith@district.k12.wa.us"}, {"@name" : "phone", "#text" : "(360)555-1234"}]}}}}
+    xml:
+      summary: XML zones
+      value: >-
+        <zones>
+          <zone id="District">
+            <description>The zone for the local school district.</description>
+            <properties>
+              <property name="email">john.smith@district.k12.wa.us</property>
+              <property name="phone">(360)555-1234</property>
+            </properties>
+          </zone>
+        </zones>
+
+  #//
+  #// pod
+  #//
+  pod:
+    pesc:
+      summary: PESC notation for pod
+      value:
+        {"pod" : {"id" : "D3E34B39-9D79-4019-8C39-00AA001A1659", "podStatus" : "Live", "podToken" : "1", "podVersion" : "1.0.2", "partyId" : "Compass", "privacyList" : {"privacy" : [{"default" : "Y", "dataModelNamespace" : "http://www.sifinfo.org/infrastructure/2.x", "dataModelVersionMin" : "2.4", "dataModelVersionMax" : "2.8", "privacyObligationsDocument" : {"contract" : {"contractURI" : "http://www.vic.priv.contract.edu.au/contract.pdf", "contractName" : "Sample contract ABC", "dateValidFrom" : "2018-03-01", "dateValidTo" : "2018-06-01", "contractVersion" : "0.2", "lawList" : {"law" : [{"lawName" : "APP1", "lawDescription" : "XXXXX"}, {"lawName" : "APP2", "lawDescription" : "yyyy"}]}, "studentDataIPRights" : "Victorian Department of Education"}, "legalRequirements" : {"clauseList" : {"clause" : [{"clauseLabel" : "Data Access", "clauseReference" : "US-I.3", "clauseContent" : "The agent shall access only data necessary to accomplish the business task for which it is contracted.", "obligationList" : {"obligation" : [{"obligationDescription" : "Restrict access to data fields to match the state profile.", "obligationURL" : "https://thewave.sde.ok.gov/thewave/Portals/0/2%20x%20Wave%20Requirements_v1%2010.pdf", "benchmarkList" : {"benchmark" : [{"benchmarkName" : "Oklahoma State Profile"}]}}]}}]}}, "technicalRequirements" : {"dataAccess" : {"clauseList" : {"clause" : [{"clauseReference" : "US-I.3"}]}, "fieldList" : {"field" : [{"fieldName" : "/SchoolInfo/@RefId", "controlrights" : "R"}, {"fieldName" : "/SchoolInfo/LocalId", "controlrights" : "R"}, {"fieldName" : "/SchoolInfo/ACARAId", "controlrights" : "RW"}, {"fieldName" : "/StudentPersonal/@RefId", "controlrights" : "RW"}, {"fieldName" : "/StudentPersonal/LocalId", "controlrights" : "RW"}, {"fieldName" : "/StudentPersonal/FirstAUSchoolEnrollment", "controlrights" : "RW"}]}}, "conditionList" : {"condition" : [{"typeOfCondition" : "XQUERYTEMPLATE", "conditionName" : "RetrieveByGrade", "conditionDescription" : "Returns a StudentJoin of StudentPersonal and StudentSchoolEnrollment for the GradeLevel specified as a parameter."}, {"typeOfCondition" : "contextId", "conditionName" : "CurrentEnrollment", "conditionDescription" : "Only works with student data whose records indicate they are currently enrolled according to the StudentSchoolEnrollment SIF object.", "propertyList" : {"property" : [{"propertyName" : "Enrolled After", "propertyValue" : "/StudentSchoolEnrollment/EntryDate>=2018-09-01"}, {"propertyName" : "Enrolled Before", "propertyValue" : "/StudentSchoolEnrollment/EntryDate<=2019-09-01"}]}}]}, "dataSubject" : {"clauseList" : {"clause" : [{"clauseReference" : "US-Subject1", "obligationList" : {"obligation" : [{"obligationDescription" : "FERPA requires records be delivered within 45 days of a request.", "obligationURL" : "https://www2.ed.gov/policy/gen/guid/fpco/brochures/parents.html", "benchmarkList" : {"benchmark" : [{"benchmarkName" : "Family Educational Rights and Privacy Act (FERPA)"}]}}]}}]}, "fieldList" : {"field" : [{"fieldName" : "/StudentPersonal/@RefId"}, {"fieldName" : "/StudentPersonal/LocalId"}, {"fieldName" : "/StudentPersonal/FirstAUSchoolEnrollment"}]}, "respondInDays" : 45, "requirePortability" : "Y"}, "dataDeletion" : {"deleteData" : "Y", "dataRetention" : 30, "deleteBy" : "2019-07-15", "partyToDeleteData" : {"organisation" : "Local LEA", "deletecontactInfo" : {"name" : {"familyName" : "EEe", "givenName" : "Agg", "otherGivenNames" : "hh"}, "positionTitle" : "Data Owner", "emailList" : {"email" : ["DataSec@localLEA.edu.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(03) 8888-9999"}]}}}}, "securityTechnologyList" : {"securityTechnology" : [{"clauseList" : {"clause" : [{"clauseReference" : "US-V.1.c"}]}, "technologyName" : "TLS", "versionMin" : "1.2"}]}}, "dataController" : {"dataControllerName" : "Victorian Department of Education", "privacyPolicyURL" : "http://www.vic.priv.policy.edu.au/privacy.pdf", "privacyContactList" : {"contact" : [{"name" : {"familyName" : "Smith", "givenName" : "Christime", "otherGivenNames" : "Margaret"}, "positionTitle" : "Admin", "emailList" : {"email" : ["chris@whoville.vic.edu.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(03) 9600-0102"}]}}]}, "issuesNotificationContactList" : {"contact" : [{"name" : {"familyName" : "BBBB", "givenName" : "AAA", "otherGivenNames" : "CCC"}, "positionTitle" : "Data Security", "emailList" : {"email" : ["DataSec@whoville.edu.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(03) 8888-9999"}]}}]}}, "dataProcessor" : {"dataProcessorName" : "CEOProcessor2", "privacyPolicyURL" : "www.ceo.priv.policy.edu.au", "privacyContactList" : {"contact" : [{"name" : {"familyName" : "Woodall", "givenName" : "Charles", "otherGivenNames" : "William"}, "positionTitle" : "Admin", "emailList" : {"email" : ["drseuss@whoville.k12.ceo.edu.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(08) 8555-0102"}]}}]}, "notifyDataControllerOnAccessRequests" : "Y", "dataProcessorContactForAccessRequestsList" : {"contact" : [{"name" : {"familyName" : "XXX", "givenName" : "YYY", "otherGivenNames" : "ZZZ"}, "positionTitle" : "Privacy Officer", "emailList" : {"email" : ["off@whoville.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(03) 9999-9999"}]}}]}, "purposeList" : {"purpose" : ["Admin System", "Australian Schools List"]}, "alternatePurposeList" : {"alternatePurpose" : ["Student Portal"]}, "deidentifiedPurposeList" : {"deidentifiedPurpose" : ["Research"]}, "dataUsageMarketingAllowed" : "N", "personalInformationUpdatedFromSource" : 10, "dataBreachNotification" : "Y", "dataBreachContactList" : {"contact" : [{"name" : {"familyName" : "XXX", "givenName" : "YYY", "otherGivenNames" : "ZZZ"}, "positionTitle" : "Privacy Officer", "emailList" : {"email" : ["off@whoville.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(03) 9999-9999"}]}}]}, "employeesMustComplyWithAgreement" : "Y", "employeeConfidentialityAgreement" : "Y", "employeeTrainingList" : {"employeeTraining" : [{"trainingName" : "", "trainingURL" : ""}]}, "passwordEmployeeAccessStandard" : {"standardName" : "", "standardURL" : ""}, "securityTestRequiredList" : {"securityTestRequired" : [{"testType" : "Pen Test", "testFrequency" : "Annual", "remediationRequiredIn" : "7 days", "shareResults" : "Y"}, {"testType" : "Vulnerability Test", "testFrequency" : "Monthly", "remediationRequiredIn" : "24hours", "shareResults" : "Y"}]}, "countryImpactedList" : {"countryImpacted" : [{"country" : "1101", "usage" : "Stored/Processed/Exposed"}, {"country" : "1102", "usage" : "Exposed"}]}}, "dataSubProcessorList" : {"dataSubProcessor" : [{"subProcessorName" : "One", "privacyPolicyURL" : "www.one.edu.au", "privacyContactList" : {"contact" : [{"name" : {"familyName" : "First", "givenName" : "Charles", "otherGivenNames" : "William"}, "positionTitle" : "Admin", "emailList" : {"email" : ["drseuss@whoville.k12.ceo.edu.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(08) 8555-0102"}]}}]}, "purposeList" : {"purpose" : ["Attendance"]}}, {"subProcessorName" : "Two", "privacyPolicyURL" : "www.two.edu.au", "privacyContactList" : {"contact" : [{"name" : {"familyName" : "Two", "givenName" : "Charles", "otherGivenNames" : "William"}, "positionTitle" : "Admin", "emailList" : {"email" : ["drseuss@whoville.k12.ceo.edu.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(08) 8555-0102"}]}}]}, "purposeList" : {"purpose" : ["TimeTabling"]}}, {"subProcessorName" : "Three", "privacyPolicyURL" : "www.three.edu.au", "privacyContactList" : {"contact" : [{"name" : {"familyName" : "Third", "givenName" : "Charles", "otherGivenNames" : "William"}, "positionTitle" : "Admin", "emailList" : {"email" : ["drseuss@whoville.k12.ceo.edu.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(08) 8555-0102"}]}}]}, "purposeList" : {"purpose" : ["StudentPortal"]}}]}}}, {"default" : "N", "appIDList" : {"appID" : ["TT12"]}, "adapterFingerprintList" : {"adapterFingerprint" : ["b4ef12ce-7025-11e8-adc0-fa7ae01bbebc"]}, "zoneContextList" : {"zoneContext" : [{"zoneId" : "4001", "contextId" : ""}]}, "privacyObligationsDocument" : {"technicalRequirements" : {"dataAccess" : {"fieldList" : {"field" : [{"fieldName" : "/SchoolInfo/@RefId", "controlrights" : "R"}, {"fieldName" : "/SchoolInfo/LocalId", "controlrights" : "R"}, {"fieldName" : "/SchoolInfo/ACARAId", "controlrights" : "R"}, {"fieldName" : "/StudentPersonal/@RefId", "controlrights" : "R"}, {"fieldName" : "/StudentPersonal/LocalId", "controlrights" : "R"}, {"fieldName" : "/StudentPersonal/FirstAUSchoolEnrollment", "controlrights" : "R"}, {"fieldName" : "/TimeTable/*", "controlrights" : "RW"}]}}}}}, {"default" : "N", "adapterFingerprintList" : {"adapterFingerprint" : ["b4ef12ce-7025-11e8-adc0-fa7ae01bbebc"]}, "zoneContextList" : {"zoneContext" : [{"zoneId" : "4002", "contextId" : ""}]}, "dataModelNamespace" : "http://www.sifinfo.org/infrastructure/2.x", "dataModelVersionMin" : "2.3", "dataModelVersionMax" : "2.9"}, {"default" : "N", "adapterFingerprintList" : {"adapterFingerprint" : ["b4ef12ce-7025-11e8-adc0-fa7ae01bbebc"]}, "zoneContextList" : {"zoneContext" : [{"zoneId" : "4003", "contextId" : ""}]}, "dataModelNamespace" : "http://www.sifinfo.org/infrastructure/2.x", "dataModelVersionMin" : "2.1", "dataModelVersionMax" : "2.8", "privacyObligationsDocument" : {"technicalRequirements" : {"securityTechnologyList" : {"securityTechnology" : [{"technologyName" : "SSL", "technologyDescription" : "", "referenceURL" : ""}]}}}}]}}}
+    goessner:
+      summary: Goessner notation for pod
+      value:
+        {"pod" : {"@id" : "D3E34B39-9D79-4019-8C39-00AA001A1659", "podStatus" : "Live", "podToken" : "1", "podVersion" : "1.0.2", "partyId" : "Compass", "privacyList" : {"privacy" : [{"default" : "Y", "dataModelNamespace" : "http://www.sifinfo.org/infrastructure/2.x", "dataModelVersionMin" : "2.4", "dataModelVersionMax" : "2.8", "privacyObligationsDocument" : {"contract" : {"contractURI" : "http://www.vic.priv.contract.edu.au/contract.pdf", "contractName" : "Sample contract ABC", "dateValidFrom" : "2018-03-01", "dateValidTo" : "2018-06-01", "contractVersion" : "0.2", "lawList" : {"law" : [{"lawName" : "APP1", "lawDescription" : "XXXXX"}, {"lawName" : "APP2", "lawDescription" : "yyyy"}]}, "studentDataIPRights" : "Victorian Department of Education"}, "legalRequirements" : {"clauseList" : {"clause" : {"clauseLabel" : "Data Access", "clauseReference" : "US-I.3", "clauseContent" : "The agent shall access only data necessary to accomplish the business task for which it is contracted.", "obligationList" : {"obligation" : {"obligationDescription" : "Restrict access to data fields to match the state profile.", "obligationURL" : "https://thewave.sde.ok.gov/thewave/Portals/0/2%20x%20Wave%20Requirements_v1%2010.pdf", "benchmarkList" : {"benchmark" : {"benchmarkName" : "Oklahoma State Profile"}}}}}}}, "technicalRequirements" : {"dataAccess" : {"clauseList" : {"clause" : {"clauseReference" : "US-I.3"}}, "fieldList" : {"field" : [{"fieldName" : "/SchoolInfo/@RefId", "controlrights" : "R"}, {"fieldName" : "/SchoolInfo/LocalId", "controlrights" : "R"}, {"fieldName" : "/SchoolInfo/ACARAId", "controlrights" : "RW"}, {"fieldName" : "/StudentPersonal/@RefId", "controlrights" : "RW"}, {"fieldName" : "/StudentPersonal/LocalId", "controlrights" : "RW"}, {"fieldName" : "/StudentPersonal/FirstAUSchoolEnrollment", "controlrights" : "RW"}]}}, "conditionList" : {"condition" : [{"typeOfCondition" : "XQUERYTEMPLATE", "conditionName" : "RetrieveByGrade", "conditionDescription" : "Returns a StudentJoin of StudentPersonal and StudentSchoolEnrollment for the GradeLevel specified as a parameter."}, {"typeOfCondition" : "contextId", "conditionName" : "CurrentEnrollment", "conditionDescription" : "Only works with student data whose records indicate they are currently enrolled according to the StudentSchoolEnrollment SIF object.", "propertyList" : {"property" : [{"propertyName" : "Enrolled After", "propertyValue" : "/StudentSchoolEnrollment/EntryDate>=2018-09-01"}, {"propertyName" : "Enrolled Before", "propertyValue" : "/StudentSchoolEnrollment/EntryDate<=2019-09-01"}]}}]}, "dataSubject" : {"clauseList" : {"clause" : {"clauseReference" : "US-Subject1", "obligationList" : {"obligation" : {"obligationDescription" : "FERPA requires records be delivered within 45 days of a request.", "obligationURL" : "https://www2.ed.gov/policy/gen/guid/fpco/brochures/parents.html", "benchmarkList" : {"benchmark" : {"benchmarkName" : "Family Educational Rights and Privacy Act (FERPA)"}}}}}}, "fieldList" : {"field" : [{"fieldName" : "/StudentPersonal/@RefId"}, {"fieldName" : "/StudentPersonal/LocalId"}, {"fieldName" : "/StudentPersonal/FirstAUSchoolEnrollment"}]}, "respondInDays" : "45", "requirePortability" : "Y"}, "dataDeletion" : {"deleteData" : "Y", "dataRetention" : "30", "deleteBy" : "2019-07-15", "partyToDeleteData" : {"organisation" : "Local LEA", "deletecontactInfo" : {"name" : {"familyName" : "EEe", "givenName" : "Agg", "otherGivenNames" : "hh"}, "positionTitle" : "Data Owner", "emailList" : {"email" : "DataSec@localLEA.edu.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(03) 8888-9999"}}}}}, "securityTechnologyList" : {"securityTechnology" : {"clauseList" : {"clause" : {"clauseReference" : "US-V.1.c"}}, "technologyName" : "TLS", "versionMin" : "1.2"}}}, "dataController" : {"dataControllerName" : "Victorian Department of Education", "privacyPolicyURL" : "http://www.vic.priv.policy.edu.au/privacy.pdf", "privacyContactList" : {"contact" : {"name" : {"familyName" : "Smith", "givenName" : "Christime", "otherGivenNames" : "Margaret"}, "positionTitle" : "Admin", "emailList" : {"email" : "chris@whoville.vic.edu.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(03) 9600-0102"}}}}, "issuesNotificationContactList" : {"contact" : {"name" : {"familyName" : "BBBB", "givenName" : "AAA", "otherGivenNames" : "CCC"}, "positionTitle" : "Data Security", "emailList" : {"email" : "DataSec@whoville.edu.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(03) 8888-9999"}}}}}, "dataProcessor" : {"dataProcessorName" : "CEOProcessor2", "privacyPolicyURL" : "www.ceo.priv.policy.edu.au", "privacyContactList" : {"contact" : {"name" : {"familyName" : "Woodall", "givenName" : "Charles", "otherGivenNames" : "William"}, "positionTitle" : "Admin", "emailList" : {"email" : "drseuss@whoville.k12.ceo.edu.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(08) 8555-0102"}}}}, "notifyDataControllerOnAccessRequests" : "Y", "dataProcessorContactForAccessRequestsList" : {"contact" : {"name" : {"familyName" : "XXX", "givenName" : "YYY", "otherGivenNames" : "ZZZ"}, "positionTitle" : "Privacy Officer", "emailList" : {"email" : "off@whoville.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(03) 9999-9999"}}}}, "purposeList" : {"purpose" : [{"purpose" : "Admin System"}, {"purpose" : "Australian Schools List"}]}, "alternatePurposeList" : {"alternatePurpose" : "Student Portal"}, "deidentifiedPurposeList" : {"deidentifiedPurpose" : "Research"}, "dataUsageMarketingAllowed" : "N", "personalInformationUpdatedFromSource" : "10", "dataBreachNotification" : "Y", "dataBreachContactList" : {"contact" : {"name" : {"familyName" : "XXX", "givenName" : "YYY", "otherGivenNames" : "ZZZ"}, "positionTitle" : "Privacy Officer", "emailList" : {"email" : "off@whoville.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(03) 9999-9999"}}}}, "employeesMustComplyWithAgreement" : "Y", "employeeConfidentialityAgreement" : "Y", "employeeTrainingList" : {"employeeTraining" : {"trainingName" : "", "trainingURL" : ""}}, "passwordEmployeeAccessStandard" : {"standardName" : "", "standardURL" : ""}, "securityTestRequiredList" : {"securityTestRequired" : [{"testType" : "Pen Test", "testFrequency" : "Annual", "remediationRequiredIn" : "7 days", "shareResults" : "Y"}, {"testType" : "Vulnerability Test", "testFrequency" : "Monthly", "remediationRequiredIn" : "24hours", "shareResults" : "Y"}]}, "countryImpactedList" : {"countryImpacted" : [{"country" : "1101", "usage" : "Stored/Processed/Exposed"}, {"country" : "1102", "usage" : "Exposed"}]}}, "dataSubProcessorList" : {"dataSubProcessor" : [{"subProcessorName" : "One", "privacyPolicyURL" : "www.one.edu.au", "privacyContactList" : {"contact" : {"name" : {"familyName" : "First", "givenName" : "Charles", "otherGivenNames" : "William"}, "positionTitle" : "Admin", "emailList" : {"email" : "drseuss@whoville.k12.ceo.edu.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(08) 8555-0102"}}}}, "purposeList" : {"purpose" : "Attendance"}}, {"subProcessorName" : "Two", "privacyPolicyURL" : "www.two.edu.au", "privacyContactList" : {"contact" : {"name" : {"familyName" : "Two", "givenName" : "Charles", "otherGivenNames" : "William"}, "positionTitle" : "Admin", "emailList" : {"email" : "drseuss@whoville.k12.ceo.edu.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(08) 8555-0102"}}}}, "purposeList" : {"purpose" : "TimeTabling"}}, {"subProcessorName" : "Three", "privacyPolicyURL" : "www.three.edu.au", "privacyContactList" : {"contact" : {"name" : {"familyName" : "Third", "givenName" : "Charles", "otherGivenNames" : "William"}, "positionTitle" : "Admin", "emailList" : {"email" : "drseuss@whoville.k12.ceo.edu.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(08) 8555-0102"}}}}, "purposeList" : {"purpose" : "StudentPortal"}}]}}}, {"default" : "N", "appIDList" : {"appID" : "TT12"}, "adapterFingerprintList" : {"adapterFingerprint" : "b4ef12ce-7025-11e8-adc0-fa7ae01bbebc"}, "zoneContextList" : {"zoneContext" : {"zoneId" : "4001", "contextId" : ""}}, "privacyObligationsDocument" : {"technicalRequirements" : {"dataAccess" : {"fieldList" : {"field" : [{"fieldName" : "/SchoolInfo/@RefId", "controlrights" : "R"}, {"fieldName" : "/SchoolInfo/LocalId", "controlrights" : "R"}, {"fieldName" : "/SchoolInfo/ACARAId", "controlrights" : "R"}, {"fieldName" : "/StudentPersonal/@RefId", "controlrights" : "R"}, {"fieldName" : "/StudentPersonal/LocalId", "controlrights" : "R"}, {"fieldName" : "/StudentPersonal/FirstAUSchoolEnrollment", "controlrights" : "R"}, {"fieldName" : "/TimeTable/*", "controlrights" : "RW"}]}}}}}, {"default" : "N", "adapterFingerprintList" : {"adapterFingerprint" : "b4ef12ce-7025-11e8-adc0-fa7ae01bbebc"}, "zoneContextList" : {"zoneContext" : {"zoneId" : "4002", "contextId" : ""}}, "dataModelNamespace" : "http://www.sifinfo.org/infrastructure/2.x", "dataModelVersionMin" : "2.3", "dataModelVersionMax" : "2.9"}, {"default" : "N", "adapterFingerprintList" : {"adapterFingerprint" : "b4ef12ce-7025-11e8-adc0-fa7ae01bbebc"}, "zoneContextList" : {"zoneContext" : {"zoneId" : "4003", "contextId" : ""}}, "dataModelNamespace" : "http://www.sifinfo.org/infrastructure/2.x", "dataModelVersionMin" : "2.1", "dataModelVersionMax" : "2.8", "privacyObligationsDocument" : {"technicalRequirements" : {"securityTechnologyList" : {"securityTechnology" : {"technologyName" : "SSL", "technologyDescription" : "", "referenceURL" : ""}}}}}]}}}
+    xml:
+      summary: XML pod
+      value: >-
+        <pod id="D3E34B39-9D79-4019-8C39-00AA001A1659">
+          <podStatus>Live</podStatus>
+          <podToken>1</podToken>
+          <podVersion>1.0.2</podVersion>
+          <partyId>Compass</partyId>
+          <privacyList>
+            <privacy>
+              <default>Y</default>
+              <dataModelNamespace>http://www.sifinfo.org/infrastructure/2.x</dataModelNamespace>
+              <dataModelVersionMin>2.4</dataModelVersionMin>
+              <dataModelVersionMax>2.8</dataModelVersionMax>
+              <privacyObligationsDocument>
+                <contract>
+                  <contractURI>http://www.vic.priv.contract.edu.au/contract.pdf</contractURI>
+                  <contractName>Sample contract ABC</contractName>
+                  <dateValidFrom>2018-03-01</dateValidFrom>
+                  <dateValidTo>2018-06-01</dateValidTo>
+                  <contractVersion>0.2</contractVersion>
+                  <lawList>
+                    <law>
+                      <lawName>APP1</lawName>
+                      <lawDescription>XXXXX</lawDescription>
+                    </law>
+                    <law>
+                      <lawName>APP2</lawName>
+                      <lawDescription>yyyy</lawDescription>
+                    </law>
+                  </lawList>
+                  <studentDataIPRights>Victorian Department of Education</studentDataIPRights>
+                </contract>
+                <legalRequirements>
+                  <clauseList>
+                    <clause>
+                      <clauseLabel>Data Access</clauseLabel>
+                      <clauseReference>US-I.3</clauseReference>
+                      <clauseContent>The agent shall access only data necessary to accomplish the business task for which it is contracted.</clauseContent>
+                      <obligationList>
+                        <obligation>
+                          <obligationDescription>Restrict access to data fields to match the state profile.</obligationDescription>
+                          <obligationURL>https://thewave.sde.ok.gov/thewave/Portals/0/2%20x%20Wave%20Requirements_v1%2010.pdf</obligationURL>
+                          <benchmarkList>
+                            <benchmark>
+                              <benchmarkName>Oklahoma State Profile</benchmarkName>
+                            </benchmark>
+                          </benchmarkList>
+                        </obligation>
+                      </obligationList>
+                    </clause>
+                  </clauseList>
+                </legalRequirements>
+                <technicalRequirements>
+                  <dataAccess>
+                    <clauseList>
+                      <clause>
+                        <clauseReference>US-I.3</clauseReference>
+                      </clause>
+                    </clauseList>
+                    <fieldList>
+                      <field>
+                        <fieldName>/SchoolInfo/@RefId</fieldName>
+                        <controlrights>R</controlrights>
+                      </field>
+                      <field>
+                        <fieldName>/SchoolInfo/LocalId</fieldName>
+                        <controlrights>R</controlrights>
+                      </field>
+                      <field>
+                        <fieldName>/SchoolInfo/ACARAId</fieldName>
+                        <controlrights>RW</controlrights>
+                      </field>
+                      <field>
+                        <fieldName>/StudentPersonal/@RefId</fieldName>
+                        <controlrights>RW</controlrights>
+                      </field>
+                      <field>
+                        <fieldName>/StudentPersonal/LocalId</fieldName>
+                        <controlrights>RW</controlrights>
+                      </field>
+                      <field>
+                        <fieldName>/StudentPersonal/FirstAUSchoolEnrollment</fieldName>
+                        <controlrights>RW</controlrights>
+                      </field>
+                    </fieldList>
+                  </dataAccess>
+                  <conditionList>
+                    <condition>
+                      <typeOfCondition>XQUERYTEMPLATE</typeOfCondition>
+                      <conditionName>RetrieveByGrade</conditionName>
+                      <conditionDescription>Returns a StudentJoin of StudentPersonal and StudentSchoolEnrollment for the GradeLevel specified as a parameter.</conditionDescription>
+                    </condition>
+                    <condition>
+                      <typeOfCondition>contextId</typeOfCondition>
+                      <conditionName>CurrentEnrollment</conditionName>
+                      <conditionDescription>Only works with student data whose records indicate they are currently enrolled according to the StudentSchoolEnrollment SIF object.</conditionDescription>
+                      <propertyList>
+                        <property>
+                          <propertyName>Enrolled After</propertyName>
+                          <propertyValue>/StudentSchoolEnrollment/EntryDate&gt;=2018-09-01</propertyValue>
+                        </property>
+                        <property>
+                          <propertyName>Enrolled Before</propertyName>
+                          <propertyValue>/StudentSchoolEnrollment/EntryDate&lt;=2019-09-01</propertyValue>
+                        </property>
+                      </propertyList>
+                    </condition>
+                  </conditionList>
+                  <dataSubject>
+                    <clauseList>
+                      <clause>
+                        <clauseReference>US-Subject1</clauseReference>
+                        <obligationList>
+                          <obligation>
+                            <obligationDescription>FERPA requires records be delivered within 45 days of a request.</obligationDescription>
+                            <obligationURL>https://www2.ed.gov/policy/gen/guid/fpco/brochures/parents.html</obligationURL>
+                            <benchmarkList>
+                              <benchmark>
+                                <benchmarkName>Family Educational Rights and Privacy Act (FERPA)</benchmarkName>
+                              </benchmark>
+                            </benchmarkList>
+                          </obligation>
+                        </obligationList>
+                      </clause>
+                    </clauseList>
+                    <fieldList>
+                      <field>
+                        <fieldName>/StudentPersonal/@RefId</fieldName>
+                      </field>
+                      <field>
+                        <fieldName>/StudentPersonal/LocalId</fieldName>
+                      </field>
+                      <field>
+                        <fieldName>/StudentPersonal/FirstAUSchoolEnrollment</fieldName>
+                      </field>
+                    </fieldList>
+                    <respondInDays>45</respondInDays>
+                    <requirePortability>Y</requirePortability>
+                  </dataSubject>
+                  <dataDeletion>
+                    <deleteData>Y</deleteData>
+                    <dataRetention>30</dataRetention>
+                    <deleteBy>2019-07-15</deleteBy>
+                    <partyToDeleteData>
+                      <organisation>Local LEA</organisation>
+                      <deletecontactInfo>
+                        <name>
+                          <familyName>EEe</familyName>
+                          <givenName>Agg</givenName>
+                          <otherGivenNames>hh</otherGivenNames>
+                        </name>
+                        <positionTitle>Data Owner</positionTitle>
+                        <emailList>
+                          <email>DataSec@localLEA.edu.au</email>
+                        </emailList>
+                        <phoneNumberList>
+                          <phoneNumber>
+                            <number>(03) 8888-9999</number>
+                          </phoneNumber>
+                        </phoneNumberList>
+                      </deletecontactInfo>
+                    </partyToDeleteData>
+                  </dataDeletion>
+                  <securityTechnologyList>
+                    <securityTechnology>
+                      <clauseList>
+                        <clause>
+                          <clauseReference>US-V.1.c</clauseReference>
+                        </clause>
+                      </clauseList>
+                      <technologyName>TLS</technologyName>
+                      <versionMin>1.2</versionMin>
+                    </securityTechnology>
+                  </securityTechnologyList>
+                </technicalRequirements>
+                <dataController>
+                  <dataControllerName>Victorian Department of Education</dataControllerName>
+                  <privacyPolicyURL>http://www.vic.priv.policy.edu.au/privacy.pdf</privacyPolicyURL>
+                  <privacyContactList>
+                    <contact>
+                      <name>
+                        <familyName>Smith</familyName>
+                        <givenName>Christime</givenName>
+                        <otherGivenNames>Margaret</otherGivenNames>
+                      </name>
+                      <positionTitle>Admin</positionTitle>
+                      <emailList>
+                        <email>chris@whoville.vic.edu.au</email>
+                      </emailList>
+                      <phoneNumberList>
+                        <phoneNumber>
+                          <number>(03) 9600-0102</number>
+                        </phoneNumber>
+                      </phoneNumberList>
+                    </contact>
+                  </privacyContactList>
+                  <issuesNotificationContactList>
+                    <contact>
+                      <name>
+                        <familyName>BBBB</familyName>
+                        <givenName>AAA</givenName>
+                        <otherGivenNames>CCC</otherGivenNames>
+                      </name>
+                      <positionTitle>Data Security</positionTitle>
+                      <emailList>
+                        <email>DataSec@whoville.edu.au</email>
+                      </emailList>
+                      <phoneNumberList>
+                        <phoneNumber>
+                          <number>(03) 8888-9999</number>
+                        </phoneNumber>
+                      </phoneNumberList>
+                    </contact>
+                  </issuesNotificationContactList>
+                </dataController>
+                <dataProcessor>
+                  <dataProcessorName>CEOProcessor2</dataProcessorName>
+                  <privacyPolicyURL>www.ceo.priv.policy.edu.au</privacyPolicyURL>
+                  <privacyContactList>
+                    <contact>
+                      <name>
+                        <familyName>Woodall</familyName>
+                        <givenName>Charles</givenName>
+                        <otherGivenNames>William</otherGivenNames>
+                      </name>
+                      <positionTitle>Admin</positionTitle>
+                      <emailList>
+                        <email>drseuss@whoville.k12.ceo.edu.au</email>
+                      </emailList>
+                      <phoneNumberList>
+                        <phoneNumber>
+                          <number>(08) 8555-0102</number>
+                        </phoneNumber>
+                      </phoneNumberList>
+                    </contact>
+                  </privacyContactList>
+                  <notifyDataControllerOnAccessRequests>Y</notifyDataControllerOnAccessRequests>
+                  <dataProcessorContactForAccessRequestsList>
+                    <contact>
+                      <name>
+                        <familyName>XXX</familyName>
+                        <givenName>YYY</givenName>
+                        <otherGivenNames>ZZZ</otherGivenNames>
+                      </name>
+                      <positionTitle>Privacy Officer</positionTitle>
+                      <emailList>
+                        <email>off@whoville.au</email>
+                      </emailList>
+                      <phoneNumberList>
+                        <phoneNumber>
+                          <number>(03) 9999-9999</number>
+                        </phoneNumber>
+                      </phoneNumberList>
+                    </contact>
+                  </dataProcessorContactForAccessRequestsList>
+                  <purposeList>
+                    <purpose>Admin System</purpose>
+                    <purpose>Australian Schools List</purpose>
+                  </purposeList>
+                  <alternatePurposeList>
+                    <alternatePurpose>Student Portal</alternatePurpose>
+                  </alternatePurposeList>
+                  <deidentifiedPurposeList>
+                    <deidentifiedPurpose>Research</deidentifiedPurpose>
+                  </deidentifiedPurposeList>
+                  <dataUsageMarketingAllowed>N</dataUsageMarketingAllowed>
+                  <personalInformationUpdatedFromSource>10</personalInformationUpdatedFromSource>
+                  <dataBreachNotification>Y</dataBreachNotification>
+                  <dataBreachContactList>
+                    <contact>
+                      <name>
+                        <familyName>XXX</familyName>
+                        <givenName>YYY</givenName>
+                        <otherGivenNames>ZZZ</otherGivenNames>
+                      </name>
+                      <positionTitle>Privacy Officer</positionTitle>
+                      <emailList>
+                        <email>off@whoville.au</email>
+                      </emailList>
+                      <phoneNumberList>
+                        <phoneNumber>
+                          <number>(03) 9999-9999</number>
+                        </phoneNumber>
+                      </phoneNumberList>
+                    </contact>
+                  </dataBreachContactList>
+                  <employeesMustComplyWithAgreement>Y</employeesMustComplyWithAgreement>
+                  <employeeConfidentialityAgreement>Y</employeeConfidentialityAgreement>
+                  <employeeTrainingList>
+                    <employeeTraining>
+                      <trainingName></trainingName>
+                      <trainingURL></trainingURL>
+                    </employeeTraining>
+                  </employeeTrainingList>
+                  <passwordEmployeeAccessStandard>
+                    <standardName></standardName>
+                    <standardURL></standardURL>
+                  </passwordEmployeeAccessStandard>
+                  <securityTestRequiredList>
+                    <securityTestRequired>
+                      <testType>Pen Test</testType>
+                      <testFrequency>Annual</testFrequency>
+                      <remediationRequiredIn>7 days</remediationRequiredIn>
+                      <shareResults>Y</shareResults>
+                    </securityTestRequired>
+                    <securityTestRequired>
+                      <testType>Vulnerability Test</testType>
+                      <testFrequency>Monthly</testFrequency>
+                      <remediationRequiredIn>24hours</remediationRequiredIn>
+                      <shareResults>Y</shareResults>
+                    </securityTestRequired>
+                  </securityTestRequiredList>
+                  <countryImpactedList>
+                    <countryImpacted>
+                      <country>1101</country>
+                      <usage>Stored/Processed/Exposed</usage>
+                    </countryImpacted>
+                    <countryImpacted>
+                      <country>1102</country>
+                      <usage>Exposed</usage>
+                    </countryImpacted>
+                  </countryImpactedList>
+                </dataProcessor>
+                <dataSubProcessorList>
+                  <dataSubProcessor>
+                    <subProcessorName>One</subProcessorName>
+                    <privacyPolicyURL>www.one.edu.au</privacyPolicyURL>
+                    <privacyContactList>
+                      <contact>
+                        <name>
+                          <familyName>First</familyName>
+                          <givenName>Charles</givenName>
+                          <otherGivenNames>William</otherGivenNames>
+                        </name>
+                        <positionTitle>Admin</positionTitle>
+                        <emailList>
+                          <email>drseuss@whoville.k12.ceo.edu.au</email>
+                        </emailList>
+                        <phoneNumberList>
+                          <phoneNumber>
+                            <number>(08) 8555-0102</number>
+                          </phoneNumber>
+                        </phoneNumberList>
+                      </contact>
+                    </privacyContactList>
+                    <purposeList>
+                      <purpose>Attendance</purpose>
+                    </purposeList>
+                  </dataSubProcessor>
+                  <dataSubProcessor>
+                    <subProcessorName>Two</subProcessorName>
+                    <privacyPolicyURL>www.two.edu.au</privacyPolicyURL>
+                    <privacyContactList>
+                      <contact>
+                        <name>
+                          <familyName>Two</familyName>
+                          <givenName>Charles</givenName>
+                          <otherGivenNames>William</otherGivenNames>
+                        </name>
+                        <positionTitle>Admin</positionTitle>
+                        <emailList>
+                          <email>drseuss@whoville.k12.ceo.edu.au</email>
+                        </emailList>
+                        <phoneNumberList>
+                          <phoneNumber>
+                            <number>(08) 8555-0102</number>
+                          </phoneNumber>
+                        </phoneNumberList>
+                      </contact>
+                    </privacyContactList>
+                    <purposeList>
+                      <purpose>TimeTabling</purpose>
+                    </purposeList>
+                  </dataSubProcessor>
+                  <dataSubProcessor>
+                    <subProcessorName>Three</subProcessorName>
+                    <privacyPolicyURL>www.three.edu.au</privacyPolicyURL>
+                    <privacyContactList>
+                      <contact>
+                        <name>
+                          <familyName>Third</familyName>
+                          <givenName>Charles</givenName>
+                          <otherGivenNames>William</otherGivenNames>
+                        </name>
+                        <positionTitle>Admin</positionTitle>
+                        <emailList>
+                          <email>drseuss@whoville.k12.ceo.edu.au</email>
+                        </emailList>
+                        <phoneNumberList>
+                          <phoneNumber>
+                            <number>(08) 8555-0102</number>
+                          </phoneNumber>
+                        </phoneNumberList>
+                      </contact>
+                    </privacyContactList>
+                    <purposeList>
+                      <purpose>StudentPortal</purpose>
+                    </purposeList>
+                  </dataSubProcessor>
+                </dataSubProcessorList>
+              </privacyObligationsDocument>
+            </privacy>
+            <privacy>
+              <default>N</default>
+              <appIDList>
+                <appID>TT12</appID>
+              </appIDList>
+              <adapterFingerprintList>
+                <adapterFingerprint>b4ef12ce-7025-11e8-adc0-fa7ae01bbebc</adapterFingerprint>
+              </adapterFingerprintList>
+              <zoneContextList>
+                <zoneContext>
+                  <zoneId>4001</zoneId>
+                  <contextId></contextId>
+                </zoneContext>
+              </zoneContextList>
+              <privacyObligationsDocument>
+                <technicalRequirements>
+                  <dataAccess>
+                    <fieldList>
+                      <field>
+                        <fieldName>/SchoolInfo/@RefId</fieldName>
+                        <controlrights>R</controlrights>
+                      </field>
+                      <field>
+                        <fieldName>/SchoolInfo/LocalId</fieldName>
+                        <controlrights>R</controlrights>
+                      </field>
+                      <field>
+                        <fieldName>/SchoolInfo/ACARAId</fieldName>
+                        <controlrights>R</controlrights>
+                      </field>
+                      <field>
+                        <fieldName>/StudentPersonal/@RefId</fieldName>
+                        <controlrights>R</controlrights>
+                      </field>
+                      <field>
+                        <fieldName>/StudentPersonal/LocalId</fieldName>
+                        <controlrights>R</controlrights>
+                      </field>
+                      <field>
+                        <fieldName>/StudentPersonal/FirstAUSchoolEnrollment</fieldName>
+                        <controlrights>R</controlrights>
+                      </field>
+                      <field>
+                        <fieldName>/TimeTable/*</fieldName>
+                        <controlrights>RW</controlrights>
+                      </field>
+                    </fieldList>
+                  </dataAccess>
+                </technicalRequirements>
+              </privacyObligationsDocument>
+            </privacy>
+            <privacy>
+              <default>N</default>
+              <adapterFingerprintList>
+                <adapterFingerprint>b4ef12ce-7025-11e8-adc0-fa7ae01bbebc</adapterFingerprint>
+              </adapterFingerprintList>
+              <zoneContextList>
+                <zoneContext>
+                  <zoneId>4002</zoneId>
+                  <contextId></contextId>
+                </zoneContext>
+              </zoneContextList>
+              <dataModelNamespace>http://www.sifinfo.org/infrastructure/2.x</dataModelNamespace>
+              <dataModelVersionMin>2.3</dataModelVersionMin>
+              <dataModelVersionMax>2.9</dataModelVersionMax>
+            </privacy>
+            <privacy>
+              <default>N</default>
+              <adapterFingerprintList>
+                <adapterFingerprint>b4ef12ce-7025-11e8-adc0-fa7ae01bbebc</adapterFingerprint>
+              </adapterFingerprintList>
+              <zoneContextList>
+                <zoneContext>
+                  <zoneId>4003</zoneId>
+                  <contextId></contextId>
+                </zoneContext>
+              </zoneContextList>
+              <dataModelNamespace>http://www.sifinfo.org/infrastructure/2.x</dataModelNamespace>
+              <dataModelVersionMin>2.1</dataModelVersionMin>
+              <dataModelVersionMax>2.8</dataModelVersionMax>
+              <privacyObligationsDocument>
+                <technicalRequirements>
+                  <securityTechnologyList>
+                    <securityTechnology>
+                      <technologyName>SSL</technologyName>
+                      <technologyDescription></technologyDescription>
+                      <referenceURL></referenceURL>
+                    </securityTechnology>
+                  </securityTechnologyList>
+                </technicalRequirements>
+              </privacyObligationsDocument>
+            </privacy>
+          </privacyList>
+        </pod>
+
+  #//
+  #// pods
+  #//
+  pods:
+    pesc:
+      summary: PESC notation for pods
+      value:
+        {"pods": {"pod": [{"id" : "D3E34B39-9D79-4019-8C39-00AA001A1659", "podStatus" : "Live", "podToken" : "1", "podVersion" : "1.0.2", "partyId" : "Compass", "privacyList" : {"privacy" : [{"default" : "Y", "dataModelNamespace" : "http://www.sifinfo.org/infrastructure/2.x", "dataModelVersionMin" : "2.4", "dataModelVersionMax" : "2.8", "privacyObligationsDocument" : {"contract" : {"contractURI" : "http://www.vic.priv.contract.edu.au/contract.pdf", "contractName" : "Sample contract ABC", "dateValidFrom" : "2018-03-01", "dateValidTo" : "2018-06-01", "contractVersion" : "0.2", "lawList" : {"law" : [{"lawName" : "APP1", "lawDescription" : "XXXXX"}, {"lawName" : "APP2", "lawDescription" : "yyyy"}]}, "studentDataIPRights" : "Victorian Department of Education"}, "legalRequirements" : {"clauseList" : {"clause" : [{"clauseLabel" : "Data Access", "clauseReference" : "US-I.3", "clauseContent" : "The agent shall access only data necessary to accomplish the business task for which it is contracted.", "obligationList" : {"obligation" : [{"obligationDescription" : "Restrict access to data fields to match the state profile.", "obligationURL" : "https://thewave.sde.ok.gov/thewave/Portals/0/2%20x%20Wave%20Requirements_v1%2010.pdf", "benchmarkList" : {"benchmark" : [{"benchmarkName" : "Oklahoma State Profile"}]}}]}}]}}, "technicalRequirements" : {"dataAccess" : {"clauseList" : {"clause" : [{"clauseReference" : "US-I.3"}]}, "fieldList" : {"field" : [{"fieldName" : "/SchoolInfo/@RefId", "controlrights" : "R"}, {"fieldName" : "/SchoolInfo/LocalId", "controlrights" : "R"}, {"fieldName" : "/SchoolInfo/ACARAId", "controlrights" : "RW"}, {"fieldName" : "/StudentPersonal/@RefId", "controlrights" : "RW"}, {"fieldName" : "/StudentPersonal/LocalId", "controlrights" : "RW"}, {"fieldName" : "/StudentPersonal/FirstAUSchoolEnrollment", "controlrights" : "RW"}]}}, "conditionList" : {"condition" : [{"typeOfCondition" : "XQUERYTEMPLATE", "conditionName" : "RetrieveByGrade", "conditionDescription" : "Returns a StudentJoin of StudentPersonal and StudentSchoolEnrollment for the GradeLevel specified as a parameter."}, {"typeOfCondition" : "contextId", "conditionName" : "CurrentEnrollment", "conditionDescription" : "Only works with student data whose records indicate they are currently enrolled according to the StudentSchoolEnrollment SIF object.", "propertyList" : {"property" : [{"propertyName" : "Enrolled After", "propertyValue" : "/StudentSchoolEnrollment/EntryDate>=2018-09-01"}, {"propertyName" : "Enrolled Before", "propertyValue" : "/StudentSchoolEnrollment/EntryDate<=2019-09-01"}]}}]}, "dataSubject" : {"clauseList" : {"clause" : [{"clauseReference" : "US-Subject1", "obligationList" : {"obligation" : [{"obligationDescription" : "FERPA requires records be delivered within 45 days of a request.", "obligationURL" : "https://www2.ed.gov/policy/gen/guid/fpco/brochures/parents.html", "benchmarkList" : {"benchmark" : [{"benchmarkName" : "Family Educational Rights and Privacy Act (FERPA)"}]}}]}}]}, "fieldList" : {"field" : [{"fieldName" : "/StudentPersonal/@RefId"}, {"fieldName" : "/StudentPersonal/LocalId"}, {"fieldName" : "/StudentPersonal/FirstAUSchoolEnrollment"}]}, "respondInDays" : 45, "requirePortability" : "Y"}, "dataDeletion" : {"deleteData" : "Y", "dataRetention" : 30, "deleteBy" : "2019-07-15", "partyToDeleteData" : {"organisation" : "Local LEA", "deletecontactInfo" : {"name" : {"familyName" : "EEe", "givenName" : "Agg", "otherGivenNames" : "hh"}, "positionTitle" : "Data Owner", "emailList" : {"email" : ["DataSec@localLEA.edu.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(03) 8888-9999"}]}}}}, "securityTechnologyList" : {"securityTechnology" : [{"clauseList" : {"clause" : [{"clauseReference" : "US-V.1.c"}]}, "technologyName" : "TLS", "versionMin" : "1.2"}]}}, "dataController" : {"dataControllerName" : "Victorian Department of Education", "privacyPolicyURL" : "http://www.vic.priv.policy.edu.au/privacy.pdf", "privacyContactList" : {"contact" : [{"name" : {"familyName" : "Smith", "givenName" : "Christime", "otherGivenNames" : "Margaret"}, "positionTitle" : "Admin", "emailList" : {"email" : ["chris@whoville.vic.edu.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(03) 9600-0102"}]}}]}, "issuesNotificationContactList" : {"contact" : [{"name" : {"familyName" : "BBBB", "givenName" : "AAA", "otherGivenNames" : "CCC"}, "positionTitle" : "Data Security", "emailList" : {"email" : ["DataSec@whoville.edu.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(03) 8888-9999"}]}}]}}, "dataProcessor" : {"dataProcessorName" : "CEOProcessor2", "privacyPolicyURL" : "www.ceo.priv.policy.edu.au", "privacyContactList" : {"contact" : [{"name" : {"familyName" : "Woodall", "givenName" : "Charles", "otherGivenNames" : "William"}, "positionTitle" : "Admin", "emailList" : {"email" : ["drseuss@whoville.k12.ceo.edu.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(08) 8555-0102"}]}}]}, "notifyDataControllerOnAccessRequests" : "Y", "dataProcessorContactForAccessRequestsList" : {"contact" : [{"name" : {"familyName" : "XXX", "givenName" : "YYY", "otherGivenNames" : "ZZZ"}, "positionTitle" : "Privacy Officer", "emailList" : {"email" : ["off@whoville.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(03) 9999-9999"}]}}]}, "purposeList" : {"purpose" : ["Admin System", "Australian Schools List"]}, "alternatePurposeList" : {"alternatePurpose" : ["Student Portal"]}, "deidentifiedPurposeList" : {"deidentifiedPurpose" : ["Research"]}, "dataUsageMarketingAllowed" : "N", "personalInformationUpdatedFromSource" : 10, "dataBreachNotification" : "Y", "dataBreachContactList" : {"contact" : [{"name" : {"familyName" : "XXX", "givenName" : "YYY", "otherGivenNames" : "ZZZ"}, "positionTitle" : "Privacy Officer", "emailList" : {"email" : ["off@whoville.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(03) 9999-9999"}]}}]}, "employeesMustComplyWithAgreement" : "Y", "employeeConfidentialityAgreement" : "Y", "employeeTrainingList" : {"employeeTraining" : [{"trainingName" : "", "trainingURL" : ""}]}, "passwordEmployeeAccessStandard" : {"standardName" : "", "standardURL" : ""}, "securityTestRequiredList" : {"securityTestRequired" : [{"testType" : "Pen Test", "testFrequency" : "Annual", "remediationRequiredIn" : "7 days", "shareResults" : "Y"}, {"testType" : "Vulnerability Test", "testFrequency" : "Monthly", "remediationRequiredIn" : "24hours", "shareResults" : "Y"}]}, "countryImpactedList" : {"countryImpacted" : [{"country" : "1101", "usage" : "Stored/Processed/Exposed"}, {"country" : "1102", "usage" : "Exposed"}]}}, "dataSubProcessorList" : {"dataSubProcessor" : [{"subProcessorName" : "One", "privacyPolicyURL" : "www.one.edu.au", "privacyContactList" : {"contact" : [{"name" : {"familyName" : "First", "givenName" : "Charles", "otherGivenNames" : "William"}, "positionTitle" : "Admin", "emailList" : {"email" : ["drseuss@whoville.k12.ceo.edu.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(08) 8555-0102"}]}}]}, "purposeList" : {"purpose" : ["Attendance"]}}, {"subProcessorName" : "Two", "privacyPolicyURL" : "www.two.edu.au", "privacyContactList" : {"contact" : [{"name" : {"familyName" : "Two", "givenName" : "Charles", "otherGivenNames" : "William"}, "positionTitle" : "Admin", "emailList" : {"email" : ["drseuss@whoville.k12.ceo.edu.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(08) 8555-0102"}]}}]}, "purposeList" : {"purpose" : ["TimeTabling"]}}, {"subProcessorName" : "Three", "privacyPolicyURL" : "www.three.edu.au", "privacyContactList" : {"contact" : [{"name" : {"familyName" : "Third", "givenName" : "Charles", "otherGivenNames" : "William"}, "positionTitle" : "Admin", "emailList" : {"email" : ["drseuss@whoville.k12.ceo.edu.au"]}, "phoneNumberList" : {"phoneNumber" : [{"number" : "(08) 8555-0102"}]}}]}, "purposeList" : {"purpose" : ["StudentPortal"]}}]}}}, {"default" : "N", "appIDList" : {"appID" : ["TT12"]}, "adapterFingerprintList" : {"adapterFingerprint" : ["b4ef12ce-7025-11e8-adc0-fa7ae01bbebc"]}, "zoneContextList" : {"zoneContext" : [{"zoneId" : "4001", "contextId" : ""}]}, "privacyObligationsDocument" : {"technicalRequirements" : {"dataAccess" : {"fieldList" : {"field" : [{"fieldName" : "/SchoolInfo/@RefId", "controlrights" : "R"}, {"fieldName" : "/SchoolInfo/LocalId", "controlrights" : "R"}, {"fieldName" : "/SchoolInfo/ACARAId", "controlrights" : "R"}, {"fieldName" : "/StudentPersonal/@RefId", "controlrights" : "R"}, {"fieldName" : "/StudentPersonal/LocalId", "controlrights" : "R"}, {"fieldName" : "/StudentPersonal/FirstAUSchoolEnrollment", "controlrights" : "R"}, {"fieldName" : "/TimeTable/*", "controlrights" : "RW"}]}}}}}, {"default" : "N", "adapterFingerprintList" : {"adapterFingerprint" : ["b4ef12ce-7025-11e8-adc0-fa7ae01bbebc"]}, "zoneContextList" : {"zoneContext" : [{"zoneId" : "4002", "contextId" : ""}]}, "dataModelNamespace" : "http://www.sifinfo.org/infrastructure/2.x", "dataModelVersionMin" : "2.3", "dataModelVersionMax" : "2.9"}, {"default" : "N", "adapterFingerprintList" : {"adapterFingerprint" : ["b4ef12ce-7025-11e8-adc0-fa7ae01bbebc"]}, "zoneContextList" : {"zoneContext" : [{"zoneId" : "4003", "contextId" : ""}]}, "dataModelNamespace" : "http://www.sifinfo.org/infrastructure/2.x", "dataModelVersionMin" : "2.1", "dataModelVersionMax" : "2.8", "privacyObligationsDocument" : {"technicalRequirements" : {"securityTechnologyList" : {"securityTechnology" : [{"technologyName" : "SSL", "technologyDescription" : "", "referenceURL" : ""}]}}}}]}}]}}
+    goessner:
+      summary: Goessner notation for pods
+      value:
+        {"pods": {"pod" : {"@id" : "D3E34B39-9D79-4019-8C39-00AA001A1659", "podStatus" : "Live", "podToken" : "1", "podVersion" : "1.0.2", "partyId" : "Compass", "privacyList" : {"privacy" : [{"default" : "Y", "dataModelNamespace" : "http://www.sifinfo.org/infrastructure/2.x", "dataModelVersionMin" : "2.4", "dataModelVersionMax" : "2.8", "privacyObligationsDocument" : {"contract" : {"contractURI" : "http://www.vic.priv.contract.edu.au/contract.pdf", "contractName" : "Sample contract ABC", "dateValidFrom" : "2018-03-01", "dateValidTo" : "2018-06-01", "contractVersion" : "0.2", "lawList" : {"law" : [{"lawName" : "APP1", "lawDescription" : "XXXXX"}, {"lawName" : "APP2", "lawDescription" : "yyyy"}]}, "studentDataIPRights" : "Victorian Department of Education"}, "legalRequirements" : {"clauseList" : {"clause" : {"clauseLabel" : "Data Access", "clauseReference" : "US-I.3", "clauseContent" : "The agent shall access only data necessary to accomplish the business task for which it is contracted.", "obligationList" : {"obligation" : {"obligationDescription" : "Restrict access to data fields to match the state profile.", "obligationURL" : "https://thewave.sde.ok.gov/thewave/Portals/0/2%20x%20Wave%20Requirements_v1%2010.pdf", "benchmarkList" : {"benchmark" : {"benchmarkName" : "Oklahoma State Profile"}}}}}}}, "technicalRequirements" : {"dataAccess" : {"clauseList" : {"clause" : {"clauseReference" : "US-I.3"}}, "fieldList" : {"field" : [{"fieldName" : "/SchoolInfo/@RefId", "controlrights" : "R"}, {"fieldName" : "/SchoolInfo/LocalId", "controlrights" : "R"}, {"fieldName" : "/SchoolInfo/ACARAId", "controlrights" : "RW"}, {"fieldName" : "/StudentPersonal/@RefId", "controlrights" : "RW"}, {"fieldName" : "/StudentPersonal/LocalId", "controlrights" : "RW"}, {"fieldName" : "/StudentPersonal/FirstAUSchoolEnrollment", "controlrights" : "RW"}]}}, "conditionList" : {"condition" : [{"typeOfCondition" : "XQUERYTEMPLATE", "conditionName" : "RetrieveByGrade", "conditionDescription" : "Returns a StudentJoin of StudentPersonal and StudentSchoolEnrollment for the GradeLevel specified as a parameter."}, {"typeOfCondition" : "contextId", "conditionName" : "CurrentEnrollment", "conditionDescription" : "Only works with student data whose records indicate they are currently enrolled according to the StudentSchoolEnrollment SIF object.", "propertyList" : {"property" : [{"propertyName" : "Enrolled After", "propertyValue" : "/StudentSchoolEnrollment/EntryDate>=2018-09-01"}, {"propertyName" : "Enrolled Before", "propertyValue" : "/StudentSchoolEnrollment/EntryDate<=2019-09-01"}]}}]}, "dataSubject" : {"clauseList" : {"clause" : {"clauseReference" : "US-Subject1", "obligationList" : {"obligation" : {"obligationDescription" : "FERPA requires records be delivered within 45 days of a request.", "obligationURL" : "https://www2.ed.gov/policy/gen/guid/fpco/brochures/parents.html", "benchmarkList" : {"benchmark" : {"benchmarkName" : "Family Educational Rights and Privacy Act (FERPA)"}}}}}}, "fieldList" : {"field" : [{"fieldName" : "/StudentPersonal/@RefId"}, {"fieldName" : "/StudentPersonal/LocalId"}, {"fieldName" : "/StudentPersonal/FirstAUSchoolEnrollment"}]}, "respondInDays" : "45", "requirePortability" : "Y"}, "dataDeletion" : {"deleteData" : "Y", "dataRetention" : "30", "deleteBy" : "2019-07-15", "partyToDeleteData" : {"organisation" : "Local LEA", "deletecontactInfo" : {"name" : {"familyName" : "EEe", "givenName" : "Agg", "otherGivenNames" : "hh"}, "positionTitle" : "Data Owner", "emailList" : {"email" : "DataSec@localLEA.edu.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(03) 8888-9999"}}}}}, "securityTechnologyList" : {"securityTechnology" : {"clauseList" : {"clause" : {"clauseReference" : "US-V.1.c"}}, "technologyName" : "TLS", "versionMin" : "1.2"}}}, "dataController" : {"dataControllerName" : "Victorian Department of Education", "privacyPolicyURL" : "http://www.vic.priv.policy.edu.au/privacy.pdf", "privacyContactList" : {"contact" : {"name" : {"familyName" : "Smith", "givenName" : "Christime", "otherGivenNames" : "Margaret"}, "positionTitle" : "Admin", "emailList" : {"email" : "chris@whoville.vic.edu.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(03) 9600-0102"}}}}, "issuesNotificationContactList" : {"contact" : {"name" : {"familyName" : "BBBB", "givenName" : "AAA", "otherGivenNames" : "CCC"}, "positionTitle" : "Data Security", "emailList" : {"email" : "DataSec@whoville.edu.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(03) 8888-9999"}}}}}, "dataProcessor" : {"dataProcessorName" : "CEOProcessor2", "privacyPolicyURL" : "www.ceo.priv.policy.edu.au", "privacyContactList" : {"contact" : {"name" : {"familyName" : "Woodall", "givenName" : "Charles", "otherGivenNames" : "William"}, "positionTitle" : "Admin", "emailList" : {"email" : "drseuss@whoville.k12.ceo.edu.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(08) 8555-0102"}}}}, "notifyDataControllerOnAccessRequests" : "Y", "dataProcessorContactForAccessRequestsList" : {"contact" : {"name" : {"familyName" : "XXX", "givenName" : "YYY", "otherGivenNames" : "ZZZ"}, "positionTitle" : "Privacy Officer", "emailList" : {"email" : "off@whoville.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(03) 9999-9999"}}}}, "purposeList" : {"purpose" : [{"purpose" : "Admin System"}, {"purpose" : "Australian Schools List"}]}, "alternatePurposeList" : {"alternatePurpose" : "Student Portal"}, "deidentifiedPurposeList" : {"deidentifiedPurpose" : "Research"}, "dataUsageMarketingAllowed" : "N", "personalInformationUpdatedFromSource" : "10", "dataBreachNotification" : "Y", "dataBreachContactList" : {"contact" : {"name" : {"familyName" : "XXX", "givenName" : "YYY", "otherGivenNames" : "ZZZ"}, "positionTitle" : "Privacy Officer", "emailList" : {"email" : "off@whoville.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(03) 9999-9999"}}}}, "employeesMustComplyWithAgreement" : "Y", "employeeConfidentialityAgreement" : "Y", "employeeTrainingList" : {"employeeTraining" : {"trainingName" : "", "trainingURL" : ""}}, "passwordEmployeeAccessStandard" : {"standardName" : "", "standardURL" : ""}, "securityTestRequiredList" : {"securityTestRequired" : [{"testType" : "Pen Test", "testFrequency" : "Annual", "remediationRequiredIn" : "7 days", "shareResults" : "Y"}, {"testType" : "Vulnerability Test", "testFrequency" : "Monthly", "remediationRequiredIn" : "24hours", "shareResults" : "Y"}]}, "countryImpactedList" : {"countryImpacted" : [{"country" : "1101", "usage" : "Stored/Processed/Exposed"}, {"country" : "1102", "usage" : "Exposed"}]}}, "dataSubProcessorList" : {"dataSubProcessor" : [{"subProcessorName" : "One", "privacyPolicyURL" : "www.one.edu.au", "privacyContactList" : {"contact" : {"name" : {"familyName" : "First", "givenName" : "Charles", "otherGivenNames" : "William"}, "positionTitle" : "Admin", "emailList" : {"email" : "drseuss@whoville.k12.ceo.edu.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(08) 8555-0102"}}}}, "purposeList" : {"purpose" : "Attendance"}}, {"subProcessorName" : "Two", "privacyPolicyURL" : "www.two.edu.au", "privacyContactList" : {"contact" : {"name" : {"familyName" : "Two", "givenName" : "Charles", "otherGivenNames" : "William"}, "positionTitle" : "Admin", "emailList" : {"email" : "drseuss@whoville.k12.ceo.edu.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(08) 8555-0102"}}}}, "purposeList" : {"purpose" : "TimeTabling"}}, {"subProcessorName" : "Three", "privacyPolicyURL" : "www.three.edu.au", "privacyContactList" : {"contact" : {"name" : {"familyName" : "Third", "givenName" : "Charles", "otherGivenNames" : "William"}, "positionTitle" : "Admin", "emailList" : {"email" : "drseuss@whoville.k12.ceo.edu.au"}, "phoneNumberList" : {"phoneNumber" : {"number" : "(08) 8555-0102"}}}}, "purposeList" : {"purpose" : "StudentPortal"}}]}}}, {"default" : "N", "appIDList" : {"appID" : "TT12"}, "adapterFingerprintList" : {"adapterFingerprint" : "b4ef12ce-7025-11e8-adc0-fa7ae01bbebc"}, "zoneContextList" : {"zoneContext" : {"zoneId" : "4001", "contextId" : ""}}, "privacyObligationsDocument" : {"technicalRequirements" : {"dataAccess" : {"fieldList" : {"field" : [{"fieldName" : "/SchoolInfo/@RefId", "controlrights" : "R"}, {"fieldName" : "/SchoolInfo/LocalId", "controlrights" : "R"}, {"fieldName" : "/SchoolInfo/ACARAId", "controlrights" : "R"}, {"fieldName" : "/StudentPersonal/@RefId", "controlrights" : "R"}, {"fieldName" : "/StudentPersonal/LocalId", "controlrights" : "R"}, {"fieldName" : "/StudentPersonal/FirstAUSchoolEnrollment", "controlrights" : "R"}, {"fieldName" : "/TimeTable/*", "controlrights" : "RW"}]}}}}}, {"default" : "N", "adapterFingerprintList" : {"adapterFingerprint" : "b4ef12ce-7025-11e8-adc0-fa7ae01bbebc"}, "zoneContextList" : {"zoneContext" : {"zoneId" : "4002", "contextId" : ""}}, "dataModelNamespace" : "http://www.sifinfo.org/infrastructure/2.x", "dataModelVersionMin" : "2.3", "dataModelVersionMax" : "2.9"}, {"default" : "N", "adapterFingerprintList" : {"adapterFingerprint" : "b4ef12ce-7025-11e8-adc0-fa7ae01bbebc"}, "zoneContextList" : {"zoneContext" : {"zoneId" : "4003", "contextId" : ""}}, "dataModelNamespace" : "http://www.sifinfo.org/infrastructure/2.x", "dataModelVersionMin" : "2.1", "dataModelVersionMax" : "2.8", "privacyObligationsDocument" : {"technicalRequirements" : {"securityTechnologyList" : {"securityTechnology" : {"technologyName" : "SSL", "technologyDescription" : "", "referenceURL" : ""}}}}}]}}}}
+    xml:
+      summary: XML pods
+      value: >-
+        <pods>
+          <pod id="D3E34B39-9D79-4019-8C39-00AA001A1659">
+            <podStatus>Live</podStatus>
+            <podToken>1</podToken>
+            <podVersion>1.0.2</podVersion>
+            <partyId>Compass</partyId>
+            <privacyList>
+              <privacy>
+                <default>Y</default>
+                <dataModelNamespace>http://www.sifinfo.org/infrastructure/2.x</dataModelNamespace>
+                <dataModelVersionMin>2.4</dataModelVersionMin>
+                <dataModelVersionMax>2.8</dataModelVersionMax>
+                <privacyObligationsDocument>
+                  <contract>
+                    <contractURI>http://www.vic.priv.contract.edu.au/contract.pdf</contractURI>
+                    <contractName>Sample contract ABC</contractName>
+                    <dateValidFrom>2018-03-01</dateValidFrom>
+                    <dateValidTo>2018-06-01</dateValidTo>
+                    <contractVersion>0.2</contractVersion>
+                    <lawList>
+                      <law>
+                        <lawName>APP1</lawName>
+                        <lawDescription>XXXXX</lawDescription>
+                      </law>
+                      <law>
+                        <lawName>APP2</lawName>
+                        <lawDescription>yyyy</lawDescription>
+                      </law>
+                    </lawList>
+                    <studentDataIPRights>Victorian Department of Education</studentDataIPRights>
+                  </contract>
+                  <legalRequirements>
+                    <clauseList>
+                      <clause>
+                        <clauseLabel>Data Access</clauseLabel>
+                        <clauseReference>US-I.3</clauseReference>
+                        <clauseContent>The agent shall access only data necessary to accomplish the business task for which it is contracted.</clauseContent>
+                        <obligationList>
+                          <obligation>
+                            <obligationDescription>Restrict access to data fields to match the state profile.</obligationDescription>
+                            <obligationURL>https://thewave.sde.ok.gov/thewave/Portals/0/2%20x%20Wave%20Requirements_v1%2010.pdf</obligationURL>
+                            <benchmarkList>
+                              <benchmark>
+                                <benchmarkName>Oklahoma State Profile</benchmarkName>
+                              </benchmark>
+                            </benchmarkList>
+                          </obligation>
+                        </obligationList>
+                      </clause>
+                    </clauseList>
+                  </legalRequirements>
+                  <technicalRequirements>
+                    <dataAccess>
+                      <clauseList>
+                        <clause>
+                          <clauseReference>US-I.3</clauseReference>
+                        </clause>
+                      </clauseList>
+                      <fieldList>
+                        <field>
+                          <fieldName>/SchoolInfo/@RefId</fieldName>
+                          <controlrights>R</controlrights>
+                        </field>
+                        <field>
+                          <fieldName>/SchoolInfo/LocalId</fieldName>
+                          <controlrights>R</controlrights>
+                        </field>
+                        <field>
+                          <fieldName>/SchoolInfo/ACARAId</fieldName>
+                          <controlrights>RW</controlrights>
+                        </field>
+                        <field>
+                          <fieldName>/StudentPersonal/@RefId</fieldName>
+                          <controlrights>RW</controlrights>
+                        </field>
+                        <field>
+                          <fieldName>/StudentPersonal/LocalId</fieldName>
+                          <controlrights>RW</controlrights>
+                        </field>
+                        <field>
+                          <fieldName>/StudentPersonal/FirstAUSchoolEnrollment</fieldName>
+                          <controlrights>RW</controlrights>
+                        </field>
+                      </fieldList>
+                    </dataAccess>
+                    <conditionList>
+                      <condition>
+                        <typeOfCondition>XQUERYTEMPLATE</typeOfCondition>
+                        <conditionName>RetrieveByGrade</conditionName>
+                        <conditionDescription>Returns a StudentJoin of StudentPersonal and StudentSchoolEnrollment for the GradeLevel specified as a parameter.</conditionDescription>
+                      </condition>
+                      <condition>
+                        <typeOfCondition>contextId</typeOfCondition>
+                        <conditionName>CurrentEnrollment</conditionName>
+                        <conditionDescription>Only works with student data whose records indicate they are currently enrolled according to the StudentSchoolEnrollment SIF object.</conditionDescription>
+                        <propertyList>
+                          <property>
+                            <propertyName>Enrolled After</propertyName>
+                            <propertyValue>/StudentSchoolEnrollment/EntryDate&gt;=2018-09-01</propertyValue>
+                          </property>
+                          <property>
+                            <propertyName>Enrolled Before</propertyName>
+                            <propertyValue>/StudentSchoolEnrollment/EntryDate&lt;=2019-09-01</propertyValue>
+                          </property>
+                        </propertyList>
+                      </condition>
+                    </conditionList>
+                    <dataSubject>
+                      <clauseList>
+                        <clause>
+                          <clauseReference>US-Subject1</clauseReference>
+                          <obligationList>
+                            <obligation>
+                              <obligationDescription>FERPA requires records be delivered within 45 days of a request.</obligationDescription>
+                              <obligationURL>https://www2.ed.gov/policy/gen/guid/fpco/brochures/parents.html</obligationURL>
+                              <benchmarkList>
+                                <benchmark>
+                                  <benchmarkName>Family Educational Rights and Privacy Act (FERPA)</benchmarkName>
+                                </benchmark>
+                              </benchmarkList>
+                            </obligation>
+                          </obligationList>
+                        </clause>
+                      </clauseList>
+                      <fieldList>
+                        <field>
+                          <fieldName>/StudentPersonal/@RefId</fieldName>
+                        </field>
+                        <field>
+                          <fieldName>/StudentPersonal/LocalId</fieldName>
+                        </field>
+                        <field>
+                          <fieldName>/StudentPersonal/FirstAUSchoolEnrollment</fieldName>
+                        </field>
+                      </fieldList>
+                      <respondInDays>45</respondInDays>
+                      <requirePortability>Y</requirePortability>
+                    </dataSubject>
+                    <dataDeletion>
+                      <deleteData>Y</deleteData>
+                      <dataRetention>30</dataRetention>
+                      <deleteBy>2019-07-15</deleteBy>
+                      <partyToDeleteData>
+                        <organisation>Local LEA</organisation>
+                        <deletecontactInfo>
+                          <name>
+                            <familyName>EEe</familyName>
+                            <givenName>Agg</givenName>
+                            <otherGivenNames>hh</otherGivenNames>
+                          </name>
+                          <positionTitle>Data Owner</positionTitle>
+                          <emailList>
+                            <email>DataSec@localLEA.edu.au</email>
+                          </emailList>
+                          <phoneNumberList>
+                            <phoneNumber>
+                              <number>(03) 8888-9999</number>
+                            </phoneNumber>
+                          </phoneNumberList>
+                        </deletecontactInfo>
+                      </partyToDeleteData>
+                    </dataDeletion>
+                    <securityTechnologyList>
+                      <securityTechnology>
+                        <clauseList>
+                          <clause>
+                            <clauseReference>US-V.1.c</clauseReference>
+                          </clause>
+                        </clauseList>
+                        <technologyName>TLS</technologyName>
+                        <versionMin>1.2</versionMin>
+                      </securityTechnology>
+                    </securityTechnologyList>
+                  </technicalRequirements>
+                  <dataController>
+                    <dataControllerName>Victorian Department of Education</dataControllerName>
+                    <privacyPolicyURL>http://www.vic.priv.policy.edu.au/privacy.pdf</privacyPolicyURL>
+                    <privacyContactList>
+                      <contact>
+                        <name>
+                          <familyName>Smith</familyName>
+                          <givenName>Christime</givenName>
+                          <otherGivenNames>Margaret</otherGivenNames>
+                        </name>
+                        <positionTitle>Admin</positionTitle>
+                        <emailList>
+                          <email>chris@whoville.vic.edu.au</email>
+                        </emailList>
+                        <phoneNumberList>
+                          <phoneNumber>
+                            <number>(03) 9600-0102</number>
+                          </phoneNumber>
+                        </phoneNumberList>
+                      </contact>
+                    </privacyContactList>
+                    <issuesNotificationContactList>
+                      <contact>
+                        <name>
+                          <familyName>BBBB</familyName>
+                          <givenName>AAA</givenName>
+                          <otherGivenNames>CCC</otherGivenNames>
+                        </name>
+                        <positionTitle>Data Security</positionTitle>
+                        <emailList>
+                          <email>DataSec@whoville.edu.au</email>
+                        </emailList>
+                        <phoneNumberList>
+                          <phoneNumber>
+                            <number>(03) 8888-9999</number>
+                          </phoneNumber>
+                        </phoneNumberList>
+                      </contact>
+                    </issuesNotificationContactList>
+                  </dataController>
+                  <dataProcessor>
+                    <dataProcessorName>CEOProcessor2</dataProcessorName>
+                    <privacyPolicyURL>www.ceo.priv.policy.edu.au</privacyPolicyURL>
+                    <privacyContactList>
+                      <contact>
+                        <name>
+                          <familyName>Woodall</familyName>
+                          <givenName>Charles</givenName>
+                          <otherGivenNames>William</otherGivenNames>
+                        </name>
+                        <positionTitle>Admin</positionTitle>
+                        <emailList>
+                          <email>drseuss@whoville.k12.ceo.edu.au</email>
+                        </emailList>
+                        <phoneNumberList>
+                          <phoneNumber>
+                            <number>(08) 8555-0102</number>
+                          </phoneNumber>
+                        </phoneNumberList>
+                      </contact>
+                    </privacyContactList>
+                    <notifyDataControllerOnAccessRequests>Y</notifyDataControllerOnAccessRequests>
+                    <dataProcessorContactForAccessRequestsList>
+                      <contact>
+                        <name>
+                          <familyName>XXX</familyName>
+                          <givenName>YYY</givenName>
+                          <otherGivenNames>ZZZ</otherGivenNames>
+                        </name>
+                        <positionTitle>Privacy Officer</positionTitle>
+                        <emailList>
+                          <email>off@whoville.au</email>
+                        </emailList>
+                        <phoneNumberList>
+                          <phoneNumber>
+                            <number>(03) 9999-9999</number>
+                          </phoneNumber>
+                        </phoneNumberList>
+                      </contact>
+                    </dataProcessorContactForAccessRequestsList>
+                    <purposeList>
+                      <purpose>Admin System</purpose>
+                      <purpose>Australian Schools List</purpose>
+                    </purposeList>
+                    <alternatePurposeList>
+                      <alternatePurpose>Student Portal</alternatePurpose>
+                    </alternatePurposeList>
+                    <deidentifiedPurposeList>
+                      <deidentifiedPurpose>Research</deidentifiedPurpose>
+                    </deidentifiedPurposeList>
+                    <dataUsageMarketingAllowed>N</dataUsageMarketingAllowed>
+                    <personalInformationUpdatedFromSource>10</personalInformationUpdatedFromSource>
+                    <dataBreachNotification>Y</dataBreachNotification>
+                    <dataBreachContactList>
+                      <contact>
+                        <name>
+                          <familyName>XXX</familyName>
+                          <givenName>YYY</givenName>
+                          <otherGivenNames>ZZZ</otherGivenNames>
+                        </name>
+                        <positionTitle>Privacy Officer</positionTitle>
+                        <emailList>
+                          <email>off@whoville.au</email>
+                        </emailList>
+                        <phoneNumberList>
+                          <phoneNumber>
+                            <number>(03) 9999-9999</number>
+                          </phoneNumber>
+                        </phoneNumberList>
+                      </contact>
+                    </dataBreachContactList>
+                    <employeesMustComplyWithAgreement>Y</employeesMustComplyWithAgreement>
+                    <employeeConfidentialityAgreement>Y</employeeConfidentialityAgreement>
+                    <employeeTrainingList>
+                      <employeeTraining>
+                        <trainingName></trainingName>
+                        <trainingURL></trainingURL>
+                      </employeeTraining>
+                    </employeeTrainingList>
+                    <passwordEmployeeAccessStandard>
+                      <standardName></standardName>
+                      <standardURL></standardURL>
+                    </passwordEmployeeAccessStandard>
+                    <securityTestRequiredList>
+                      <securityTestRequired>
+                        <testType>Pen Test</testType>
+                        <testFrequency>Annual</testFrequency>
+                        <remediationRequiredIn>7 days</remediationRequiredIn>
+                        <shareResults>Y</shareResults>
+                      </securityTestRequired>
+                      <securityTestRequired>
+                        <testType>Vulnerability Test</testType>
+                        <testFrequency>Monthly</testFrequency>
+                        <remediationRequiredIn>24hours</remediationRequiredIn>
+                        <shareResults>Y</shareResults>
+                      </securityTestRequired>
+                    </securityTestRequiredList>
+                    <countryImpactedList>
+                      <countryImpacted>
+                        <country>1101</country>
+                        <usage>Stored/Processed/Exposed</usage>
+                      </countryImpacted>
+                      <countryImpacted>
+                        <country>1102</country>
+                        <usage>Exposed</usage>
+                      </countryImpacted>
+                    </countryImpactedList>
+                  </dataProcessor>
+                  <dataSubProcessorList>
+                    <dataSubProcessor>
+                      <subProcessorName>One</subProcessorName>
+                      <privacyPolicyURL>www.one.edu.au</privacyPolicyURL>
+                      <privacyContactList>
+                        <contact>
+                          <name>
+                            <familyName>First</familyName>
+                            <givenName>Charles</givenName>
+                            <otherGivenNames>William</otherGivenNames>
+                          </name>
+                          <positionTitle>Admin</positionTitle>
+                          <emailList>
+                            <email>drseuss@whoville.k12.ceo.edu.au</email>
+                          </emailList>
+                          <phoneNumberList>
+                            <phoneNumber>
+                              <number>(08) 8555-0102</number>
+                            </phoneNumber>
+                          </phoneNumberList>
+                        </contact>
+                      </privacyContactList>
+                      <purposeList>
+                        <purpose>Attendance</purpose>
+                      </purposeList>
+                    </dataSubProcessor>
+                    <dataSubProcessor>
+                      <subProcessorName>Two</subProcessorName>
+                      <privacyPolicyURL>www.two.edu.au</privacyPolicyURL>
+                      <privacyContactList>
+                        <contact>
+                          <name>
+                            <familyName>Two</familyName>
+                            <givenName>Charles</givenName>
+                            <otherGivenNames>William</otherGivenNames>
+                          </name>
+                          <positionTitle>Admin</positionTitle>
+                          <emailList>
+                            <email>drseuss@whoville.k12.ceo.edu.au</email>
+                          </emailList>
+                          <phoneNumberList>
+                            <phoneNumber>
+                              <number>(08) 8555-0102</number>
+                            </phoneNumber>
+                          </phoneNumberList>
+                        </contact>
+                      </privacyContactList>
+                      <purposeList>
+                        <purpose>TimeTabling</purpose>
+                      </purposeList>
+                    </dataSubProcessor>
+                    <dataSubProcessor>
+                      <subProcessorName>Three</subProcessorName>
+                      <privacyPolicyURL>www.three.edu.au</privacyPolicyURL>
+                      <privacyContactList>
+                        <contact>
+                          <name>
+                            <familyName>Third</familyName>
+                            <givenName>Charles</givenName>
+                            <otherGivenNames>William</otherGivenNames>
+                          </name>
+                          <positionTitle>Admin</positionTitle>
+                          <emailList>
+                            <email>drseuss@whoville.k12.ceo.edu.au</email>
+                          </emailList>
+                          <phoneNumberList>
+                            <phoneNumber>
+                              <number>(08) 8555-0102</number>
+                            </phoneNumber>
+                          </phoneNumberList>
+                        </contact>
+                      </privacyContactList>
+                      <purposeList>
+                        <purpose>StudentPortal</purpose>
+                      </purposeList>
+                    </dataSubProcessor>
+                  </dataSubProcessorList>
+                </privacyObligationsDocument>
+              </privacy>
+              <privacy>
+                <default>N</default>
+                <appIDList>
+                  <appID>TT12</appID>
+                </appIDList>
+                <adapterFingerprintList>
+                  <adapterFingerprint>b4ef12ce-7025-11e8-adc0-fa7ae01bbebc</adapterFingerprint>
+                </adapterFingerprintList>
+                <zoneContextList>
+                  <zoneContext>
+                    <zoneId>4001</zoneId>
+                    <contextId></contextId>
+                  </zoneContext>
+                </zoneContextList>
+                <privacyObligationsDocument>
+                  <technicalRequirements>
+                    <dataAccess>
+                      <fieldList>
+                        <field>
+                          <fieldName>/SchoolInfo/@RefId</fieldName>
+                          <controlrights>R</controlrights>
+                        </field>
+                        <field>
+                          <fieldName>/SchoolInfo/LocalId</fieldName>
+                          <controlrights>R</controlrights>
+                        </field>
+                        <field>
+                          <fieldName>/SchoolInfo/ACARAId</fieldName>
+                          <controlrights>R</controlrights>
+                        </field>
+                        <field>
+                          <fieldName>/StudentPersonal/@RefId</fieldName>
+                          <controlrights>R</controlrights>
+                        </field>
+                        <field>
+                          <fieldName>/StudentPersonal/LocalId</fieldName>
+                          <controlrights>R</controlrights>
+                        </field>
+                        <field>
+                          <fieldName>/StudentPersonal/FirstAUSchoolEnrollment</fieldName>
+                          <controlrights>R</controlrights>
+                        </field>
+                        <field>
+                          <fieldName>/TimeTable/*</fieldName>
+                          <controlrights>RW</controlrights>
+                        </field>
+                      </fieldList>
+                    </dataAccess>
+                  </technicalRequirements>
+                </privacyObligationsDocument>
+              </privacy>
+              <privacy>
+                <default>N</default>
+                <adapterFingerprintList>
+                  <adapterFingerprint>b4ef12ce-7025-11e8-adc0-fa7ae01bbebc</adapterFingerprint>
+                </adapterFingerprintList>
+                <zoneContextList>
+                  <zoneContext>
+                    <zoneId>4002</zoneId>
+                    <contextId></contextId>
+                  </zoneContext>
+                </zoneContextList>
+                <dataModelNamespace>http://www.sifinfo.org/infrastructure/2.x</dataModelNamespace>
+                <dataModelVersionMin>2.3</dataModelVersionMin>
+                <dataModelVersionMax>2.9</dataModelVersionMax>
+              </privacy>
+              <privacy>
+                <default>N</default>
+                <adapterFingerprintList>
+                  <adapterFingerprint>b4ef12ce-7025-11e8-adc0-fa7ae01bbebc</adapterFingerprint>
+                </adapterFingerprintList>
+                <zoneContextList>
+                  <zoneContext>
+                    <zoneId>4003</zoneId>
+                    <contextId></contextId>
+                  </zoneContext>
+                </zoneContextList>
+                <dataModelNamespace>http://www.sifinfo.org/infrastructure/2.x</dataModelNamespace>
+                <dataModelVersionMin>2.1</dataModelVersionMin>
+                <dataModelVersionMax>2.8</dataModelVersionMax>
+                <privacyObligationsDocument>
+                  <technicalRequirements>
+                    <securityTechnologyList>
+                      <securityTechnology>
+                        <technologyName>SSL</technologyName>
+                        <technologyDescription></technologyDescription>
+                        <referenceURL></referenceURL>
+                      </securityTechnology>
+                    </securityTechnologyList>
+                  </technicalRequirements>
+                </privacyObligationsDocument>
+              </privacy>
+            </privacyList>
+          </pod>
+        </pods>
+

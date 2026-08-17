@@ -1,0 +1,55 @@
+version: '3.8'
+
+# NOTE: PostgreSQL and Redis are defined in queue-service/docker-compose.yml,
+# which is the canonical docker-compose for shared infrastructure.
+# Start queue-service/docker-compose.yml first to bring up postgres and redis,
+# then use this file for the environment-service only.
+
+services:
+  # Environment Service
+  environment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: environment-service
+    environment:
+      # Database connection (uses postgres from queue-service/docker-compose.yml)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/sif_broker
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+
+      # JPA/Hibernate settings
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_JPA_SHOW_SQL: "false"
+
+      # Flyway settings
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+
+      # Server settings
+      SERVER_PORT: 8081
+
+      # Authentication settings
+      AUTHENTICATION_TIMESTAMP_TOLERANCE_MINUTES: 5
+
+      # Logging
+      LOGGING_LEVEL_ORG_SIFUNITY_BROKER_ENVIRONMENT: INFO
+
+      # JVM options for development
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xms256m -Xmx512m"
+    ports:
+      - "8081:8081"
+    networks:
+      - environment-service-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+# Custom network for service communication
+networks:
+  environment-service-network:
+    driver: bridge

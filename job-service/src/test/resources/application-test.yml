@@ -1,0 +1,67 @@
+# Test Configuration for Job Service
+
+# Internal service token for test context startup
+broker:
+  internal-service-token: test-internal-token
+
+spring:
+  application:
+    name: job-service-test
+
+  # Testcontainers PostgreSQL for Testing
+  datasource:
+    url: jdbc:tc:postgresql:15-alpine:///testdb
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 10000
+
+  # JPA Configuration for Tests
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Use Flyway migrations, validate schema matches entities
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        show_sql: false
+    open-in-view: false
+
+  # Flyway Configuration for Tests
+  flyway:
+    enabled: true  # Enable Flyway for tests to get proper cascade constraints
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  # Jackson Configuration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+# Server Configuration
+server:
+  port: 0  # Random port for tests
+
+# Logging Configuration
+logging:
+  level:
+    root: WARN
+    org.sifunity: WARN
+    org.springframework: WARN
+    org.springframework.cloud.gateway: WARN
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+    net.jqwik: WARN
+
+# Management Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

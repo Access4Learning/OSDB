@@ -1,0 +1,77 @@
+# Observability Configuration for Test Environment
+# Import this file in your application.yml with:
+# spring:
+#   config:
+#     import: classpath:observability-test.yml
+
+observability:
+  enabled: true
+  
+  tracing:
+    enabled: true
+    otlp:
+      endpoint: ${OTLP_ENDPOINT:http://otel-collector:4318/v1/traces}
+      timeout: 10
+      max-queue-size: 2048
+      max-export-batch-size: 512
+      schedule-delay: 5
+    sampling:
+      # 100% sampling in test for complete trace coverage
+      probability: 1.0
+    propagation:
+      format: w3c
+      include-baggage: true
+  
+  logging:
+    logstash:
+      host: ${LOGSTASH_HOST:logstash}
+      port: ${LOGSTASH_PORT:5000}
+    async:
+      queue-size: 512
+      discarding-threshold: 0
+      # Include caller data in test for debugging
+      include-caller-data: true
+    json:
+      enabled: true
+      include-mdc: true
+      include-stack-trace: true
+  
+  metrics:
+    enabled: true
+    cardinality:
+      limit: 150
+      action: replace-with-other
+
+# Test logging - balanced verbosity
+logging:
+  level:
+    root: INFO
+    org.sifunity: DEBUG
+    org.springframework.web: INFO
+    org.springframework.data: INFO
+    org.hibernate: WARN
+    io.opentelemetry: INFO
+    io.micrometer: INFO
+    io.lettuce: INFO
+
+# Actuator endpoints - expose health and metrics for testing
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    enable:
+      jvm: true
+      process: true
+      system: true
+      tomcat: true
+      logback: true
+      jdbc: true

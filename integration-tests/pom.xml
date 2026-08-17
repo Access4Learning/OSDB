@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Parent POM - SIF Unity Broker -->
+    <parent>
+        <groupId>org.sifunity.broker</groupId>
+        <artifactId>sif-unity-broker</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <!-- Project Coordinates -->
+    <artifactId>integration-tests</artifactId>
+    <name>Integration Tests</name>
+    <description>SIF Unity Broker Integration Tests - comprehensive end-to-end testing</description>
+
+    <properties>
+        <!-- No additional properties needed - inherited from parent -->
+    </properties>
+
+    <dependencies>
+        <!-- Spring Boot Starters -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        
+        <!-- SIF Broker Common Library -->
+        <dependency>
+            <groupId>org.sifunity.broker</groupId>
+            <artifactId>sif-broker-common</artifactId>
+            <version>${sif-broker-common.version}</version>
+        </dependency>
+        
+        <!-- Database -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        
+        <!-- Testcontainers -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>localstack</artifactId>
+        </dependency>
+        
+        <!-- RestAssured for API Testing - compile scope because used in src/main/java -->
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>json-path</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>xml-path</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        
+        <!-- WireMock for Provider Simulation - compile scope because used in src/main/java -->
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        
+        <!-- AssertJ for Fluent Assertions -->
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+        </dependency>
+        
+        <!-- Awaitility for Async Testing -->
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+        </dependency>
+        
+        <!-- AWS SDK for S3 (LocalStack) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+        </dependency>
+        
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        
+        <!-- JUnit 5 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- jqwik for property-based testing -->
+        <dependency>
+            <groupId>net.jqwik</groupId>
+            <artifactId>jqwik</artifactId>
+        </dependency>
+        
+        <!-- JDOM2 for XML parsing -->
+        <dependency>
+            <groupId>org.jdom</groupId>
+            <artifactId>jdom2</artifactId>
+            <version>2.0.6.1</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- Maven Invoker for programmatic build execution -->
+        <dependency>
+            <groupId>org.apache.maven.shared</groupId>
+            <artifactId>maven-invoker</artifactId>
+            <version>3.2.0</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Surefire plugin for running tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                        <include>**/*Tests.java</include>
+                        <include>**/*Properties.java</include>
+                    </includes>
+                    <!-- Exclude build verification tests by default — they spawn nested Maven builds
+                         and take 10+ minutes. Run with -Pbuild-verification to include them.
+                         Also exclude smoke/pattern/event/functional/security/tenant/integrity tests
+                         that require full running broker stack. -->
+                    <excludes>
+                        <exclude>**/build/**</exclude>
+                        <exclude>**/smoke/**</exclude>
+                        <exclude>**/pattern/**</exclude>
+                        <exclude>**/event/**</exclude>
+                        <exclude>**/functional/**</exclude>
+                        <exclude>**/security/**</exclude>
+                        <exclude>**/tenant/**</exclude>
+                        <exclude>**/integrity/**</exclude>
+                    </excludes>
+                    <systemPropertyVariables>
+                        <net.bytebuddy.experimental>true</net.bytebuddy.experimental>
+                    </systemPropertyVariables>
+                    <!-- Increase memory for integration tests -->
+                    <argLine>-Xmx2048m -XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m</argLine>
+                </configuration>
+            </plugin>
+            
+            <!-- Failsafe plugin for integration tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                        <include>**/*Tests.java</include>
+                    </includes>
+                    <!-- Exclude build verification tests by default — they spawn nested Maven builds.
+                         Also exclude smoke/pattern/event/functional/security/tenant/integrity tests
+                         that require full running broker stack.
+                         Run with -Pbuild-verification to include build tests. -->
+                    <excludes>
+                        <exclude>**/build/**</exclude>
+                        <exclude>**/smoke/**</exclude>
+                        <exclude>**/pattern/**</exclude>
+                        <exclude>**/event/**</exclude>
+                        <exclude>**/functional/**</exclude>
+                        <exclude>**/security/**</exclude>
+                        <exclude>**/tenant/**</exclude>
+                        <exclude>**/integrity/**</exclude>
+                    </excludes>
+                    <systemPropertyVariables>
+                        <net.bytebuddy.experimental>true</net.bytebuddy.experimental>
+                    </systemPropertyVariables>
+                    <!-- Increase memory and timeout for integration tests -->
+                    <argLine>-Xmx2048m -XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m</argLine>
+                    <forkedProcessTimeoutInSeconds>900</forkedProcessTimeoutInSeconds>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!-- Profile to include BuildExecutionTest (spawns nested Maven builds).
+         Usage: mvn clean install -Pbuild-verification
+         This is excluded by default because it adds 10+ minutes to the build. -->
+    <profiles>
+        <profile>
+            <id>build-verification</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <!-- Override the default exclusion to include BuildExecutionTest -->
+                            <excludes combine.self="override" />
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+</project>

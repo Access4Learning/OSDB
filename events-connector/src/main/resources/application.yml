@@ -1,0 +1,150 @@
+# Events Connector Application Configuration
+
+server:
+  port: 8084
+
+spring:
+  application:
+    name: events-connector
+  web:
+    resources:
+      add-mappings: false
+
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+# Subscription Service Configuration
+subscription-service:
+  url: http://localhost:8083
+  timeout:
+    connection: 5000  # milliseconds
+    read: 10000       # milliseconds
+  health-check-timeout: 3000  # milliseconds
+
+# Environment Service Configuration (for context UUID resolution)
+environment-service:
+  url: http://localhost:8081
+  timeout:
+    connection: 5000  # milliseconds
+    read: 10000       # milliseconds
+
+# Queue Service Configuration
+queue-service:
+  url: http://localhost:8082
+  timeout:
+    connection: 5000  # milliseconds
+    read: 10000       # milliseconds
+  health-check-timeout: 3000  # milliseconds
+
+# Retry Configuration
+retry:
+  max-attempts: 3
+  initial-backoff: 100  # milliseconds
+  max-backoff: 1000     # milliseconds
+
+# Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      subscriptionService:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        sliding-window-size: 10
+        sliding-window-type: COUNT_BASED
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+      queueService:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        sliding-window-size: 10
+        sliding-window-type: COUNT_BASED
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+
+# Header Blacklist Configuration
+# Custom headers to strip in addition to defaults (authorization, timestamp,
+# x-environment-id, x-environment-name, fingerprint, sharedsecret).
+# Add entries here to extend the blacklist without code changes.
+sif:
+  headers:
+    blacklist: []
+
+# SpringDoc OpenAPI Configuration
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    try-it-out-enabled: true
+  info:
+    description: "Events Connector - receives event publications and distributes to subscriber queues"
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    org.sifunity.eventsconnector: INFO
+    org.springframework.web: INFO
+    org.springframework.web.reactive: INFO
+  pattern:
+    # Structured logging pattern with correlation ID
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [correlationId=%X{correlationId}] - %msg%n"
+    # JSON format for production (can be enabled via profile)
+    # console: '{"timestamp":"%d{yyyy-MM-dd HH:mm:ss.SSS}","level":"%level","thread":"%thread","logger":"%logger{36}","correlationId":"%X{correlationId}","message":"%msg"}%n'
+
+# Cache Configuration
+broker:
+  internal-service-token: ${INTERNAL_SERVICE_TOKEN:}
+  cache:
+    context-uuid:
+      ttl-seconds: 300
+      max-size: 2000
+    subscription-query:
+      ttl-seconds: 30
+      max-size: 5000
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      service: events-connector
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  health:
+    defaults:
+      enabled: true
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true

@@ -1,0 +1,78 @@
+# Test Configuration for Events Connector
+
+# Internal service token for test context startup
+broker:
+  internal-service-token: test-internal-token
+
+server:
+  port: 0  # Random port for tests
+
+spring:
+  application:
+    name: events-connector-test
+
+# Subscription Service Configuration (will be overridden by WireMock in tests)
+subscription-service:
+  url: http://localhost:8082
+  timeout:
+    connection: 2000
+    read: 5000
+
+# Environment Service Configuration (for context UUID resolution)
+environment-service:
+  url: http://localhost:8080
+  timeout:
+    connection: 2000
+    read: 5000
+
+# Queue Service Configuration (will be overridden by WireMock in tests)
+queue-service:
+  url: http://localhost:8081
+  timeout:
+    connection: 2000
+    read: 5000
+
+# Retry Configuration (faster for tests)
+retry:
+  max-attempts: 2
+  initial-backoff: 10
+  max-backoff: 100
+
+# Circuit Breaker Configuration (more lenient for tests)
+resilience4j:
+  circuitbreaker:
+    instances:
+      subscriptionService:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 1s
+        sliding-window-size: 5
+        minimum-number-of-calls: 3
+      queueService:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 1s
+        sliding-window-size: 5
+        minimum-number-of-calls: 3
+
+# Logging Configuration
+logging:
+  level:
+    root: WARN
+    org.sifunity: WARN
+    org.springframework: WARN
+    org.springframework.cloud.gateway: WARN
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+    net.jqwik: WARN
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      show-details: always
+  health:
+    defaults:
+      enabled: false  # Disable health checks in tests to avoid MockWebServer health endpoint issues

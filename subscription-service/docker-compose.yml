@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: subscription-service-postgres
+    environment:
+      POSTGRES_DB: sif_broker
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"  # Using 5433 to avoid conflict with queue-service
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Mock Queue Service (for testing)
+  # In production, this would be the actual queue-service
+  mock-queue-service:
+    image: mockserver/mockserver:latest
+    container_name: subscription-service-mock-queue
+    environment:
+      MOCKSERVER_INITIALIZATION_JSON_PATH: /config/mockserver-init.json
+    ports:
+      - "8082:1080"
+    volumes:
+      - ./docker/mockserver-init.json:/config/mockserver-init.json:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Subscription Service
+  subscription-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: subscription-service
+    environment:
+      # Database configuration
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/sif_broker
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      # Queue Service client configuration
+      QUEUE_SERVICE_URL: http://mock-queue-service:1080
+      # Server configuration
+      SERVER_PORT: 8083
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mock-queue-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres-data:

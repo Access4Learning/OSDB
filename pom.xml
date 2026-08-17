@@ -1,0 +1,795 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ========================================== -->
+    <!-- Parent POM Declaration                     -->
+    <!-- ========================================== -->
+    <!--
+        Inherits from Spring Boot Starter Parent 3.2.0:
+        - Provides Spring Boot dependency management
+        - Configures Spring Boot plugins and defaults
+        - Sets up Spring Boot BOM for consistent Spring versions
+        
+        This POM serves dual roles:
+        1. Aggregator: Builds all modules together via <modules> section
+        2. Parent: Provides inheritance for child modules via <dependencyManagement> and <pluginManagement>
+    -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.0</version>
+        <relativePath/>
+    </parent>
+
+    <!-- ========================================== -->
+    <!-- Project Coordinates                        -->
+    <!-- ========================================== -->
+    <!--
+        Maven coordinates for the root aggregator/parent POM:
+        - groupId: Shared by all modules for consistent artifact identification
+        - artifactId: Root project identifier
+        - version: Inherited by all child modules (1.0.0-SNAPSHOT for development)
+        - packaging: 'pom' indicates this is an aggregator/parent, not a JAR/WAR
+    -->
+    <groupId>org.sifunity.broker</groupId>
+    <artifactId>sif-unity-broker</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>SIF Unity Broker</name>
+    <description>SIF Unity Broker - Multi-module Maven aggregator and parent POM for all microservices</description>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <!-- ========================================== -->
+    <!-- Properties - Version Management            -->
+    <!-- ========================================== -->
+    <properties>
+        <!-- Core Build Properties -->
+        <!-- Java version for compilation and runtime -->
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        
+        <!-- Encoding for source files and reporting -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- Internal Module Versions -->
+        <!-- Version for sif-broker-common shared library used by all services -->
+        <sif-broker-common.version>1.0.0-SNAPSHOT</sif-broker-common.version>
+
+        <!-- Core Dependency Versions -->
+        <!-- Lombok for reducing boilerplate code (used by: all modules for getters, setters, constructors) -->
+        <lombok.version>1.18.34</lombok.version>
+        
+        <!-- Testing Framework Versions -->
+        <!-- jqwik for property-based testing (used by: all modules for comprehensive test coverage) -->
+        <jqwik.version>1.8.2</jqwik.version>
+        <!-- Testcontainers for integration testing with Docker containers (used by: services with database/external dependencies) -->
+        <testcontainers.version>1.21.4</testcontainers.version>
+        <!-- AssertJ for fluent assertions in tests (used by: all test modules) -->
+        <assertj.version>3.24.2</assertj.version>
+        <!-- Awaitility for asynchronous testing (used by: integration-tests, services with async operations) -->
+        <awaitility.version>4.2.0</awaitility.version>
+        <!-- REST Assured for REST API testing (used by: integration-tests, API service tests) -->
+        <rest-assured.version>5.4.0</rest-assured.version>
+        <!-- WireMock for HTTP service mocking (used by: connector services tests, integration-tests) -->
+        <wiremock.version>3.3.1</wiremock.version>
+        <!-- networknt JSON Schema Validator for SIF wire-format conformance tests.
+             Validates response/request payloads against the authoritative draft-07 schemas in
+             external_docs/3-7-open-api-JSON/3_1/. Test scope only. -->
+        <json-schema-validator.version>1.5.4</json-schema-validator.version>
+
+        <!-- Cloud and Infrastructure Versions -->
+        <!-- AWS SDK for S3 and other AWS services (used by: queue-service, job-service) -->
+        <aws-sdk.version>2.21.0</aws-sdk.version>
+        <!-- Spring Vault for HashiCorp Vault integration (used by: environment-service) -->
+        <spring-vault.version>3.1.0</spring-vault.version>
+        <!-- Embedded Redis for testing (used by: queue-service tests) -->
+        <embedded-redis.version>0.7.3</embedded-redis.version>
+
+        <!-- Resilience and Observability Versions -->
+        <!-- Resilience4j for circuit breakers and rate limiting (used by: all connector services, gateway) -->
+        <resilience4j.version>2.1.0</resilience4j.version>
+        <!-- OpenTelemetry for distributed tracing (used by: all services for observability) -->
+        <opentelemetry.version>1.32.0</opentelemetry.version>
+        <opentelemetry-instrumentation.version>1.32.0</opentelemetry-instrumentation.version>
+        <opentelemetry-semconv.version>1.23.1-alpha</opentelemetry-semconv.version>
+        <!-- Micrometer for metrics collection (used by: all services via Spring Boot Actuator) -->
+        <micrometer.version>1.12.0</micrometer.version>
+        <!-- Logstash encoder for structured logging (used by: all services for JSON log formatting) -->
+        <logstash-logback-encoder.version>7.4</logstash-logback-encoder.version>
+
+        <!-- SpringDoc OpenAPI Versions -->
+        <!-- SpringDoc for OpenAPI 3.0 documentation (used by: all downstream services, gateway) -->
+        <springdoc.version>2.3.0</springdoc.version>
+        <!-- SpringDoc Maven Plugin for static YAML generation (used by: downstream services) -->
+        <springdoc-maven-plugin.version>1.4</springdoc-maven-plugin.version>
+
+        <!-- Maven Plugin Versions -->
+        <!-- Maven Compiler Plugin for Java compilation -->
+        <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
+        <!-- Maven Surefire Plugin for running unit tests -->
+        <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
+        <!-- Maven Source Plugin for generating source JARs -->
+        <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
+        <!-- Maven Javadoc Plugin for generating JavaDoc JARs -->
+        <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
+        <!-- Flyway Plugin for database migrations -->
+        <flyway-maven-plugin.version>9.22.0</flyway-maven-plugin.version>
+    </properties>
+
+    <!-- ========================================== -->
+    <!-- Modules - Multi-Module Build Configuration -->
+    <!-- ========================================== -->
+    <!-- 
+        Maven Reactor Multi-Module Build Order:
+        
+        The Maven Reactor analyzes inter-module dependencies and builds modules in the optimal order:
+        
+        1. sif-broker-common: Shared library built FIRST
+           - Contains common utilities, models, and configurations
+           - All service modules depend on this library
+           - Must be built before any service can compile
+        
+        2. Service modules: Built in PARALLEL (no interdependencies)
+           - Core services: environment-service, queue-service, subscription-service, job-service
+           - Gateway: API gateway for routing and authentication
+           - Connector services: events-connector, requests-connector, responses-connector, services-connector
+           - Maven builds these concurrently when possible for faster builds
+        
+        3. integration-tests: Built LAST
+           - Depends on all service modules being built first
+           - Runs end-to-end tests across the complete platform
+           - Requires all service JARs to be available
+        
+        Excluded from build:
+        - bruno-tests: Not a Maven module (API testing tool)
+        - observability: Not a Maven module (monitoring infrastructure)
+        
+        Build commands:
+        - mvn clean install: Build all modules in order
+        - mvn clean install -pl module-name -am: Build specific module and its dependencies
+        - mvn clean install -rf :module-name: Resume build from specific module
+        
+        Validates: Requirements 1.1, 1.2, 1.3, 5.1, 5.4 (multi-module build order)
+    -->
+    <modules>
+        <!-- Shared Library - Built First -->
+        <module>sif-broker-common</module>
+        
+        <!-- Extensions Library -->
+        <module>extensions</module>
+        
+        <!-- Core Services -->
+        <module>environment-service</module>
+        <module>queue-service</module>
+        <module>subscription-service</module>
+        <module>job-service</module>
+        
+        <!-- Gateway -->
+        <module>gateway</module>
+        
+        <!-- Connector Services -->
+        <module>events-connector</module>
+        <module>requests-connector</module>
+        <module>responses-connector</module>
+        <module>services-connector</module>
+        
+        <!-- Integration Tests - Built Last -->
+        <module>integration-tests</module>
+        
+        <!-- Coverage Report - Aggregates JaCoCo from all modules -->
+        <module>coverage-report</module>
+    </modules>
+
+    <!-- ========================================== -->
+    <!-- Dependency Management - Centralized Versions -->
+    <!-- ========================================== -->
+    <!--
+        Centralized dependency version management for all child modules.
+        
+        How it works:
+        - Defines versions for shared dependencies without forcing inclusion
+        - Child modules declare dependencies WITHOUT version tags
+        - Maven automatically uses versions defined here
+        - Ensures version consistency across all 12 service modules
+        - Simplifies version updates (change once, applies everywhere)
+        
+        Version properties are defined in the <properties> section above.
+        Child modules can still override versions if needed (not recommended).
+        
+        Validates: Requirements 2.1, 2.2, 2.3 (centralized dependency management)
+    -->
+    <dependencyManagement>
+        <dependencies>
+            <!-- ===== Testing Frameworks ===== -->
+            <!-- jqwik for property-based testing -->
+            <dependency>
+                <groupId>net.jqwik</groupId>
+                <artifactId>jqwik</artifactId>
+                <version>${jqwik.version}</version>
+                <scope>test</scope>
+            </dependency>
+            
+            <!-- Testcontainers BOM for managing all Testcontainers dependencies -->
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            
+            <!-- AssertJ for fluent assertions -->
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>${assertj.version}</version>
+                <scope>test</scope>
+            </dependency>
+            
+            <!-- Awaitility for asynchronous testing -->
+            <dependency>
+                <groupId>org.awaitility</groupId>
+                <artifactId>awaitility</artifactId>
+                <version>${awaitility.version}</version>
+                <scope>test</scope>
+            </dependency>
+            
+            <!-- REST Assured for REST API testing -->
+            <dependency>
+                <groupId>io.rest-assured</groupId>
+                <artifactId>rest-assured</artifactId>
+                <version>${rest-assured.version}</version>
+                <scope>test</scope>
+            </dependency>
+            
+            <!-- WireMock for HTTP service mocking -->
+            <dependency>
+                <groupId>org.wiremock</groupId>
+                <artifactId>wiremock-standalone</artifactId>
+                <version>${wiremock.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- networknt JSON Schema Validator for SIF conformance testing -->
+            <dependency>
+                <groupId>com.networknt</groupId>
+                <artifactId>json-schema-validator</artifactId>
+                <version>${json-schema-validator.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- sif-broker-common test-jar: exposes the SIF conformance harness
+                 (SifSchemaValidator / SifHeaderValidator) to downstream module tests -->
+            <dependency>
+                <groupId>org.sifunity.broker</groupId>
+                <artifactId>sif-broker-common</artifactId>
+                <version>${sif-broker-common.version}</version>
+                <type>test-jar</type>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- ===== Observability - OpenTelemetry ===== -->
+            <!-- OpenTelemetry API for distributed tracing -->
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-api</artifactId>
+                <version>${opentelemetry.version}</version>
+            </dependency>
+            
+            <!-- OpenTelemetry SDK for trace collection -->
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-sdk</artifactId>
+                <version>${opentelemetry.version}</version>
+            </dependency>
+            
+            <!-- OpenTelemetry OTLP exporter for sending traces -->
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-exporter-otlp</artifactId>
+                <version>${opentelemetry.version}</version>
+            </dependency>
+            
+            <!-- OpenTelemetry instrumentation for Spring WebMVC -->
+            <dependency>
+                <groupId>io.opentelemetry.instrumentation</groupId>
+                <artifactId>opentelemetry-spring-webmvc-6.0</artifactId>
+                <version>${opentelemetry-instrumentation.version}</version>
+            </dependency>
+            
+            <!-- OpenTelemetry instrumentation annotations -->
+            <dependency>
+                <groupId>io.opentelemetry.instrumentation</groupId>
+                <artifactId>opentelemetry-instrumentation-annotations</artifactId>
+                <version>${opentelemetry-instrumentation.version}</version>
+            </dependency>
+            
+            <!-- OpenTelemetry semantic conventions -->
+            <dependency>
+                <groupId>io.opentelemetry.semconv</groupId>
+                <artifactId>opentelemetry-semconv</artifactId>
+                <version>${opentelemetry-semconv.version}</version>
+            </dependency>
+            
+            <!-- OpenTelemetry Jaeger exporter -->
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-exporter-jaeger</artifactId>
+                <version>${opentelemetry.version}</version>
+            </dependency>
+            
+            <!-- OpenTelemetry SDK autoconfigure -->
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
+                <version>${opentelemetry.version}</version>
+            </dependency>
+            
+            <!-- OpenTelemetry logging exporter for testing -->
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-exporter-logging</artifactId>
+                <version>${opentelemetry.version}</version>
+                <scope>test</scope>
+            </dependency>
+            
+            <!-- OpenTelemetry SDK testing utilities -->
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-sdk-testing</artifactId>
+                <version>${opentelemetry.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- ===== Observability - Micrometer ===== -->
+            <!-- Micrometer core for metrics collection -->
+            <dependency>
+                <groupId>io.micrometer</groupId>
+                <artifactId>micrometer-core</artifactId>
+                <version>${micrometer.version}</version>
+            </dependency>
+            
+            <!-- Micrometer Prometheus registry for metrics export -->
+            <dependency>
+                <groupId>io.micrometer</groupId>
+                <artifactId>micrometer-registry-prometheus</artifactId>
+                <version>${micrometer.version}</version>
+            </dependency>
+
+            <!-- ===== Utilities ===== -->
+            <!-- Lombok for reducing boilerplate code -->
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <!-- ===== AWS SDK ===== -->
+            <!-- AWS SDK BOM for managing all AWS dependencies -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws-sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- ===== Resilience ===== -->
+            <!-- Resilience4j for circuit breakers and rate limiting -->
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-spring-boot3</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-circuitbreaker</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-reactor</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-ratelimiter</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-retry</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+
+            <!-- ===== Additional Infrastructure ===== -->
+            <!-- Spring Vault for HashiCorp Vault integration -->
+            <dependency>
+                <groupId>org.springframework.vault</groupId>
+                <artifactId>spring-vault-core</artifactId>
+                <version>${spring-vault.version}</version>
+            </dependency>
+            
+            <!-- Embedded Redis for testing -->
+            <dependency>
+                <groupId>it.ozimov</groupId>
+                <artifactId>embedded-redis</artifactId>
+                <version>${embedded-redis.version}</version>
+                <scope>test</scope>
+            </dependency>
+            
+            <!-- Logstash Logback Encoder for structured logging -->
+            <dependency>
+                <groupId>net.logstash.logback</groupId>
+                <artifactId>logstash-logback-encoder</artifactId>
+                <version>${logstash-logback-encoder.version}</version>
+            </dependency>
+
+            <!-- ===== SpringDoc OpenAPI ===== -->
+            <!-- SpringDoc OpenAPI for WebMVC services (environment-service, queue-service, etc.) -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+
+            <!-- SpringDoc OpenAPI for WebFlux (Gateway) -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- ========================================== -->
+    <!-- Plugin Management - Centralized Plugin Configuration -->
+    <!-- ========================================== -->
+    <!--
+        Standardized plugin configurations inherited by all child modules.
+        
+        How it works:
+        - Defines plugin versions and default configurations
+        - Child modules can use plugins WITHOUT repeating configuration
+        - Ensures consistent build, test, and packaging behavior
+        - Child modules can override configurations when needed
+        
+        Key plugins configured:
+        - maven-compiler-plugin: Java 17 compilation with UTF-8 encoding
+        - maven-surefire-plugin: Unit test execution including jqwik property tests
+        - spring-boot-maven-plugin: Executable JAR packaging for Spring Boot apps
+        - maven-source-plugin: Source JAR generation for IDE integration
+        - maven-javadoc-plugin: JavaDoc JAR generation for API documentation
+        - flyway-maven-plugin: Database migration management
+        
+        Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5 (standardized plugin configuration)
+    -->
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!-- ===== Maven Compiler Plugin ===== -->
+                <!--
+                    Configures Java compilation settings:
+                    - Java 17 source and target compatibility
+                    - UTF-8 encoding for source files
+                    - -parameters flag to preserve parameter names for reflection (required by Spring)
+                    Validates: Requirements 3.1 (Java 17), 3.2 (UTF-8), 7.2 (parameter names)
+                -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven-compiler-plugin.version}</version>
+                    <configuration>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                        <encoding>${project.build.sourceEncoding}</encoding>
+                        <compilerArgs>
+                            <arg>-parameters</arg>
+                        </compilerArgs>
+                    </configuration>
+                </plugin>
+
+                <!-- ===== Maven Surefire Plugin ===== -->
+                <!--
+                    Configures unit test execution:
+                    - Includes standard test patterns: *Test.java, *Tests.java
+                    - Includes property-based test pattern: *Properties.java (for jqwik tests)
+                    - UTF-8 encoding for test output
+                    Validates: Requirements 3.3 (test patterns), 11.1 (property-based testing support)
+                -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${maven-surefire-plugin.version}</version>
+                    <configuration>
+                        <includes>
+                            <include>**/*Test.java</include>
+                            <include>**/*Tests.java</include>
+                            <include>**/*Properties.java</include>
+                        </includes>
+                        <encoding>${project.build.sourceEncoding}</encoding>
+                        <environmentVariables>
+                            <INTERNAL_SERVICE_TOKEN>test-internal-token</INTERNAL_SERVICE_TOKEN>
+                        </environmentVariables>
+                    </configuration>
+                </plugin>
+
+                <!-- ===== JaCoCo Maven Plugin ===== -->
+                <!--
+                    Configures code coverage measurement:
+                    - Instruments bytecode during test execution
+                    - Generates coverage reports in HTML and XML formats
+                    - Reports available at target/site/jacoco/index.html per module
+                    - XML reports at target/site/jacoco/jacoco.xml for CI integration
+                -->
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>0.8.11</version>
+                    <executions>
+                        <execution>
+                            <id>prepare-agent</id>
+                            <goals>
+                                <goal>prepare-agent</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>report</id>
+                            <phase>test</phase>
+                            <goals>
+                                <goal>report</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- ===== Spring Boot Maven Plugin ===== -->
+                <!--
+                    Configures Spring Boot application packaging:
+                    - Creates executable JAR with embedded Tomcat
+                    - Excludes Lombok from repackaged JAR (compile-time only dependency)
+                    - Enables build info generation for actuator endpoints
+                    Validates: Requirements 3.5 (executable JAR), 7.2 (Lombok exclusion)
+                -->
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <configuration>
+                        <excludes>
+                            <exclude>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </exclude>
+                        </excludes>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>repackage</goal>
+                                <goal>build-info</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- ===== Maven Source Plugin ===== -->
+                <!--
+                    Generates source JAR files for all modules:
+                    - Attaches source code to artifacts for IDE integration
+                    - Useful for debugging and code navigation in dependent projects
+                    - Executes during package phase
+                -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>${maven-source-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>attach-sources</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>jar-no-fork</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- ===== Maven Javadoc Plugin ===== -->
+                <!--
+                    Generates Javadoc JAR files for all modules:
+                    - Creates API documentation from source code comments
+                    - Attaches Javadoc to artifacts for IDE integration
+                    - Executes during package phase
+                    - Configured to be lenient with incomplete documentation
+                -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>${maven-javadoc-plugin.version}</version>
+                    <configuration>
+                        <doclint>none</doclint>
+                        <quiet>true</quiet>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>attach-javadocs</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>jar</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- ===== Flyway Maven Plugin ===== -->
+                <!--
+                    Configures database migration management:
+                    - Manages versioned SQL migration scripts
+                    - Default location: src/main/resources/db/migration
+                    - Connection details should be configured in child modules
+                    - Supports PostgreSQL for production databases
+                    Note: Child modules must override with specific database URLs
+                -->
+                <plugin>
+                    <groupId>org.flywaydb</groupId>
+                    <artifactId>flyway-maven-plugin</artifactId>
+                    <version>${flyway-maven-plugin.version}</version>
+                    <configuration>
+                        <locations>
+                            <location>filesystem:src/main/resources/db/migration</location>
+                        </locations>
+                    </configuration>
+                </plugin>
+
+                <!-- ===== SpringDoc OpenAPI Maven Plugin ===== -->
+                <!--
+                    Generates static OpenAPI YAML files during integration-test phase.
+                    Requires the application to be running (use with spring-boot-maven-plugin start/stop).
+                    Child modules configure specific executions for sif-api and internal-api groups.
+                -->
+                <plugin>
+                    <groupId>org.springdoc</groupId>
+                    <artifactId>springdoc-openapi-maven-plugin</artifactId>
+                    <version>${springdoc-maven-plugin.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <!-- Activate JaCoCo for all modules -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!-- ========================================== -->
+    <!-- Build Profiles - Deployment Environments   -->
+    <!-- ========================================== -->
+    <!--
+        Maven profiles for different deployment environments and build scenarios.
+        Profiles control Spring Boot active profiles and test execution behavior.
+        Validates: Requirements 10.2 (deployment environments), 8.4 (skip integration tests)
+    -->
+    <profiles>
+        <!-- ===== Development Profile ===== -->
+        <!--
+            Active by default for local development.
+            Sets Spring profile to 'dev' for development-specific configurations.
+        -->
+        <profile>
+            <id>dev</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <spring.profiles.active>dev</spring.profiles.active>
+            </properties>
+        </profile>
+
+        <!-- ===== Staging Profile ===== -->
+        <!--
+            Activated with: mvn clean install -Pstaging
+            Sets Spring profile to 'staging' for pre-production testing.
+        -->
+        <profile>
+            <id>staging</id>
+            <properties>
+                <spring.profiles.active>staging</spring.profiles.active>
+            </properties>
+        </profile>
+
+        <!-- ===== Production Profile ===== -->
+        <!--
+            Activated with: mvn clean install -Pproduction
+            Sets Spring profile to 'production' for production deployments.
+        -->
+        <profile>
+            <id>production</id>
+            <properties>
+                <spring.profiles.active>production</spring.profiles.active>
+            </properties>
+        </profile>
+
+        <!-- ===== Skip Integration Tests Profile ===== -->
+        <!--
+            Activated with: mvn clean install -Pskip-integration-tests
+            Skips integration tests while still running unit tests.
+            Useful for faster builds during development.
+        -->
+        <profile>
+            <id>skip-integration-tests</id>
+            <properties>
+                <skipITs>true</skipITs>
+            </properties>
+        </profile>
+
+        <!-- ===== Events Connector Focus Profile ===== -->
+        <!--
+            Activated with: mvn clean install -Pevents-connector-focus
+            Builds only the essential modules for events-connector development:
+            - sif-broker-common (required dependency)
+            - environment-service (required dependency)
+            - queue-service (required dependency)
+            - subscription-service (required dependency)
+            - gateway (required dependency)
+            - events-connector (target module)
+            - services-connector (required dependency)
+            
+            Skips these modules to speed up builds:
+            - job-service
+            - requests-connector
+            - responses-connector
+            - integration-tests
+        -->
+        <profile>
+            <id>events-connector-focus</id>
+            <modules>
+                <!-- Shared Library - Built First -->
+                <module>sif-broker-common</module>
+                
+                <!-- Extensions Library -->
+                <module>extensions</module>
+                
+                <!-- Core Services (required by events-connector) -->
+                <module>environment-service</module>
+                <module>queue-service</module>
+                <module>subscription-service</module>
+                
+                <!-- Gateway -->
+                <module>gateway</module>
+                
+                <!-- Connector Services (events-connector and its dependencies) -->
+                <module>events-connector</module>
+                <module>services-connector</module>
+                
+                <!-- Skipped modules:
+                     - job-service
+                     - requests-connector
+                     - responses-connector
+                     - integration-tests
+                -->
+            </modules>
+        </profile>
+    </profiles>
+
+</project>

@@ -1,0 +1,144 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: requests-connector
+  namespace: sif-broker
+  labels:
+    app: requests-connector
+    component: connector
+    tier: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: requests-connector
+  template:
+    metadata:
+      labels:
+        app: requests-connector
+        component: connector
+        tier: backend
+    spec:
+      containers:
+      - name: requests-connector
+        image: sif-broker/requests-connector:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        # Spring configuration
+        - name: SPRING_PROFILES_ACTIVE
+          value: "production"
+        
+        # Redis configuration
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: requests-connector-config
+              key: redis.host
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: requests-connector-config
+              key: redis.port
+        
+        # Service URLs
+        - name: ENVIRONMENT_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: requests-connector-config
+              key: environment.service.url
+        - name: QUEUE_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: requests-connector-config
+              key: queue.service.url
+        - name: SUBSCRIPTION_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: requests-connector-config
+              key: subscription.service.url
+        - name: RESPONSES_CONNECTOR_URL
+          valueFrom:
+            configMapKeyRef:
+              name: requests-connector-config
+              key: responses.connector.url
+        
+        # Provider timeouts
+        - name: PROVIDER_CONNECTION_TIMEOUT
+          valueFrom:
+            configMapKeyRef:
+              name: requests-connector-config
+              key: provider.timeout.connection
+        - name: PROVIDER_READ_TIMEOUT
+          valueFrom:
+            configMapKeyRef:
+              name: requests-connector-config
+              key: provider.timeout.read
+        
+        # Proxy worker configuration
+        - name: PROXY_MAX_RETRIES
+          valueFrom:
+            configMapKeyRef:
+              name: requests-connector-config
+              key: proxy.worker.max-retries
+        - name: PROXY_POLL_INTERVAL
+          valueFrom:
+            configMapKeyRef:
+              name: requests-connector-config
+              key: proxy.worker.poll-interval
+        
+        # Resource limits
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        
+        # Liveness probe
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        
+        # Readiness probe
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        
+        # Startup probe
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 30
+      
+      # Pod disruption budget for high availability
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - requests-connector
+              topologyKey: kubernetes.io/hostname

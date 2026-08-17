@@ -153,3 +153,24 @@ compile-errors.txt
 test-output.txt
 test-results.txt
 verify-output.txt
+
+# Build/classpath diagnostic dumps (e.g. produced while chasing a stale ~/.m2 artifact)
+otel-cp*.txt
+*-classpath.txt
+classpath-*.txt
+
+# Downloaded CI pipeline logs kept for local analysis (hundreds of MB)
+pipeline_debug/
+
+# Bruno CLI run reports
+bruno-certification-tests/kiro-bruno-report*.json
+
+# Local scratch / crash artifacts
+ClaudeEvaluation.md
+*.stackdump
+
+# Vite build cache
+experimental-admin-console/.vite/
+
+# Deployment log written by the deploy scripts; not source.
+deploy-log.txt

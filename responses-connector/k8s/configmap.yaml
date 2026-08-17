@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: responses-connector-config
+  labels:
+    app: responses-connector
+    component: connector-service
+data:
+  # Queue Service Configuration
+  queue.service.url: "http://queue-service:8082"
+  queue.service.connection.timeout: "5000"
+  queue.service.read.timeout: "10000"
+  queue.service.max.retries: "3"
+  queue.service.retry.delay: "100"

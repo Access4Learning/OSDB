@@ -1,0 +1,97 @@
+# Services Connector Application Configuration
+
+server:
+  port: 8087
+
+spring:
+  application:
+    name: services-connector
+  
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+# Header Passthrough Configuration
+sif:
+  headers:
+    blacklist: []
+
+# Downstream Service URLs
+environment:
+  service:
+    url: http://localhost:8081
+    timeout:
+      connection: 2000  # milliseconds
+      read: 10000       # milliseconds
+
+queue:
+  service:
+    url: http://localhost:8082
+
+subscription:
+  service:
+    url: http://localhost:8083
+
+# Provider Communication Configuration
+provider:
+  timeout:
+    connection: 5000  # milliseconds
+    read: 30000       # milliseconds
+  cache:
+    ttl: 300          # seconds (5 minutes)
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    org.sifunity.servicesconnector: INFO
+    org.springframework.web: INFO
+    org.springframework.data.redis: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Broker Configuration
+broker:
+  internal-service-token: ${INTERNAL_SERVICE_TOKEN:}
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      service: services-connector
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  health:
+    redis:
+      enabled: true
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true

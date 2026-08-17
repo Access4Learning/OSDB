@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: responses-connector
+  labels:
+    app: responses-connector
+    component: connector-service
+spec:
+  type: ClusterIP
+  selector:
+    app: responses-connector
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8084
+    targetPort: http
+  sessionAffinity: None

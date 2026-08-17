@@ -1,0 +1,35 @@
+# Production Profile Configuration
+# Activate with: SPRING_PROFILES_ACTIVE=prod
+
+# Secrets backend: multi-key encryption (AES-256-GCM)
+# The key value comes from ECS secret ENCRYPTION_KEY_20250508 (injected from Secrets Manager).
+# Spring relaxed binding maps SECRETS_BACKEND_MULTI_KEY_KEYS_20250508 env var to this property.
+secrets:
+  backend:
+    type: multi-key
+    multi-key:
+      current-version: "20250508"
+      keys:
+        "20250508": "${ENCRYPTION_KEY_20250508:none}"
+
+# Disable API documentation in production
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# Disable Logstash appender (no ELK stack in this deployment)
+observability:
+  logging:
+    logstash:
+      enabled: false
+      host: "localhost"
+      port: 5000
+
+# Logging
+logging:
+  level:
+    root: WARN
+    org.sifunity.broker.environment: INFO
+    org.springframework.web: WARN

@@ -1,0 +1,163 @@
+# Internal service token for test context startup
+broker:
+  internal-service-token: test-internal-token
+
+spring:
+  application:
+    name: gateway
+  
+  cloud:
+    gateway:
+      # Disable service discovery in test mode
+      discovery:
+        locator:
+          enabled: false
+      
+      # Define explicit routes with URLs from properties
+      routes:
+        # Block internal APIs
+        - id: block-internal
+          uri: no://op
+          predicates:
+            - Path=/internal/**
+          filters:
+            - SetStatus=403
+        
+        # Domain management route
+        - id: domain-service
+          uri: ${environment-service.url:http://localhost:18081}
+          predicates:
+            - Path=/domains/**
+        
+        # Solution management route
+        - id: solution-service
+          uri: ${environment-service.url:http://localhost:18081}
+          predicates:
+            - Path=/{domainId}/solutions/**
+        
+        # Environment Service routes (under domain/solution prefix)
+        - id: environment-service
+          uri: ${environment-service.url:http://localhost:18081}
+          predicates:
+            - Path=/{domainId}/{solutionId}/environments/**,/{domainId}/{solutionId}/acl-entries/**,/{domainId}/{solutionId}/providers/**,/{domainId}/{solutionId}/zones/**
+        
+        # Connector Service routes (under domain/solution prefix)
+        - id: requests-connector
+          uri: ${sif.broker.services.requests-connector.url:http://localhost:18085}
+          predicates:
+            - Path=/{domainId}/{solutionId}/requests/**
+          filters:
+            - RewritePath=/(?<domainId>[^/]+)/(?<solutionId>[^/]+)/requests/(?<segment>.*), /${domainId}/${solutionId}/api/v1/requests/${segment}
+        
+        - id: responses-connector
+          uri: ${sif.broker.services.responses-connector.url:http://localhost:18086}
+          predicates:
+            - Path=/{domainId}/{solutionId}/responses/**
+          filters:
+            - RewritePath=/(?<domainId>[^/]+)/(?<solutionId>[^/]+)/responses/(?<segment>.*), /${domainId}/${solutionId}/api/v1/responses/${segment}
+        
+        - id: events-connector
+          uri: ${sif.broker.services.events-connector.url:http://localhost:18087}
+          predicates:
+            - Path=/{domainId}/{solutionId}/events/**
+          filters:
+            - RewritePath=/(?<domainId>[^/]+)/(?<solutionId>[^/]+)/events/(?<segment>.*), /${domainId}/${solutionId}/api/v1/events/${segment}
+        
+        - id: services-connector
+          uri: ${sif.broker.services.services-connector.url:http://localhost:18088}
+          predicates:
+            - Path=/{domainId}/{solutionId}/services/**
+          filters:
+            - RewritePath=/(?<domainId>[^/]+)/(?<solutionId>[^/]+)/services/(?<segment>.*), /${domainId}/${solutionId}/api/v1/services/${segment}
+        
+        # Core Service routes (under domain/solution prefix)
+        - id: queue-service
+          uri: ${sif.broker.services.queue-service.url:http://localhost:18082}
+          predicates:
+            - Path=/{domainId}/{solutionId}/queues/**
+        
+        - id: subscription-service
+          uri: ${sif.broker.services.subscription-service.url:http://localhost:18083}
+          predicates:
+            - Path=/{domainId}/{solutionId}/subscriptions/**
+        
+        - id: job-service
+          uri: ${sif.broker.services.job-service.url:http://localhost:18084}
+          predicates:
+            - Path=/{domainId}/{solutionId}/jobs/**
+      
+      # Global timeout settings
+      httpclient:
+        connect-timeout: 5000
+        response-timeout: 30s
+      
+      # Default filters
+      default-filters:
+        - name: Retry
+          args:
+            retries: 2
+            statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+            methods: GET,POST
+            backoff:
+              firstBackoff: 100ms
+              maxBackoff: 500ms
+              factor: 2
+  
+  # Redis configuration (for rate limiting)
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+
+server:
+  port: 8080
+
+# Environment Service configuration
+environment-service:
+  url: ${ENVIRONMENT_SERVICE_URL:http://localhost:18081}
+
+# Rate limiting configuration (enabled in tests to allow RateLimitingIntegrationTest to work)
+sif:
+  broker:
+    gateway:
+      rate-limit:
+        enabled: true
+      health:
+        # Disable environment service health indicator in tests
+        # The indicator tries to connect to the real environment service
+        # In tests, we mock the service with WireMock instead
+        environment-service:
+          enabled: false
+
+# Logging
+logging:
+  level:
+    root: WARN
+    org.sifunity: WARN
+    org.springframework: WARN
+    org.springframework.cloud.gateway: WARN
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+    net.jqwik: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} [%X{correlationId}] - %msg%n"
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+  health:
+    # Disable Redis health indicator in tests (Redis is mocked via MockBean)
+    redis:
+      enabled: false
+
+# Disable observability health indicators in tests (no Jaeger/Logstash running)
+observability:
+  enabled: false
+  tracing:
+    enabled: false

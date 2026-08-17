@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: queue-service
+  labels:
+    app: queue-service
+    component: core-service
+spec:
+  type: ClusterIP
+  selector:
+    app: queue-service
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8082
+    targetPort: http
+  sessionAffinity: None

@@ -1,0 +1,111 @@
+spring:
+  application:
+    name: gateway
+  
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      
+      # Global timeout settings
+      httpclient:
+        connect-timeout: 5000
+        response-timeout: 30s
+      
+      # Default filters
+      default-filters:
+        - name: Retry
+          args:
+            retries: 2
+            statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+            methods: GET,POST
+            backoff:
+              firstBackoff: 100ms
+              maxBackoff: 500ms
+              factor: 2
+  
+  # Redis configuration (for rate limiting)
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+server:
+  port: 8080
+  forward-headers-strategy: framework
+
+# SpringDoc OpenAPI aggregation
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    urls:
+      - name: Environment Service
+        url: /v3/api-docs/environment-service
+      - name: Queue Service
+        url: /v3/api-docs/queue-service
+      - name: Subscription Service
+        url: /v3/api-docs/subscription-service
+      - name: Job Service
+        url: /v3/api-docs/job-service
+      - name: Events Connector
+        url: /v3/api-docs/events-connector
+
+# Broker Configuration
+broker:
+  internal-service-token: ${INTERNAL_SERVICE_TOKEN:}
+
+# Environment Service configuration
+environment-service:
+  url: ${ENVIRONMENT_SERVICE_URL:http://localhost:8081}
+
+# Rate limiting configuration
+rate-limit:
+  requests-per-second:
+    DIRECT: 100
+    BROKERED: 100
+
+# Logging
+logging:
+  level:
+    org.sifunity.gateway: DEBUG
+    org.springframework.cloud.gateway: INFO
+    reactor.netty: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} [%X{correlationId}] - %msg%n"
+
+# Resilience4j Circuit Breaker
+resilience4j:
+  circuitbreaker:
+    instances:
+      environmentServiceCB:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}

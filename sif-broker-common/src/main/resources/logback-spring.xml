@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Include Spring Boot defaults -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    
+    <!-- Spring properties for configuration -->
+    <springProperty scope="context" name="serviceName" source="spring.application.name" defaultValue="sif-broker"/>
+    <springProperty scope="context" name="environment" source="spring.profiles.active" defaultValue="default"/>
+    <springProperty scope="context" name="logstashHost" source="observability.logging.logstash.host" defaultValue="localhost"/>
+    <springProperty scope="context" name="logstashPort" source="observability.logging.logstash.port" defaultValue="5000"/>
+    <springProperty scope="context" name="asyncQueueSize" source="observability.logging.async.queue-size" defaultValue="512"/>
+    <springProperty scope="context" name="asyncDiscardingThreshold" source="observability.logging.async.discarding-threshold" defaultValue="0"/>
+    
+    <!-- Console appender with JSON encoder for structured logging -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <!-- Add service name and environment as custom fields -->
+            <customFields>{"service":"${serviceName}","environment":"${environment}"}</customFields>
+            
+            <!-- Configure field names for consistency -->
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <message>message</message>
+                <logger>logger</logger>
+                <thread>thread</thread>
+                <level>level</level>
+                <levelValue>[ignore]</levelValue>
+            </fieldNames>
+            
+            <!-- Include MDC fields for trace correlation -->
+            <provider class="net.logstash.logback.composite.loggingevent.LoggingEventPatternJsonProvider">
+                <pattern>
+                    {
+                        "trace_id": "%mdc{trace_id}",
+                        "span_id": "%mdc{span_id}",
+                        "correlation_id": "%mdc{correlation_id}"
+                    }
+                </pattern>
+            </provider>
+            
+            <!-- Include stack traces for exceptions -->
+            <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                <maxDepthPerThrowable>30</maxDepthPerThrowable>
+                <maxLength>2048</maxLength>
+                <shortenedClassNameLength>20</shortenedClassNameLength>
+                <exclude>^sun\.reflect\..*\.invoke</exclude>
+                <exclude>^net\.sf\.cglib\.proxy\.MethodProxy\.invoke</exclude>
+                <rootCauseFirst>true</rootCauseFirst>
+            </throwableConverter>
+        </encoder>
+    </appender>
+    
+    <!-- Async console appender for performance -->
+    <appender name="ASYNC_CONSOLE" class="ch.qos.logback.classic.AsyncAppender">
+        <!-- Queue size for buffering log events -->
+        <queueSize>${asyncQueueSize}</queueSize>
+        <!-- Discarding threshold: 0 means never discard logs -->
+        <discardingThreshold>${asyncDiscardingThreshold}</discardingThreshold>
+        <!-- Don't include caller data (expensive operation) -->
+        <includeCallerData>false</includeCallerData>
+        <!-- Maximum time to wait for queue space (milliseconds) -->
+        <maxFlushTime>5000</maxFlushTime>
+        <!-- Never block the calling thread -->
+        <neverBlock>false</neverBlock>
+        <appender-ref ref="CONSOLE"/>
+    </appender>
+    
+    <!-- Logstash appenders - only for production profile -->
+    <springProfile name="prod">
+        <!-- Logstash TCP appender for centralized logging with exponential backoff -->
+        <appender name="LOGSTASH" class="org.sifunity.broker.common.logging.ResilientLogstashTcpSocketAppender">
+            <!-- Logstash destination -->
+            <destination>${logstashHost}:${logstashPort}</destination>
+            
+            <!-- JSON encoder with same configuration as console -->
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <!-- Add service name and environment as custom fields -->
+                <customFields>{"service":"${serviceName}","environment":"${environment}"}</customFields>
+                
+                <!-- Configure field names for consistency -->
+                <fieldNames>
+                    <timestamp>timestamp</timestamp>
+                    <message>message</message>
+                    <logger>logger</logger>
+                    <thread>thread</thread>
+                    <level>level</level>
+                    <levelValue>[ignore]</levelValue>
+                </fieldNames>
+                
+                <!-- Include MDC fields for trace correlation -->
+                <provider class="net.logstash.logback.composite.loggingevent.LoggingEventPatternJsonProvider">
+                    <pattern>
+                        {
+                            "trace_id": "%mdc{trace_id}",
+                            "span_id": "%mdc{span_id}",
+                            "correlation_id": "%mdc{correlation_id}"
+                        }
+                    </pattern>
+                </provider>
+                
+                <!-- Include stack traces for exceptions -->
+                <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                    <maxDepthPerThrowable>30</maxDepthPerThrowable>
+                    <maxLength>2048</maxLength>
+                    <shortenedClassNameLength>20</shortenedClassNameLength>
+                    <exclude>^sun\.reflect\..*\.invoke</exclude>
+                    <exclude>^net\.sf\.cglib\.proxy\.MethodProxy\.invoke</exclude>
+                    <rootCauseFirst>true</rootCauseFirst>
+                </throwableConverter>
+            </encoder>
+            
+            <!-- Connection timeout -->
+            <connectionTimeout>5 seconds</connectionTimeout>
+            
+            <!-- Write timeout -->
+            <writeTimeout>5 seconds</writeTimeout>
+            
+            <!-- Write buffer size for batching -->
+            <writeBufferSize>16384</writeBufferSize>
+            
+            <!-- Keep alive to detect connection failures -->
+            <keepAliveDuration>5 minutes</keepAliveDuration>
+            
+            <!-- Initial reconnection delay (exponential backoff is handled by ResilientLogstashTcpSocketAppender) -->
+            <reconnectionDelay>1 second</reconnectionDelay>
+        </appender>
+        
+        <!-- Async Logstash appender for performance -->
+        <appender name="ASYNC_LOGSTASH" class="ch.qos.logback.classic.AsyncAppender">
+            <!-- Queue size for buffering log events -->
+            <queueSize>${asyncQueueSize}</queueSize>
+            <!-- Discarding threshold: 0 means never discard logs -->
+            <discardingThreshold>${asyncDiscardingThreshold}</discardingThreshold>
+            <!-- Don't include caller data (expensive operation) -->
+            <includeCallerData>false</includeCallerData>
+            <!-- Maximum time to wait for queue space (milliseconds) -->
+            <maxFlushTime>5000</maxFlushTime>
+            <!-- Never block the calling thread -->
+            <neverBlock>false</neverBlock>
+            <appender-ref ref="LOGSTASH"/>
+        </appender>
+    </springProfile>
+    
+    <!-- Root logger configuration (default - no Logstash for local development) -->
+    <root level="INFO">
+        <appender-ref ref="ASYNC_CONSOLE"/>
+    </root>
+    
+    <!-- Service-specific loggers -->
+    <logger name="org.sifunity" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_CONSOLE"/>
+    </logger>
+    
+    <!-- Spring Framework loggers -->
+    <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.springframework.data" level="INFO"/>
+    <logger name="org.springframework.cloud.gateway" level="INFO"/>
+    <logger name="org.springframework.security" level="INFO"/>
+    
+    <!-- Hibernate/JPA loggers -->
+    <logger name="org.hibernate" level="WARN"/>
+    <logger name="org.hibernate.SQL" level="WARN"/>
+    <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="WARN"/>
+    
+    <!-- OpenTelemetry loggers -->
+    <logger name="io.opentelemetry" level="INFO"/>
+    <logger name="io.opentelemetry.exporter" level="WARN"/>
+    
+    <!-- Micrometer loggers -->
+    <logger name="io.micrometer" level="INFO"/>
+    
+    <!-- Redis client (Lettuce) loggers -->
+    <logger name="io.lettuce" level="INFO"/>
+    <logger name="io.lettuce.core.protocol" level="WARN"/>
+    
+    <!-- Reactor Netty loggers -->
+    <logger name="reactor.netty" level="INFO"/>
+    <logger name="reactor.netty.http.client" level="DEBUG"/>
+    
+    <!-- Logstash appender loggers (avoid recursion) -->
+    <logger name="net.logstash.logback" level="WARN"/>
+    
+    <!-- Profile-specific configurations -->
+    
+    <!-- Local profile: Console only, no Logstash -->
+    <springProfile name="local">
+        <root level="INFO">
+            <appender-ref ref="ASYNC_CONSOLE"/>
+        </root>
+        <logger name="org.sifunity" level="INFO"/>
+        <logger name="org.springframework.web" level="INFO"/>
+    </springProfile>
+    
+    <!-- Development profile: More verbose logging, console only -->
+    <springProfile name="dev">
+        <root level="DEBUG">
+            <appender-ref ref="ASYNC_CONSOLE"/>
+        </root>
+        <logger name="org.sifunity" level="DEBUG"/>
+        <logger name="org.springframework.web" level="DEBUG"/>
+    </springProfile>
+    
+    <!-- Test profile: Structured logging for test analysis -->
+    <springProfile name="test">
+        <root level="INFO">
+            <appender-ref ref="ASYNC_CONSOLE"/>
+        </root>
+        <logger name="org.sifunity" level="INFO"/>
+    </springProfile>
+    
+    <!-- Production profile: Optimized for performance and centralized logging -->
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="ASYNC_CONSOLE"/>
+            <appender-ref ref="ASYNC_LOGSTASH"/>
+        </root>
+        <logger name="org.sifunity" level="INFO"/>
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.hibernate" level="ERROR"/>
+    </springProfile>
+</configuration>

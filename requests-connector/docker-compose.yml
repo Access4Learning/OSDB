@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  requests-connector:
+    build: .
+    container_name: requests-connector
+    ports:
+      - "8080:8080"
+    environment:
+      # Spring profiles
+      SPRING_PROFILES_ACTIVE: dev
+      
+      # Redis configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # Service URLs
+      ENVIRONMENT_SERVICE_URL: http://environment-service:8080
+      QUEUE_SERVICE_URL: http://queue-service:8080
+      SUBSCRIPTION_SERVICE_URL: http://subscription-service:8080
+      RESPONSES_CONNECTOR_URL: http://responses-connector:8080
+      
+      # Provider timeouts
+      PROVIDER_CONNECTION_TIMEOUT: 5000
+      PROVIDER_READ_TIMEOUT: 30000
+      
+      # Proxy worker configuration
+      PROXY_MAX_RETRIES: 3
+      PROXY_POLL_INTERVAL: 1000
+      
+      # Logging
+      LOGGING_LEVEL_ORG_SIFUNITY: INFO
+    depends_on:
+      - redis
+    networks:
+      - sif-broker-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: requests-connector-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - sif-broker-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Mock services for local development
+  environment-service-mock:
+    image: mockserver/mockserver:latest
+    container_name: environment-service-mock
+    ports:
+      - "8081:1080"
+    environment:
+      MOCKSERVER_INITIALIZATION_JSON_PATH: /config/environment-service-expectations.json
+    volumes:
+      - ./mock-config:/config
+    networks:
+      - sif-broker-network
+
+  queue-service-mock:
+    image: mockserver/mockserver:latest
+    container_name: queue-service-mock
+    ports:
+      - "8082:1080"
+    environment:
+      MOCKSERVER_INITIALIZATION_JSON_PATH: /config/queue-service-expectations.json
+    volumes:
+      - ./mock-config:/config
+    networks:
+      - sif-broker-network
+
+  subscription-service-mock:
+    image: mockserver/mockserver:latest
+    container_name: subscription-service-mock
+    ports:
+      - "8083:1080"
+    environment:
+      MOCKSERVER_INITIALIZATION_JSON_PATH: /config/subscription-service-expectations.json
+    volumes:
+      - ./mock-config:/config
+    networks:
+      - sif-broker-network
+
+  responses-connector-mock:
+    image: mockserver/mockserver:latest
+    container_name: responses-connector-mock
+    ports:
+      - "8084:1080"
+    environment:
+      MOCKSERVER_INITIALIZATION_JSON_PATH: /config/responses-connector-expectations.json
+    volumes:
+      - ./mock-config:/config
+    networks:
+      - sif-broker-network
+
+networks:
+  sif-broker-network:
+    driver: bridge
+
+volumes:
+  redis-data:

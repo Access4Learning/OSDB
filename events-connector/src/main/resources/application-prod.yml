@@ -1,0 +1,63 @@
+# Production Profile Configuration
+# Activate with: --spring.profiles.active=prod
+
+# Circuit Breaker: much more tolerant for cloud deployment
+# - Larger window (50 calls) so cold-start failures don't trip it
+# - Higher minimum calls (20) before evaluating
+# - Longer wait in open state (60s) to give services time to recover
+# - More half-open calls (10) for reliable recovery detection
+resilience4j:
+  circuitbreaker:
+    instances:
+      subscriptionService:
+        failure-rate-threshold: 80
+        wait-duration-in-open-state: 60s
+        sliding-window-size: 50
+        sliding-window-type: COUNT_BASED
+        minimum-number-of-calls: 20
+        permitted-number-of-calls-in-half-open-state: 10
+        automatic-transition-from-open-to-half-open-enabled: true
+      queueService:
+        failure-rate-threshold: 80
+        wait-duration-in-open-state: 60s
+        sliding-window-size: 50
+        sliding-window-type: COUNT_BASED
+        minimum-number-of-calls: 20
+        permitted-number-of-calls-in-half-open-state: 10
+        automatic-transition-from-open-to-half-open-enabled: true
+
+# SpringDoc OpenAPI - disabled in production
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# Logging Configuration for Production (JSON format)
+logging:
+  level:
+    root: WARN
+    org.sifunity.eventsconnector: INFO
+    org.springframework.web: WARN
+    org.springframework.web.reactive: WARN
+  pattern:
+    # JSON structured logging for production
+    console: >-
+      {"timestamp":"%d{yyyy-MM-dd HH:mm:ss.SSS}","level":"%level","thread":"%thread","logger":"%logger{36}","correlationId":"%X{correlationId}","message":"%msg"}%n
+
+# Actuator Configuration for Production
+management:
+  endpoints:
+    web:
+      exposure:
+        # Limit exposed endpoints in production
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      show-details: never  # Hide details in production for security
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true

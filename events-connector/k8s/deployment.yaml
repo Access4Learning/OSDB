@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: events-connector
+  labels:
+    app: events-connector
+    component: connector-service
+    tier: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: events-connector
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: events-connector
+        component: connector-service
+        tier: backend
+    spec:
+      containers:
+      - name: events-connector
+        image: sif-broker/events-connector:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8084
+          protocol: TCP
+        env:
+        # Subscription Service Configuration
+        - name: SUBSCRIPTION_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: events-connector-config
+              key: subscription.service.url
+        
+        # Queue Service Configuration
+        - name: QUEUE_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: events-connector-config
+              key: queue.service.url
+        
+        # Retry Configuration
+        - name: RETRY_MAX_ATTEMPTS
+          valueFrom:
+            configMapKeyRef:
+              name: events-connector-config
+              key: retry.max.attempts
+        
+        # Server Configuration
+        - name: SERVER_PORT
+          value: "8084"
+        
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: http
+          initialDelaySeconds: 40
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: http
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+      
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30

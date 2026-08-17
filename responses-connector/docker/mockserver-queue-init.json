@@ -1,0 +1,33 @@
+[
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/api/v1/queues/.*/messages"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "messageId": "550e8400-e29b-41d4-a716-446655440000",
+        "status": "ENQUEUED"
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/health"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "status": "UP"
+      }
+    }
+  }
+]

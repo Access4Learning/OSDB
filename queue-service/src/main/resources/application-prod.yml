@@ -1,0 +1,22 @@
+# Production Profile - Queue Service
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# Logging
+logging:
+  level:
+    root: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN   # BasicBinder param logging
+    org.sifunity.broker.queueservice: INFO
+    org.springframework.web: WARN
+
+# Actuator Configuration for Production
+management:
+  endpoint:
+    health:
+      show-details: never

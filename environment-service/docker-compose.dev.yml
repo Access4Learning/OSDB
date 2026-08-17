@@ -1,0 +1,44 @@
+version: '3.8'
+
+# Development override for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  # PostgreSQL with additional development settings
+  postgres:
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: sif_broker
+      POSTGRES_USER: sif_broker
+      POSTGRES_PASSWORD: changeme
+      # Enable query logging for development
+      POSTGRES_INITDB_ARGS: "-c log_statement=all"
+
+  # Environment Service with development settings
+  environment-service:
+    environment:
+      # Enable SQL logging for development
+      SPRING_JPA_SHOW_SQL: "true"
+      SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: "true"
+      
+      # Enable debug logging
+      LOGGING_LEVEL_ORG_SIFUNITY_BROKER_ENVIRONMENT: DEBUG
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB: DEBUG
+      LOGGING_LEVEL_ORG_HIBERNATE_SQL: DEBUG
+      LOGGING_LEVEL_ORG_HIBERNATE_TYPE_DESCRIPTOR_SQL_BASICBINDER: TRACE
+      
+      # Enable Spring Boot DevTools features
+      SPRING_DEVTOOLS_RESTART_ENABLED: "true"
+      
+      # JVM debug options
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xms256m -Xmx512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    
+    ports:
+      - "8081:8081"
+      - "5005:5005"  # Java debug port
+    
+    # Mount source code for hot reload (if using Spring Boot DevTools)
+    volumes:
+      - ./target:/app/target
+      - ./src:/app/src

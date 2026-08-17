@@ -1,0 +1,60 @@
+# Test Configuration for Services Connector
+
+# Internal service token for test context startup
+broker:
+  internal-service-token: test-internal-token
+
+server:
+  port: 0  # Random port for tests
+
+spring:
+  application:
+    name: services-connector-test
+  
+  # Redis Configuration for Tests
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 1000ms
+
+# Downstream Service URLs (will be overridden by WireMock in tests)
+environment:
+  service:
+    url: http://localhost:8081
+    timeout:
+      connection: 1000
+      read: 5000
+
+queue:
+  service:
+    url: http://localhost:8084
+
+subscription:
+  service:
+    url: http://localhost:8085
+
+# Provider Communication Configuration
+provider:
+  timeout:
+    connection: 1000
+    read: 5000
+  cache:
+    ttl: 60  # shorter TTL for tests
+
+# Logging Configuration
+logging:
+  level:
+    root: WARN
+    org.sifunity: WARN
+    org.springframework: WARN
+    org.springframework.cloud.gateway: WARN
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+    net.jqwik: WARN
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info

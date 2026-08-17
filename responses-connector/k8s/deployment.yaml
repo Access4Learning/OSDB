@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: responses-connector
+  labels:
+    app: responses-connector
+    component: connector-service
+    tier: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: responses-connector
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: responses-connector
+        component: connector-service
+        tier: backend
+    spec:
+      containers:
+      - name: responses-connector
+        image: sif-broker/responses-connector:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8084
+          protocol: TCP
+        env:
+        # Queue Service Configuration
+        - name: QUEUE_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: responses-connector-config
+              key: queue.service.url
+        
+        - name: QUEUE_SERVICE_CONNECTION_TIMEOUT
+          valueFrom:
+            configMapKeyRef:
+              name: responses-connector-config
+              key: queue.service.connection.timeout
+        
+        - name: QUEUE_SERVICE_READ_TIMEOUT
+          valueFrom:
+            configMapKeyRef:
+              name: responses-connector-config
+              key: queue.service.read.timeout
+        
+        - name: QUEUE_SERVICE_MAX_RETRIES
+          valueFrom:
+            configMapKeyRef:
+              name: responses-connector-config
+              key: queue.service.max.retries
+        
+        - name: QUEUE_SERVICE_RETRY_DELAY
+          valueFrom:
+            configMapKeyRef:
+              name: responses-connector-config
+              key: queue.service.retry.delay
+        
+        # Server Configuration
+        - name: SERVER_PORT
+          value: "8084"
+        
+        # Spring Profile
+        - name: SPRING_PROFILES_ACTIVE
+          value: "kubernetes"
+        
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: http
+          initialDelaySeconds: 40
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: http
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+      
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30

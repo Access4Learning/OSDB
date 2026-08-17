@@ -1,0 +1,187 @@
+# Internal service token for test context startup
+broker:
+  internal-service-token: test-internal-token
+
+spring:
+  application:
+    name: gateway
+  
+  cloud:
+    gateway:
+      # Disable service discovery in test mode
+      discovery:
+        locator:
+          enabled: false
+      
+      # Allow all headers to be forwarded (no sensitive headers filtering)
+      default-filters:
+        - name: Retry
+          args:
+            retries: 2
+            statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+            methods: GET,POST
+            backoff:
+              firstBackoff: 100ms
+              maxBackoff: 500ms
+              factor: 2
+      
+      # Define explicit routes with URLs from properties
+      routes:
+        # Block internal APIs
+        - id: block-internal
+          uri: no://op
+          predicates:
+            - Path=/internal/**
+          filters:
+            - SetStatus=403
+        
+        # Domain management (root level)
+        - id: domain-service
+          uri: ${environment-service.url:http://localhost:18081}
+          predicates:
+            - Path=/domains/**
+        
+        # Solution management (under domain)
+        - id: solution-service
+          uri: ${environment-service.url:http://localhost:18081}
+          predicates:
+            - Path=/{domainId}/solutions/**
+        
+        # Environment Service routes (prefixed and bare for backward compatibility)
+        - id: environment-service-prefixed
+          uri: ${environment-service.url:http://localhost:18081}
+          predicates:
+            - Path=/{domainId}/{solutionId}/environments/**,/{domainId}/{solutionId}/acl-entries/**,/{domainId}/{solutionId}/providers/**,/{domainId}/{solutionId}/zones/**,/{domainId}/{solutionId}/tags/**,/{domainId}/{solutionId}/alerts/**,/{domainId}/{solutionId}/solution-services/**,/{domainId}/{solutionId}/context-services/**,/{domainId}/{solutionId}/xquerys,/{domainId}/{solutionId}/xquerys/**
+        
+        - id: environment-service
+          uri: ${environment-service.url:http://localhost:18081}
+          predicates:
+            - Path=/environments/**,/acl-entries/**,/providers/**,/zones/**,/tags/**
+        
+        # Connector Service routes (prefixed and bare)
+        - id: requests-connector-prefixed
+          uri: ${sif.broker.services.requests-connector.url:http://localhost:18085}
+          predicates:
+            - Path=/{domainId}/{solutionId}/requests,/{domainId}/{solutionId}/requests/**
+        
+        - id: requests-connector
+          uri: ${sif.broker.services.requests-connector.url:http://localhost:18085}
+          predicates:
+            - Path=/requests,/requests/**
+        
+        - id: responses-connector-prefixed
+          uri: ${sif.broker.services.responses-connector.url:http://localhost:18086}
+          predicates:
+            - Path=/{domainId}/{solutionId}/responses,/{domainId}/{solutionId}/responses/**
+        
+        - id: responses-connector
+          uri: ${sif.broker.services.responses-connector.url:http://localhost:18086}
+          predicates:
+            - Path=/responses,/responses/**
+        
+        - id: events-connector-prefixed
+          uri: ${sif.broker.services.events-connector.url:http://localhost:18087}
+          predicates:
+            - Path=/{domainId}/{solutionId}/events,/{domainId}/{solutionId}/events/**
+        
+        - id: events-connector
+          uri: ${sif.broker.services.events-connector.url:http://localhost:18087}
+          predicates:
+            - Path=/events,/events/**
+        
+        - id: services-connector-prefixed
+          uri: ${sif.broker.services.services-connector.url:http://localhost:18088}
+          predicates:
+            - Path=/{domainId}/{solutionId}/services,/{domainId}/{solutionId}/services/**
+        
+        - id: services-connector
+          uri: ${sif.broker.services.services-connector.url:http://localhost:18088}
+          predicates:
+            - Path=/services,/services/**
+        
+        # Core Service routes (prefixed and bare)
+        - id: queue-service-prefixed
+          uri: ${sif.broker.services.queue-service.url:http://localhost:18082}
+          predicates:
+            - Path=/{domainId}/{solutionId}/queues/**
+        
+        - id: queue-service
+          uri: ${sif.broker.services.queue-service.url:http://localhost:18082}
+          predicates:
+            - Path=/queues/**
+        
+        - id: subscription-service-prefixed
+          uri: ${sif.broker.services.subscription-service.url:http://localhost:18083}
+          predicates:
+            - Path=/{domainId}/{solutionId}/subscriptions/**
+        
+        - id: subscription-service
+          uri: ${sif.broker.services.subscription-service.url:http://localhost:18083}
+          predicates:
+            - Path=/subscriptions/**
+        
+        - id: job-service-prefixed
+          uri: ${sif.broker.services.job-service.url:http://localhost:18084}
+          predicates:
+            - Path=/{domainId}/{solutionId}/jobs/**
+        
+        - id: job-service
+          uri: ${sif.broker.services.job-service.url:http://localhost:18084}
+          predicates:
+            - Path=/jobs/**
+      
+      # Global timeout settings
+      httpclient:
+        connect-timeout: 5000
+        response-timeout: 30s
+  
+  # Redis configuration (for rate limiting)
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+
+server:
+  port: 8080
+
+# Environment Service configuration
+environment-service:
+  url: ${ENVIRONMENT_SERVICE_URL:http://localhost:18081}
+
+# Rate limiting configuration (enabled in tests to allow RateLimitingIntegrationTest to work)
+sif:
+  broker:
+    gateway:
+      rate-limit:
+        enabled: true
+
+# Resilience4j Circuit Breaker (shorter wait for tests)
+resilience4j:
+  circuitbreaker:
+    instances:
+      environmentServiceCB:
+        waitDurationInOpenState: 1s
+
+# Logging
+logging:
+  level:
+    root: WARN
+    org.sifunity: WARN
+    org.springframework: WARN
+    org.springframework.cloud.gateway: WARN
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+    net.jqwik: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} [%X{correlationId}] - %msg%n"
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

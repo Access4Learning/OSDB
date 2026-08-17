@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    
+    <springProperty scope="context" name="springAppName" source="spring.application.name"/>
+    <springProperty scope="context" name="logstashHost" source="observability.logging.logstash.host" defaultValue="localhost"/>
+    <springProperty scope="context" name="logstashPort" source="observability.logging.logstash.port" defaultValue="5000"/>
+    
+    <!-- Console Appender with Pattern Layout (default) -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [correlationId=%X{correlationId}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+    
+    <!-- Console Appender with JSON Layout (for production) -->
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"service":"${springAppName}","application":"sif-broker"}</customFields>
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <message>message</message>
+                <logger>logger</logger>
+                <thread>thread</thread>
+                <level>level</level>
+                <levelValue>[ignore]</levelValue>
+            </fieldNames>
+            <provider class="net.logstash.logback.composite.loggingevent.LoggingEventPatternJsonProvider">
+                <pattern>
+                    {
+                        "trace_id": "%mdc{trace_id}",
+                        "span_id": "%mdc{span_id}",
+                        "correlation_id": "%mdc{correlation_id}"
+                    }
+                </pattern>
+            </provider>
+            <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                <maxDepthPerThrowable>30</maxDepthPerThrowable>
+                <maxLength>2048</maxLength>
+                <shortenedClassNameLength>20</shortenedClassNameLength>
+                <rootCauseFirst>true</rootCauseFirst>
+            </throwableConverter>
+        </encoder>
+    </appender>
+    
+    <!-- Production profile: Logstash TCP appender -->
+    <springProfile name="prod,production,docker,kubernetes">
+        <!-- Logstash TCP appender for centralized logging -->
+        <appender name="LOGSTASH" class="org.sifunity.broker.common.logging.ResilientLogstashTcpSocketAppender">
+            <destination>${logstashHost}:${logstashPort}</destination>
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <customFields>{"service":"${springAppName}","application":"sif-broker"}</customFields>
+                <fieldNames>
+                    <timestamp>timestamp</timestamp>
+                    <message>message</message>
+                    <logger>logger</logger>
+                    <thread>thread</thread>
+                    <level>level</level>
+                    <levelValue>[ignore]</levelValue>
+                </fieldNames>
+                <provider class="net.logstash.logback.composite.loggingevent.LoggingEventPatternJsonProvider">
+                    <pattern>
+                        {
+                            "trace_id": "%mdc{trace_id}",
+                            "span_id": "%mdc{span_id}",
+                            "correlation_id": "%mdc{correlation_id}"
+                        }
+                    </pattern>
+                </provider>
+                <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                    <maxDepthPerThrowable>30</maxDepthPerThrowable>
+                    <maxLength>2048</maxLength>
+                    <shortenedClassNameLength>20</shortenedClassNameLength>
+                    <rootCauseFirst>true</rootCauseFirst>
+                </throwableConverter>
+            </encoder>
+            <connectionTimeout>5 seconds</connectionTimeout>
+            <writeTimeout>5 seconds</writeTimeout>
+            <writeBufferSize>16384</writeBufferSize>
+            <keepAliveDuration>5 minutes</keepAliveDuration>
+            <reconnectionDelay>1 second</reconnectionDelay>
+        </appender>
+        
+        <!-- Async Logstash appender for performance -->
+        <appender name="ASYNC_LOGSTASH" class="ch.qos.logback.classic.AsyncAppender">
+            <queueSize>512</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <includeCallerData>false</includeCallerData>
+            <maxFlushTime>5000</maxFlushTime>
+            <neverBlock>false</neverBlock>
+            <appender-ref ref="LOGSTASH"/>
+        </appender>
+    </springProfile>
+    
+    <!-- Default profile uses pattern layout -->
+    <springProfile name="default,dev,test,local">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+    
+    <!-- Production profile uses JSON layout + Logstash -->
+    <springProfile name="prod,production,docker,kubernetes">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_JSON"/>
+            <appender-ref ref="ASYNC_LOGSTASH"/>
+        </root>
+    </springProfile>
+    
+    <!-- Application-specific logging -->
+    <logger name="org.sifunity.responsesconnector" level="INFO"/>
+    <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.springframework.web.reactive" level="INFO"/>
+    
+    <!-- Logstash appender loggers (avoid recursion) -->
+    <logger name="net.logstash.logback" level="WARN"/>
+</configuration>

@@ -1,0 +1,63 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/sif_broker
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+
+server:
+  port: 8081
+
+# Admin bootstrap configuration
+sif:
+  broker:
+    bootstrap:
+      enabled: true
+      admin:
+        sessionToken: ${ADMIN_SESSION_TOKEN:admin-bootstrap-token}
+        sharedSecret: ${ADMIN_SHARED_SECRET:admin-bootstrap-secret}
+
+# Authentication settings
+authentication:
+  timestamp-tolerance-minutes: 5
+
+# Observability configuration
+observability:
+  enabled: true
+  tracing:
+    otlp:
+      endpoint: http://localhost:4318/v1/traces
+    sampling:
+      probability: 1.0
+
+logging:
+  level:
+    org.sifunity.broker.environment: DEBUG
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+
+# Secrets backend: plaintext for local development only
+secrets:
+  backend:
+    type: plaintext
+
+# Queue-service integration for queue cleanup on environment deletion
+broker:
+  queue-service:
+    base-url: http://localhost:8082
+

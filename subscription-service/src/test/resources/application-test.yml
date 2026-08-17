@@ -1,0 +1,71 @@
+# Test Configuration for Subscription Service
+
+# Internal service token for test context startup
+broker:
+  internal-service-token: test-internal-token
+
+spring:
+  application:
+    name: subscription-service-test
+
+  # Testcontainers PostgreSQL Configuration
+  datasource:
+    url: jdbc:tc:postgresql:15-alpine:///subscriptiontestdb
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 10000
+
+  # JPA Configuration for Tests
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Use Flyway migrations, validate schema matches entities
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        show_sql: false
+    open-in-view: false
+
+  # Flyway Configuration
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  # Cache Configuration - Use simple in-memory cache for tests
+  cache:
+    type: simple
+
+# Queue Service Client Configuration for Tests
+queue:
+  service:
+    url: http://localhost:8082
+
+# Server Configuration
+server:
+  port: 0  # Random port for tests
+
+# Management Endpoints - Disable external service health checks for tests
+management:
+  health:
+    jaeger:
+      enabled: false
+    logstash:
+      enabled: false
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+
+# Logging Configuration
+logging:
+  level:
+    root: WARN
+    org.sifunity: WARN
+    org.springframework: WARN
+    org.springframework.cloud.gateway: WARN
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+    net.jqwik: WARN

@@ -1,0 +1,154 @@
+spring:
+  application:
+    name: environment-service
+  
+  jackson:
+    default-property-inclusion: always
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/sif_broker
+    username: ${DB_USERNAME:sif_broker}
+    password: ${DB_PASSWORD:changeme}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Flyway manages schema
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+  
+  # Redis Configuration (message context cache for alerts)
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+          max-wait: -1ms
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+
+server:
+  port: 8081
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+
+# Authentication settings
+authentication:
+  timestamp-tolerance-minutes: 5
+
+# Bootstrap configuration
+sif:
+  broker:
+    bootstrap:
+      enabled: true
+      admin:
+        sessionToken: ${ADMIN_SESSION_TOKEN:admin-bootstrap-token}
+        sharedSecret: ${ADMIN_SHARED_SECRET:admin-bootstrap-secret}
+    provision-requests:
+      auto-approve: true
+    infrastructure:
+      gateway-base-url: ${SIF_INFRA_GATEWAY_BASE_URL:http://localhost:8080}
+      environment: ${SIF_INFRA_ENVIRONMENT_URL:http://localhost:8081}
+      provision-requests: ${SIF_INFRA_PROVISION_REQUESTS_URL:http://localhost:8081}
+      requests-connector: ${SIF_INFRA_REQUESTS_CONNECTOR_URL:http://localhost:8085}
+      events-connector: ${SIF_INFRA_EVENTS_CONNECTOR_URL:http://localhost:8084}
+      queues: ${SIF_INFRA_QUEUES_URL:http://localhost:8082}
+      subscriptions: ${SIF_INFRA_SUBSCRIPTIONS_URL:http://localhost:8083}
+      services-connector: ${SIF_INFRA_SERVICES_CONNECTOR_URL:http://localhost:8087}
+      responses-connector: ${SIF_INFRA_RESPONSES_CONNECTOR_URL:http://localhost:8088}
+
+# Management endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# SpringDoc OpenAPI Configuration
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    try-it-out-enabled: true
+  info:
+    description: "Environment Service - manages application registration, access control, and provider registry"
+
+# Logging configuration
+logging:
+  level:
+    org.sifunity.broker.environment: INFO
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    org.flywaydb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Cache Configuration
+broker:
+  internal-service-token: ${INTERNAL_SERVICE_TOKEN:}
+  queue-service:
+    base-url: ${QUEUE_SERVICE_BASE_URL:${QUEUE_SERVICE_URL:}}
+    connect-timeout-ms: ${QUEUE_SERVICE_CONNECT_TIMEOUT:5000}
+    read-timeout-ms: ${QUEUE_SERVICE_READ_TIMEOUT:10000}
+  cache:
+    auth-environment:
+      ttl-seconds: 60
+      max-size: 10000
+    auth-shared-secret:
+      ttl-seconds: 60
+      max-size: 1000
+    auth-solution:
+      ttl-seconds: 60
+      max-size: 5000
+    auth-domain:
+      ttl-seconds: 60
+      max-size: 5000
+    acl-permissions:
+      ttl-seconds: 60
+      max-size: 5000
+    # Entitlement checks admit responses onto a consumer queue, and ACL grants are mutable, so this
+    # deliberately mirrors the gateway's 30s permission cache rather than the 60s used above: a
+    # revoked grant must stop admitting responses promptly. Only positives are cached — see
+    # AuthorizationService.hasAnyGrant.
+    acl-any-grant:
+      ttl-seconds: 30
+      max-size: 5000

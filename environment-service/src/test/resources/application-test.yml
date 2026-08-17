@@ -1,0 +1,100 @@
+spring:
+  main:
+    allow-bean-definition-overriding: true  # Allow test beans to override production beans
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+  jackson:
+    default-property-inclusion: always
+  
+  datasource:
+    url: jdbc:tc:postgresql:15-alpine:///testdb
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 10000
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Use Flyway migrations, validate schema matches entities
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        jdbc:
+          batch_size: 10
+  
+  flyway:
+    enabled: true  # Enable Flyway for tests to get proper cascade constraints
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  
+  security:
+    user:
+      name: test
+      password: test
+      roles: USER
+
+# Test-specific authentication settings
+authentication:
+  timestamp-tolerance-minutes: 5
+
+# Secrets backend configuration for tests (use plaintext for simplicity)
+secrets:
+  backend:
+    type: plaintext
+
+# Bootstrap configuration for tests
+sif:
+  broker:
+    bootstrap:
+      enabled: true
+      admin:
+        sessionToken: test-admin-token
+        sharedSecret: dGVzdC1hZG1pbi1zZWNyZXQ=  # Base64 encoded "test-admin-secret"
+    infrastructure:
+      gateway-base-url: http://localhost:8080
+      environment: http://localhost:8081
+      provision-requests: http://localhost:8081
+      requests-connector: http://localhost:8083
+      events-connector: http://localhost:8084
+      queues: http://localhost:8085
+      subscriptions: http://localhost:8086
+      services-connector: http://localhost:8087
+      responses-connector: http://localhost:8088
+
+# Internal service token for connector authentication
+broker:
+  internal-service-token: test-internal-token
+
+# Disable observability in tests
+observability:
+  enabled: false  # Disable entire observability config to prevent GlobalOpenTelemetry conflicts
+  metrics:
+    enabled: false
+  tracing:
+    enabled: false
+
+# Disable management endpoints in tests
+management:
+  endpoints:
+    enabled-by-default: false
+  endpoint:
+    health:
+      enabled: true
+
+# Test logging configuration
+logging:
+  level:
+    root: WARN
+    org.sifunity: WARN
+    org.springframework: WARN
+    org.springframework.cloud.gateway: WARN
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+    net.jqwik: WARN
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

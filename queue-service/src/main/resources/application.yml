@@ -1,0 +1,147 @@
+# Queue Service Configuration
+
+spring:
+  application:
+    name: queue-service
+  web:
+    resources:
+      add-mappings: false
+
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:sif_broker}
+    username: ${DB_USERNAME:sif_broker}
+    password: ${DB_PASSWORD:changeme}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        show_sql: false
+    open-in-view: false
+
+  # Flyway Configuration
+  flyway:
+    enabled: false
+
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+          max-wait: -1ms
+
+  # Jackson Configuration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+# Message Storage Configuration
+message:
+  storage:
+    type: ${STORAGE_TYPE:filesystem}  # s3 or filesystem
+    key-prefix: ${STORAGE_KEY_PREFIX:}  # Configurable prefix for storage keys (empty = no prefix)
+    payload-ttl: ${PAYLOAD_TTL:7d}  # TTL safety net for orphaned payloads (default: 7 days)
+    s3:
+      bucket: ${S3_BUCKET:sif-broker-messages}
+      region: ${AWS_REGION:us-east-1}
+    filesystem:
+      path: ${STORAGE_PATH:./data/messages}
+
+# Queue Configuration
+queue:
+  base-url: ${QUEUE_BASE_URL:}  # Base URL for queueUri generation (e.g., https://broker.example.com)
+  defaults:
+    maxRetries: 3
+    retryDelayMs: 5000
+    visibilityTimeoutSeconds: 30
+  metrics:
+    depth-update-interval-ms: ${QUEUE_DEPTH_UPDATE_INTERVAL_MS:15000}  # How often to refresh queue depth gauges (ms)
+  cleanup:
+    batch-size: 1000              # XRANGE COUNT per batch
+    pipeline-size: 1000           # Redis pipeline commands per flush
+    storage-batch-size: 1000      # StorageProvider.deleteBatch max keys
+    progress-log-interval: 10000  # Log every N messages
+    inter-batch-yield-ms: 20      # Sleep between batches to keep Redis responsive
+    executor:
+      core-pool-size: 2
+      max-pool-size: 4
+      queue-capacity: 50
+
+# Cascade Cleanup Configuration
+cascade:
+  cleanup:
+    scan-batch-size: 1000
+    inter-batch-delay-ms: 20
+    thread-pool-size: 2
+
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8082}
+  shutdown: graceful
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    org.sifunity.broker.queueservice: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# SpringDoc OpenAPI Configuration
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    try-it-out-enabled: true
+  info:
+    description: "Queue Service - manages message queues and message delivery for SIF data exchange"
+
+# Management Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Cache Configuration
+broker:
+  internal-service-token: ${INTERNAL_SERVICE_TOKEN:}
+  cache:
+    queue-metadata:
+      ttl-seconds: 30
+      max-size: 5000

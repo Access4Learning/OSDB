@@ -1,0 +1,52 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/sif_broker
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          lob:
+            non_contextual_creation: true
+    defer-datasource-initialization: false
+  
+  flyway:
+    enabled: false
+  
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ""
+
+server:
+  port: 8082
+
+# Storage configuration (filesystem for local dev)
+storage:
+  type: filesystem
+  path: ./data/messages
+
+# Observability configuration
+observability:
+  enabled: true
+  tracing:
+    otlp:
+      endpoint: http://localhost:4318/v1/traces
+    sampling:
+      probability: 1.0
+
+logging:
+  level:
+    org.sifunity.broker.queueservice: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+

@@ -1,0 +1,135 @@
+# Requests Connector Application Configuration
+
+spring:
+  application:
+    name: requests-connector
+  
+  # Disable static resource handling to prevent conflicts with controller mappings
+  web:
+    resources:
+      add-mappings: false
+  
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+  
+  # Cache Configuration
+  cache:
+    type: redis
+    redis:
+      time-to-live: 300000  # 5 minutes in milliseconds
+      cache-null-values: false
+      key-prefix: "requests-connector:"
+  
+  # Jackson Configuration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8085}
+  shutdown: graceful
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Service URLs - Core Services
+environment:
+  service:
+    url: ${ENVIRONMENT_SERVICE_URL:http://localhost:8081}
+
+queue:
+  service:
+    url: ${QUEUE_SERVICE_URL:http://localhost:8082}
+
+subscription:
+  service:
+    url: ${SUBSCRIPTION_SERVICE_URL:http://localhost:8083}
+
+# Service URLs - Connector Services
+responses:
+  connector:
+    url: ${RESPONSES_CONNECTOR_URL:http://localhost:8088}
+
+# Auth Signing Configuration
+auth:
+  signing:
+    cache-ttl: ${AUTH_SIGNING_CACHE_TTL:5m}
+    cache-max-size: ${AUTH_SIGNING_CACHE_MAX_SIZE:1000}
+
+# Provider Call Timeouts
+provider:
+  timeout:
+    connection: ${PROVIDER_CONNECTION_TIMEOUT:5000}  # 5 seconds in milliseconds
+    read: ${PROVIDER_READ_TIMEOUT:30000}  # 30 seconds in milliseconds
+
+# Proxy Worker Configuration
+proxy:
+  worker:
+    enabled: ${PROXY_WORKER_ENABLED:true}
+    max-retries: ${PROXY_MAX_RETRIES:3}
+    poll-interval: ${PROXY_POLL_INTERVAL:1000}  # 1 second in milliseconds
+    thread-pool-size: ${PROXY_THREAD_POOL_SIZE:10}
+    max-pages: ${PROXY_MAX_PAGES:1000}  # Maximum pages to fetch in a paged delayed query
+    # Idle threshold for XAUTOCLAIM (ms). Messages pending longer than this are
+    # considered orphaned. Must exceed provider read timeout (30s) + retries + buffer.
+    # 120s provides ~4x buffer — a 30s threshold would collide with provider timeout
+    # and cause duplicate delivery during normal slow requests.
+    idle-threshold-ms: ${PROXY_WORKER_IDLE_THRESHOLD_MS:120000}
+    # XAUTOCLAIM recovery sweep interval (ms). Each replica runs this independently.
+    # Safe for concurrent execution — XAUTOCLAIM is atomic and idempotent.
+    recovery-interval: ${PROXY_WORKER_RECOVERY_INTERVAL:30000}
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+# Header Blacklist Configuration
+# Custom headers to strip in addition to defaults (authorization, timestamp,
+# x-environment-id, x-environment-name, fingerprint, sharedsecret).
+# Add entries here to extend the blacklist without code changes.
+sif:
+  headers:
+    blacklist: []
+  legacy-tag:
+    cache-ttl: ${SIF_LEGACY_TAG_CACHE_TTL:5m}
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    org.sifunity.requestsconnector: INFO
+    org.springframework.web: INFO
+    org.springframework.data.redis: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# Broker Configuration
+broker:
+  internal-service-token: ${INTERNAL_SERVICE_TOKEN:}

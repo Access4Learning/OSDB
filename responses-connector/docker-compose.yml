@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # Mock Queue Service (for testing)
+  # In production, this would be the actual queue-service
+  mock-queue-service:
+    image: mockserver/mockserver:latest
+    container_name: responses-connector-mock-queue
+    environment:
+      MOCKSERVER_INITIALIZATION_JSON_PATH: /config/mockserver-queue-init.json
+    ports:
+      - "8082:1080"
+    volumes:
+      - ./docker/mockserver-queue-init.json:/config/mockserver-queue-init.json:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sif-broker-network
+
+  # Responses Connector Service
+  responses-connector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: responses-connector
+    environment:
+      # Spring profiles
+      SPRING_PROFILES_ACTIVE: docker
+      
+      # Queue Service configuration
+      QUEUE_SERVICE_URL: http://mock-queue-service:1080
+      QUEUE_SERVICE_CONNECTION_TIMEOUT: 5000
+      QUEUE_SERVICE_READ_TIMEOUT: 10000
+      QUEUE_SERVICE_MAX_RETRIES: 3
+      QUEUE_SERVICE_RETRY_DELAY: 100
+      
+      # Server configuration
+      SERVER_PORT: 8084
+      
+      # Logging
+      LOGGING_LEVEL_ORG_SIFUNITY_RESPONSESCONNECTOR: INFO
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB: INFO
+    ports:
+      - "8084:8084"
+    depends_on:
+      mock-queue-service:
+        condition: service_healthy
+    networks:
+      - sif-broker-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  sif-broker-network:
+    driver: bridge
+

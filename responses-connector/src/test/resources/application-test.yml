@@ -1,0 +1,37 @@
+# Internal service token for test context startup
+broker:
+  internal-service-token: test-internal-token
+
+spring:
+  application:
+    name: responses-connector-test
+
+server:
+  port: 0  # Random port for testing
+
+# Queue Service Configuration (will be overridden by WireMock in tests)
+queue:
+  service:
+    url: http://localhost:8082
+    connection-timeout: 1000
+    read-timeout: 2000
+    max-retries: 2
+    retry-delay: 50
+
+# Logging Configuration
+logging:
+  level:
+    root: WARN
+    org.sifunity: WARN
+    org.springframework: WARN
+    org.springframework.cloud.gateway: WARN
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+    net.jqwik: WARN
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info

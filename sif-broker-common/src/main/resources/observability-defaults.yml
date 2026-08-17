@@ -1,0 +1,195 @@
+# Observability Platform Default Configuration
+# This file contains default observability settings that can be imported by all services.
+# Services can override these values in their own application.yml files.
+#
+# Environment Variable Overrides:
+# - OBSERVABILITY_ENABLED: Enable/disable all observability features
+# - TRACING_ENABLED: Enable/disable distributed tracing
+# - OTLP_ENDPOINT: OTLP collector gRPC endpoint
+# - TRACING_SAMPLING_RATE: Sampling probability (0.0 to 1.0)
+# - OTLP_TIMEOUT: Span export timeout in seconds
+# - OTLP_MAX_QUEUE_SIZE: Maximum spans to buffer
+# - OTLP_MAX_EXPORT_BATCH_SIZE: Maximum spans per batch
+# - OTLP_SCHEDULE_DELAY: Batch export delay in seconds
+# - LOGSTASH_HOST: Logstash server hostname
+# - LOGSTASH_PORT: Logstash server port
+# - LOGGING_ASYNC_QUEUE_SIZE: Async logging queue size
+# - LOGGING_ASYNC_DISCARDING_THRESHOLD: Threshold for discarding logs
+# - METRICS_CARDINALITY_LIMIT: Maximum unique tag combinations per metric
+#
+# Recommended Settings by Environment:
+# - Development: TRACING_SAMPLING_RATE=1.0 (100% sampling)
+# - Test: TRACING_SAMPLING_RATE=1.0 (100% sampling)
+# - Production: TRACING_SAMPLING_RATE=0.1 (10% sampling)
+
+observability:
+  # Enable/disable observability features
+  # When disabled, returns no-op implementations to avoid overhead
+  enabled: ${OBSERVABILITY_ENABLED:true}
+  
+  # Distributed Tracing Configuration
+  tracing:
+    enabled: ${TRACING_ENABLED:true}
+    otlp:
+      # OTLP collector gRPC endpoint
+      # Format: http://hostname:port or https://hostname:port
+      endpoint: ${OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+      # Timeout for span export (seconds)
+      timeout: ${OTLP_TIMEOUT:10}
+      # Maximum queue size for buffering spans
+      # When collector is unavailable, spans are buffered up to this limit
+      max-queue-size: ${OTLP_MAX_QUEUE_SIZE:2048}
+      # Maximum batch size for span export
+      max-export-batch-size: ${OTLP_MAX_EXPORT_BATCH_SIZE:512}
+      # Schedule delay for batch export (seconds)
+      schedule-delay: ${OTLP_SCHEDULE_DELAY:5}
+      # Retry configuration for failed exports
+      retry:
+        enabled: true
+        # Initial retry delay (seconds)
+        initial-delay: 1
+        # Maximum retry delay (seconds)
+        max-delay: 60
+        # Multiplier for exponential backoff
+        multiplier: 2.0
+        # Maximum number of retry attempts
+        max-attempts: 5
+    sampling:
+      # Sampling probability (0.0 to 1.0)
+      # 1.0 = 100% sampling (recommended for dev/test)
+      # 0.1 = 10% sampling (recommended for production)
+      # 0.01 = 1% sampling (for very high traffic)
+      probability: ${TRACING_SAMPLING_RATE:1.0}
+    # W3C Trace Context propagation
+    propagation:
+      # Propagation format (w3c, b3, jaeger)
+      format: w3c
+      # Include baggage in propagation
+      include-baggage: true
+  
+  # Logging Configuration
+  logging:
+    # Logstash TCP endpoint for centralized logging
+    logstash:
+      host: ${LOGSTASH_HOST:localhost}
+      port: ${LOGSTASH_PORT:5000}
+      # Connection timeout (milliseconds)
+      connection-timeout: 5000
+      # Retry configuration
+      retry:
+        enabled: true
+        initial-delay: 1000
+        max-delay: 60000
+        multiplier: 2.0
+    # Async logging configuration
+    async:
+      # Queue size for async appenders
+      queue-size: ${LOGGING_ASYNC_QUEUE_SIZE:512}
+      # Discarding threshold (0 = never discard)
+      discarding-threshold: ${LOGGING_ASYNC_DISCARDING_THRESHOLD:0}
+      # Include caller data (expensive, disable in production)
+      include-caller-data: false
+    # Sensitive field names to redact
+    sensitive-fields:
+      - password
+      - token
+      - authorization
+      - secret
+      - apiKey
+      - api_key
+      - sessionId
+      - session_id
+      - creditCard
+      - credit_card
+      - ssn
+      - socialSecurityNumber
+    # JSON logging configuration
+    json:
+      enabled: true
+      # Include MDC (Mapped Diagnostic Context) in logs
+      include-mdc: true
+      # Include exception stack traces
+      include-stack-trace: true
+      # Timestamp format (ISO 8601)
+      timestamp-format: "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"
+  
+  # Metrics Configuration
+  metrics:
+    enabled: ${METRICS_ENABLED:true}
+    # Cardinality limiting
+    cardinality:
+      # Maximum unique tag combinations per metric
+      limit: ${METRICS_CARDINALITY_LIMIT:100}
+      # Action when limit exceeded (drop, replace-with-other)
+      action: replace-with-other
+    # Custom metric prefixes
+    prefixes:
+      business: "sif.business"
+      queue: "sif.queue"
+      cache: "sif.cache"
+      database: "sif.database"
+
+# Spring Boot Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        # Expose health, info, prometheus, and metrics endpoints
+        include: health,info,prometheus,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      # Show detailed health information when authorized
+      show-details: when-authorized
+      # Include observability backend status in health checks
+      show-components: when-authorized
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+        # Step size (how often metrics are published)
+        step: 1m
+    distribution:
+      # Enable histogram for HTTP request metrics
+      percentiles-histogram:
+        http.server.requests: true
+      # Calculate percentiles for HTTP requests
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99
+      # Service Level Objectives (SLO) boundaries for histograms
+      slo:
+        http.server.requests: 10ms,50ms,100ms,200ms,500ms,1s,2s,5s
+    tags:
+      # Application tag will be set from spring.application.name
+      application: ${spring.application.name}
+      # Environment tag from active profile
+      environment: ${spring.profiles.active:default}
+    # Enable JVM metrics
+    enable:
+      jvm: true
+      process: true
+      system: true
+      tomcat: true
+      logback: true
+      jdbc: true
+
+# Logging Configuration
+logging:
+  level:
+    # Default log levels
+    root: INFO
+    org.sifunity: DEBUG
+    org.springframework.web: INFO
+    org.springframework.data: INFO
+    org.hibernate: WARN
+    io.opentelemetry: INFO
+    io.micrometer: INFO
+    # Lettuce (Redis client) logging
+    io.lettuce: INFO
+  pattern:
+    # Console log pattern (will be overridden by JSON encoder in production)
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  # Logback configuration file
+  config: classpath:logback-spring.xml
