@@ -190,7 +190,7 @@ public class DelayedPollRunner implements PollRunnerNotifier {
             }
 
             boolean processed = processMessage(responseBody, messageId, zoneId, contextId, serviceName, queueIdHeader, requestId, relativeServicePath);
-            return new PollResult(true, processed);
+            return new PollResult(true, processed, requestId);
 
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : "";

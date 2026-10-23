@@ -11,6 +11,12 @@ package org.sifunity.testprovider.dto;
  */
 public record PollResult(
         boolean polled,
-        boolean messageProcessed
+        boolean messageProcessed,
+        /** The requestId header received on the polled message (null if absent or no message). */
+        String receivedRequestId
 ) {
+    /** Backward-compatible constructor for cases that don't need receivedRequestId. */
+    public PollResult(boolean polled, boolean messageProcessed) {
+        this(polled, messageProcessed, null);
+    }
 }
