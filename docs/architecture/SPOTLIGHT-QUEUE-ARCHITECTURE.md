@@ -26,21 +26,22 @@ Producer (events-connector, responses-connector)
 │  Queue Service: MessageService.enqueueMessage()         │
 │                                                         │
 │  1. Generate storageKey (domain/solution/env/zone/...)  │
-│  2. Store payload → StorageProvider (filesystem or S3)  │
-│  3. Increment ref count for storageKey                  │
-│  4. XADD to Redis Stream (pointer only: messageId,     │
+│  2. Increment ref count for storageKey                  │
+│  3. Store payload → StorageProvider, but only when      │
+│     this was the first reference (fan-out skips it)     │
+│  4. XADD to Redis Stream (pointer only: messageId,      │
 │     storageKey, enqueuedAt, sifHeaders)                 │
 └─────────────────────────────────────────────────────────┘
   │
   ▼
 ┌─────────────────────────────────────────────────────────┐
 │  Redis Stream                                           │
-│  Key: domain:solution:environment:queue:{queueId}       │
+│  Key: see "Redis Key Formats" below                     │
 │                                                         │
 │  Entry fields (small — no payload):                     │
 │    • messageId (UUID)                                   │
 │    • storageKey (path to payload)                       │
-│    • enqueuedAt (ISO timestamp)                        │
+│    • enqueuedAt (ISO timestamp)                         │
 │    • sifHeaders (JSON map of passthrough headers)       │
 └─────────────────────────────────────────────────────────┘
   │
@@ -58,9 +59,9 @@ Producer (events-connector, responses-connector)
 ┌─────────────────────────────────────────────────────────┐
 │  Consumer ACKs: GET with deleteMessageId header         │
 │                                                         │
-│  1. XACK removes from PEL                              │
+│  1. XACK removes from PEL                               │
 │  2. Decrement ref count for storageKey                  │
-│  3. If ref count reaches 0 → delete payload from store │
+│  3. If ref count reaches 0 → delete payload from store  │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -75,7 +76,7 @@ Event arrives
   │
   ▼
 Store payload ONCE → storageKey = "domain/solution/.../event/StudentPersonal/{msgId}.json"
-Set ref count = 5
+Ref count reaches 5 (INCR once per target queue)
   │
   ├─ XADD to consumer-1's stream (pointer → storageKey)
   ├─ XADD to consumer-2's stream (pointer → storageKey)
@@ -114,10 +115,18 @@ A consumer with `connectionId=agent-A` and `connectionId=agent-B` hitting the sa
 
 ```java
 public interface StorageProvider {
-    void store(String key, Object payload);
-    Optional<Object> retrieve(String key);
-    void delete(String key);
-    boolean exists(String key);
+    String store(String storageKey, Object payload) throws StorageException;
+    Optional<Object> retrieve(String storageKey) throws StorageException;
+    void delete(String storageKey) throws StorageException;
+    boolean exists(String storageKey) throws StorageException;
+
+    /** Batch delete. The default implementation deletes sequentially and logs
+     *  individual failures rather than aborting the batch. */
+    default void deleteBatch(List<String> storageKeys) { ... }
+
+    /** Prefix delete, used for domain and solution cascade cleanup.
+     *  Returns the number of objects removed. */
+    default long deleteByPrefix(String prefix) { ... }
 }
 ```
 
@@ -133,8 +142,12 @@ Selection is config-driven — no code changes needed to switch.
 ## Storage Key Format
 
 ```
-{domainId}/{solutionId}/{environmentId}/{zoneId}/{contextId}/{messageType}/{serviceName}/{messageId}.json
+[{prefix}/]{domainId}/{solutionId}/{environmentId}/{zoneId}/{contextId}/{messageType}/{serviceName}/{messageId}.json
 ```
+
+The leading {prefix} is optional and comes from `message.storage.key-prefix`; when it is
+unset the key starts at {domainId}. Every segment is sanitised — any character outside
+`[a-zA-Z0-9-_]` becomes an underscore.
 
 Example:
 ```
@@ -151,7 +164,7 @@ This hierarchical key enables:
 ## Ref Count Lifecycle
 
 ```
-Redis key: domain:solution:payload-ref:{storageKey}
+Redis key: domain:{domainId}:solution:{solutionId}:ref:{storageKey}
 
 INCR on enqueue (once per target queue)
 DECR on ACK
@@ -159,6 +172,23 @@ DELETE payload when count reaches 0
 ```
 
 This is the mechanism that makes fan-out efficient — the payload exists exactly once regardless of how many consumers need it.
+
+---
+
+## Redis Key Formats
+
+Useful when inspecting a running broker with `redis-cli`.
+
+| Purpose | Key |
+|---------|-----|
+| Message stream | `domain:{domainId}:solution:{solutionId}:function:msg_queue:env:{environmentId}:queue:{queueId}` |
+| Dead letter stream | the message stream key, suffixed `:dlq` |
+| Consumer group | `group:{queueId}` |
+| Payload ref count | `domain:{domainId}:solution:{solutionId}:ref:{storageKey}` |
+
+Every key is built in one place, so the domain/solution prefix stays consistent across
+streams, groups and counters. That consistency is what makes per-tenant `SCAN` patterns
+and cascade cleanup possible.
 
 ---
 

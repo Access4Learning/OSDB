@@ -197,29 +197,29 @@ Incoming request: POST /{domainId}/{solutionId}/events
         │
         ▼
 ┌──────────────────────────────────────────────────────────┐
-│  MessageSequenceFilter (extends OncePerRequestFilter)     │
-│                                                            │
-│  1. Extract domainId, solutionId                          │
-│       • normal path → URL segments [0] and [1]            │
-│       • /internal/* path → domainId/solutionId headers    │
-│  2. toggleService.isSequencingEnabled(domain, solution)   │
-│       • entity-tag lookup, Caffeine-cached                │
-│       • on failure → treat as disabled (fail-open)        │
-│  3. if disabled → filterChain.doFilter(request) and RETURN│
-│  4. sequenceService.nextSequence(domain, solution)        │
-│       • Redis INCR on seq:{domainId}:{solutionId}         │
-│  5. wrap request, inject x-sif-sequenceId header          │
-│       • also set on response for IMMEDIATE consumers      │
-│  6. continue filter chain with wrapped request            │
-│                                                            │
-│  Any exception at any step → pass original request through │
+│  MessageSequenceFilter (extends OncePerRequestFilter)    │
+│                                                          │
+│  1. Extract domainId, solutionId                         │
+│       • normal path → URL segments [0] and [1]           │
+│       • /internal/* path → domainId/solutionId headers   │
+│  2. toggleService.isSequencingEnabled(domain, solution)  │
+│       • entity-tag lookup, Caffeine-cached               │
+│       • on failure → treat as disabled (fail-open)       │
+│  3. if disabled → filterChain.doFilter(request), return  │
+│  4. sequenceService.nextSequence(domain, solution)       │
+│       • Redis INCR on the sequence counter key           │
+│  5. wrap request, inject x-sif-sequenceId header         │
+│       • also set on response for IMMEDIATE consumers     │
+│  6. continue filter chain with wrapped request           │
+│                                                          │
+│  Any exception → pass the original request through       │
 └──────────────────────────────────────────────────────────┘
 ```
 
 Key implementation facts (from `MessageSequenceFilter`):
 
 - Extends `OncePerRequestFilter` — standard Spring web machinery, nothing broker-specific.
-- Sequence numbers come from Redis `INCR` on key `seq:{domainId}:{solutionId}` — atomic and monotonic.
+- Sequence numbers come from Redis `INCR` on key `domain:{domainId}:solution:{solutionId}:messagesequence` — atomic and monotonic.
 - Fail-open is enforced at three levels: toggle evaluation, sequence generation, and a catch-all around the whole method. Every failure path calls `filterChain.doFilter` with the untouched request.
 - The header is injected by wrapping the request in a `MutableHttpServletRequest`, and also mirrored onto the HTTP response so synchronous (IMMEDIATE-IMMEDIATE) consumers observe it.
 
@@ -253,22 +253,22 @@ requests-connector proxies a request to a tagged provider
         │  (active flag, bearer token, navigation page/size), clears in finally
         ▼
 ┌──────────────────────────────────────────────────────────┐
-│  TransportExchangeFilter (ExchangeFilterFunction)          │
-│                                                            │
-│  ctx = TransportContext.get()                              │
-│  if ctx == null || !ctx.isActive()                         │
-│        → next.exchange(request)  (pass through unchanged)  │
-│                                                            │
-│  OUTBOUND rewrite:                                         │
-│    • strip SIF headers (Authorization, timestamp,          │
-│      messageType, requestId, navigation*)                  │
-│    • set Authorization: Bearer <provider shared secret>    │
-│    • append offset/limit params from SIF navigation page   │
-│                                                            │
-│  INBOUND (response) rewrite:                               │
-│    • read x-total-count from provider response             │
-│    • remove x-total-count                                  │
-│    • add SIF navigation response headers                   │
+│  TransportExchangeFilter (ExchangeFilterFunction)        │
+│                                                          │
+│  ctx = TransportContext.get()                            │
+│  if ctx == null || !ctx.isActive()                       │
+│        → next.exchange(request)  (pass through unchanged)│
+│                                                          │
+│  OUTBOUND rewrite:                                       │
+│    • strip SIF headers (Authorization, timestamp,        │
+│      messageType, requestId, navigation*)                │
+│    • set Authorization: Bearer <provider shared secret>  │
+│    • append offset/limit params from SIF navigation page │
+│                                                          │
+│  INBOUND (response) rewrite:                             │
+│    • read x-total-count from provider response           │
+│    • remove x-total-count                                │
+│    • add SIF navigation response headers                 │
 └──────────────────────────────────────────────────────────┘
 ```
 

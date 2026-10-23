@@ -1,9 +1,9 @@
 # OSDB - System Architecture Overview
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Date:** March 20, 2026  
 **Status:** Active  
-**Updated:** April 14, 2026 — Sync with reality  
+**Updated:** September 23, 2026 — Re-verified against the implementation  
 **Companion to:** [SYSTEM-ARCHITECTURE.md](SYSTEM-ARCHITECTURE.md) (detailed reference)
 
 ---
@@ -31,7 +31,7 @@ The deployment model can evolve without architectural changes - run everything o
 
 ## System Components
 
-The broker is composed of 10 modules:
+The broker is composed of nine deployable services plus two libraries:
 
 ```mermaid
 graph TD
@@ -44,15 +44,18 @@ graph TD
     Gateway --> SvcConn[Services Connector]
     Gateway --> QueueSvc[Queue Service]
     Gateway --> SubSvc[Subscription Service]
+    Gateway --> JobSvc[Job Service]
     
     EventsConn --> QueueSvc
     ReqConn --> QueueSvc
     RespConn --> QueueSvc
     SvcConn --> QueueSvc
+    SubSvc --> QueueSvc
+    EventsConn --> SubSvc
+    ReqConn --> SubSvc
+    SvcConn --> SubSvc
     
     QueueSvc --> Storage[Pluggable Storage<br/>S3 / Filesystem]
-    QueueSvc --> SubSvc
-    SubSvc --> JobSvc[Job Service]
     
     EnvSvc --> DB[(PostgreSQL)]
     QueueSvc --> DB
@@ -62,6 +65,10 @@ graph TD
     Gateway --> Redis[(Redis)]
     QueueSvc --> Redis
 ```
+
+Every connector also calls the Environment Service to resolve zones, contexts and
+provider registrations; those lookups are left off the diagram to keep it readable.
+The Requests and Services Connectors additionally use Redis for their provider caches.
 
 | Module | Role |
 |--------|------|
@@ -73,8 +80,9 @@ graph TD
 | **Events Connector** | Routes SIF event messages (CREATE/UPDATE/DELETE notifications) from providers to subscriber queues. |
 | **Requests Connector** | Routes SIF request messages (CRUD operations) from consumers to providers. For immediate requests, proxies to the provider and returns the response. For delayed requests, deposits the response (or the request itself, for delayed providers) into the appropriate queue. |
 | **Responses Connector** | Routes DELAYED SIF response messages back from providers to consumer queues. |
-| **Services Connector** | Routes SIF Functional Service Job operations. Coordinates with Job Service for state management. |
-| **sif-broker-common** | Shared library. DTOs, exceptions, utilities, constants. Not a running service - compiled into every other module. |
+| **Services Connector** | Routes SIF Functional Service Job operations to their providers, resolving provider registrations and delayed-provider subscriptions. Job state itself lives in the Job Service, which the gateway routes to directly. |
+| **sif-broker-common** | Shared library. DTOs, exceptions, utilities, constants, and the extension SPI. Not a running service - compiled into every other module. |
+| **extensions** | Drop-in extension library, shipped as an auto-configured JAR rather than a service. Contains the message-sequencing filter. See [SPOTLIGHT-EXTENSIBILITY.md](SPOTLIGHT-EXTENSIBILITY.md). |
 
 ---
 
@@ -162,6 +170,7 @@ sequenceDiagram
     participant Provider
     participant Gateway
     participant Events as Events Connector
+    participant Subs as Subscription Service
     participant Queue as Queue Service
     participant Storage as Pluggable Storage
     participant Consumer
@@ -169,10 +178,13 @@ sequenceDiagram
     Provider->>Gateway: POST /{domainId}/{solutionId}/events (StudentPersonal created)
     Gateway->>Gateway: Authenticate + Authorize
     Gateway->>Events: Route event
-    Events->>Queue: Enqueue
-    Queue->>Queue: Match subscriptions → fan out to N subscriber queues
-    Queue->>Storage: Store payload ONCE (ref-counted, keyed by provider sourceId)
-    Queue->>Queue: Add pointer to each subscriber queue (Redis Stream)
+    Events->>Subs: Who subscribes to this service in this zone/context?
+    Subs-->>Events: N matching subscriber queues
+    loop once per subscriber queue
+        Events->>Queue: Enqueue (queueId, envelope)
+        Queue->>Storage: Store payload on the first reference only (ref-counted)
+        Queue->>Queue: XADD pointer to that subscriber's stream
+    end
     Queue-->>Events: Accepted
     Events-->>Gateway: 202
     Gateway-->>Provider: 202 Accepted
@@ -221,7 +233,7 @@ Key security mechanisms:
 | Layer | Mechanism | Purpose |
 |-------|-----------|---------|
 | Transport | TLS 1.3 | Encryption in transit |
-| Authentication | HMAC-SHA256 signing | Verify request origin. Signature = HMAC(secret, token + timestamp) |
+| Authentication | HMAC-SHA256 signing | Verify request origin. Signature = HMAC(secret, `{sessionToken}:{timestamp}`) |
 | Replay Prevention | Timestamp validation | Reject requests outside a configurable time window |
 | Authorization | ACL-based | Fine-grained, per-resource access control |
 | Rate Limiting | Redis-backed distributed counters | Protect against abuse from misconfigured clients; per-environment limits |
@@ -232,15 +244,34 @@ Key security mechanisms:
 
 ## Caching Strategy
 
-The requests-connector implements a provider registry cache (`ProviderRegistryCache`) that caches provider lookups to avoid repeated calls to the environment service. This is an in-memory cache within the connector process.
+Caching is in place across the broker, and it is deliberately not uniform — each service
+uses the tier that suits its data.
 
-A broader two-level caching strategy (in-process L1 + Redis L2 with Pub/Sub invalidation) is planned but not yet implemented. When needed, it would follow this pattern:
+**In-process (Caffeine, via `SimpleCacheManager`)** — per-replica, TTL-bounded:
 
-```
-Request → L1 (Caffeine, in-process) → L2 (Redis, distributed) → Database
-```
+| Service | Caches |
+|---------|--------|
+| Environment Service | `acl-permissions`, `acl-any-grant`, `auth-environment`, `auth-domain`, `auth-solution`, `auth-shared-secret` |
+| Events Connector | `context-uuid`, `subscription-query` |
+| Subscription Service | `subscriptions` (event and delayed-request lookups) |
+| Queue Service | `queue-metadata` (routing lookups) |
 
-New caches would be added by annotating methods with `@Cacheable` and registering eviction on the corresponding write paths.
+**Redis-backed** — shared across replicas:
+
+| Service | Caches |
+|---------|--------|
+| Requests Connector | `ProviderRegistryCache` and `QueueOwnerCache`, through a `RedisCacheManager` |
+| Services Connector | provider registrations, through `RedisTemplate` directly |
+
+The authorization caches in the Environment Service carry the most load: they keep the ACL
+and session lookups off the database on every gateway request.
+
+There is no Pub/Sub invalidation layer. Entries leave a cache by TTL expiry or by explicit
+eviction on the corresponding write path, so an in-process cache on one replica can briefly
+serve a value another replica has already changed. TTLs are chosen with that window in mind.
+
+New caches are added by annotating a method with `@Cacheable`, registering the cache name in
+that service's `CacheConfig`, and adding eviction to the matching write path.
 
 ---
 
@@ -276,7 +307,7 @@ An implementor packages their extension as a Spring Boot auto-configured JAR, ad
 | Auth | HMAC-SHA256 | SIF 3.7 compliant cryptographic request signing |
 | Secrets | Pluggable (Vault / Multi-Key AES-256-GCM / Plaintext for dev) | Configuration-driven backend selection |
 | Testing | JUnit 5 + jqwik + Testcontainers | Unit, property-based, and integration tests against real PostgreSQL |
-| Containers | Docker (eclipse-temurin:17-jre) | Multi-stage builds, minimal images |
+| Containers | Docker (amazoncorretto:17-alpine) | Minimal images; connectors load extension JARs via PropertiesLauncher |
 | Orchestration | Kubernetes | Deployments, HPA, ConfigMaps, Secrets, rolling updates |
 | Observability | Micrometer + Prometheus | Metrics exposed at /actuator/prometheus; dashboards and alerting are deployment concerns |
 | Logging | SLF4J + Logback | Structured JSON logging in production |
@@ -291,19 +322,19 @@ The broker is containerized and Kubernetes-ready. Each module produces a Docker 
 ┌─────────────────────────────────────────────────┐
 │  Kubernetes Cluster                             │
 │                                                 │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐     │
-│  │ Gateway  │  │ Gateway  │  │ Gateway  │     │
-│  │ (replica)│  │ (replica)│  │ (replica)│     │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘     │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐       │
+│  │ Gateway  │  │ Gateway  │  │ Gateway  │       │
+│  │ (replica)│  │ (replica)│  │ (replica)│       │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘       │
 │       └──────────────┼──────────────┘           │
 │                      │                          │
-│  ┌─────────┐ ┌──────┴──────┐ ┌──────────┐     │
-│  │Env Svc  │ │Queue Svc    │ │Connectors│     │
-│  └────┬────┘ └──────┬──────┘ └────┬─────┘     │
+│  ┌─────────┐ ┌──────┴──────┐ ┌──────────┐       │
+│  │Env Svc  │ │Queue Svc    │ │Connectors│       │
+│  └────┬────┘ └──────┬──────┘ └────┬─────┘       │
 │       │              │             │            │
-│  ┌────┴──────────────┴─────────────┴────┐      │
-│  │         PostgreSQL + Redis           │      │
-│  └──────────────────────────────────────┘      │
+│  ┌────┴──────────────┴─────────────┴────┐       │
+│  │         PostgreSQL + Redis           │       │
+│  └──────────────────────────────────────┘       │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -311,7 +342,7 @@ Key operational features:
 - Rolling updates with zero downtime
 - Liveness and readiness probes via Spring Boot Actuator
 - Horizontal Pod Autoscaling based on CPU/memory
-- Circuit breakers (Resilience4j) in connectors to prevent cascading failures
+- Circuit breakers (Resilience4j) on the gateway's and the Events Connector's outbound service calls, to prevent cascading failures
 - Graceful shutdown with in-flight request draining
 - Externalized configuration via ConfigMaps and Secrets
 
