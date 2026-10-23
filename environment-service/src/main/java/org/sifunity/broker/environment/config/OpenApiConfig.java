@@ -32,7 +32,7 @@ public class OpenApiConfig {
                     + "The Swagger UI will automatically compute the SIF HMAC-SHA256 signature for each request.")
                 .contact(new Contact()
                     .name("SIF Unity Broker")
-                    .url("https://gitlab.com/sif-unity-broker"))
+                    .url("https://github.com/Access4Learning/OSDB"))
                 .license(new License()
                     .name("MIT")
                     .url("https://opensource.org/licenses/MIT")))
