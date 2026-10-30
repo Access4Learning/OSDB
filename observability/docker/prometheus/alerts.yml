@@ -1,0 +1,140 @@
+# Prometheus Alerting Rules for SIF Unity Broker
+# These rules define conditions that trigger alerts
+
+groups:
+  - name: sif_service_health
+    interval: 30s
+    rules:
+      # Alert when a service is down for more than 1 minute
+      - alert: ServiceDown
+        expr: up{job=~"gateway|environment-service|queue-service|subscription-service|job-service|requests-connector|responses-connector|events-connector|services-connector"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          tier: '{{ $labels.tier }}'
+        annotations:
+          summary: "Service {{ $labels.service }} is down"
+          description: "Service {{ $labels.service }} has been down for more than 1 minute."
+          dashboard: "http://localhost:3000/d/service-health"
+
+  - name: sif_error_rates
+    interval: 30s
+    rules:
+      # Alert when error rate exceeds 5% for any service over 5 minutes
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) by (service)
+            /
+            sum(rate(http_server_requests_seconds_count[5m])) by (service)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          tier: '{{ $labels.tier }}'
+        annotations:
+          summary: "High error rate on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} has an error rate above 5% (current: {{ $value | humanizePercentage }}) for the last 5 minutes."
+          dashboard: "http://localhost:3000/d/error-tracking"
+
+  - name: sif_latency
+    interval: 30s
+    rules:
+      # Alert when p99 latency exceeds 5 seconds for any service over 5 minutes
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_server_requests_seconds_bucket[5m])) by (service, le)
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+          tier: '{{ $labels.tier }}'
+        annotations:
+          summary: "High latency on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} has p99 latency above 5 seconds (current: {{ $value }}s) for the last 5 minutes."
+          dashboard: "http://localhost:3000/d/request-flow"
+
+  - name: sif_database
+    interval: 30s
+    rules:
+      # Alert when database connection pool utilization exceeds 90% for more than 2 minutes
+      - alert: HighDatabasePoolUtilization
+        expr: |
+          (
+            db_pool_active
+            /
+            db_pool_total
+          ) > 0.9
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High database connection pool utilization on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} has database connection pool utilization above 90% (current: {{ $value | humanizePercentage }}) for the last 2 minutes."
+          dashboard: "http://localhost:3000/d/infrastructure"
+
+  - name: sif_jvm
+    interval: 30s
+    rules:
+      # Alert when JVM heap usage exceeds 85%
+      - alert: HighHeapUsage
+        expr: |
+          (
+            jvm_memory_used_bytes{area="heap"}
+            /
+            jvm_memory_max_bytes{area="heap"}
+          ) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High JVM heap usage on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} has JVM heap usage above 85% (current: {{ $value | humanizePercentage }}) for the last 5 minutes."
+          dashboard: "http://localhost:3000/d/infrastructure"
+
+      # Alert when GC pause time is excessive
+      - alert: HighGCPauseTime
+        expr: |
+          rate(jvm_gc_pause_seconds_sum[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High GC pause time on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} is spending more than 10% of time in GC pauses (current: {{ $value | humanizePercentage }}) for the last 5 minutes."
+          dashboard: "http://localhost:3000/d/infrastructure"
+
+  - name: sif_queue_metrics
+    interval: 30s
+    rules:
+      # Alert when queue depth is very high
+      - alert: HighQueueDepth
+        expr: queue_depth > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High queue depth for {{ $labels.queue }}"
+          description: "Queue {{ $labels.queue }} has depth above 1000 (current: {{ $value }}) for the last 5 minutes."
+          dashboard: "http://localhost:3000/d/queue-paging"
+
+      # Req 12.4 — Alert when paging timeouts spike
+      - alert: PagingTimeoutSpike
+        expr: increase(sif_paging_timeouts_total[5m]) > 10
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Paging timeouts spiking on {{ $labels.connector }}"
+          dashboard: "http://localhost:3000/d/queue-paging"
+
+      # Req 12.5 — Alert when dead-letter queue is non-empty
+      - alert: DeadLetterQueueNonEmpty
+        expr: sif_queue_dlq_depth > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Dead-letter queue non-empty: {{ $labels.queue_name }}"
+          dashboard: "http://localhost:3000/d/queue-paging"

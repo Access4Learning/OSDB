@@ -1,0 +1,114 @@
+# Prometheus Configuration for SIF Unity Broker
+# This configuration scrapes metrics from all 9 microservices
+
+global:
+  scrape_interval: 15s      # How frequently to scrape targets
+  evaluation_interval: 15s  # How frequently to evaluate rules
+  scrape_timeout: 10s       # Timeout for scraping targets
+  external_labels:
+    cluster: 'sif-unity-broker-local'
+    environment: 'development'
+
+# Alertmanager configuration (optional - can be added later)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093
+
+# Load alerting rules
+rule_files:
+  - 'alerts.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # Gateway Service
+  - job_name: 'gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+        labels:
+          service: 'gateway'
+          tier: 'gateway'
+    # Basic auth if enabled
+    # basic_auth:
+    #   username: 'prometheus'
+    #   password: 'prometheus'
+
+  # Environment Service
+  - job_name: 'environment-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8081']
+        labels:
+          service: 'environment-service'
+          tier: 'core'
+
+  # Queue Service
+  - job_name: 'queue-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8082']
+        labels:
+          service: 'queue-service'
+          tier: 'core'
+
+  # Subscription Service
+  - job_name: 'subscription-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8083']
+        labels:
+          service: 'subscription-service'
+          tier: 'core'
+
+  # Events Connector
+  - job_name: 'events-connector'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8084']
+        labels:
+          service: 'events-connector'
+          tier: 'connector'
+
+  # Requests Connector
+  - job_name: 'requests-connector'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8085']
+        labels:
+          service: 'requests-connector'
+          tier: 'connector'
+
+  # Services Connector
+  - job_name: 'services-connector'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8087']
+        labels:
+          service: 'services-connector'
+          tier: 'connector'
+
+  # Responses Connector
+  - job_name: 'responses-connector'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8088']
+        labels:
+          service: 'responses-connector'
+          tier: 'connector'
+
+  # Jaeger metrics (if exposed)
+  - job_name: 'jaeger'
+    static_configs:
+      - targets: ['jaeger:14269']
+        labels:
+          service: 'jaeger'
+          tier: 'observability'

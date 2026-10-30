@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ========================================== -->
+    <!-- Standalone Gatling Load Test Project       -->
+    <!-- NOT a child of the root aggregator POM     -->
+    <!-- ========================================== -->
+    <groupId>org.sifunity.broker</groupId>
+    <artifactId>gatling-load-tests</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>Gatling Load Tests</name>
+    <description>Gatling-based load testing module for the SIF Unity Broker eventing pipeline</description>
+
+    <!-- ========================================== -->
+    <!-- Properties                                 -->
+    <!-- ========================================== -->
+    <properties>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Gatling -->
+        <gatling.version>3.10.5</gatling.version>
+        <gatling-maven-plugin.version>4.8.2</gatling-maven-plugin.version>
+
+        <!-- Security override: see dependencyManagement below (CVE-2026-111497) -->
+        <brotli4j.version>1.24.0</brotli4j.version>
+
+        <!-- Jackson -->
+        <jackson.version>2.16.1</jackson.version>
+
+        <!-- Testing -->
+        <jqwik.version>1.8.2</jqwik.version>
+        <junit-jupiter.version>5.10.1</junit-jupiter.version>
+        <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
+    </properties>
+
+    <!-- ========================================== -->
+    <!-- Dependency Management                      -->
+    <!-- ========================================== -->
+    <!--
+        Gatling 3.10.5 pins brotli4j 1.16.0 transitively via gatling-http-client.
+        That version bundles a Brotli C library affected by CVE-2026-111497, an
+        out-of-bounds write in the decoder (CVSS 9.2). brotli4j 1.24.0 upgrades
+        the bundled library to Brotli 1.2.1, which carries the fix.
+
+        These are test-scope only and ship in no service artifact, but the pin
+        keeps dependency scanners clean and removes the vulnerable native
+        binaries from developer and CI machines.
+
+        Remove this block once Gatling itself depends on a fixed brotli4j.
+    -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.aayushatharva.brotli4j</groupId>
+                <artifactId>brotli4j</artifactId>
+                <version>${brotli4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aayushatharva.brotli4j</groupId>
+                <artifactId>service</artifactId>
+                <version>${brotli4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aayushatharva.brotli4j</groupId>
+                <artifactId>native-linux-x86_64</artifactId>
+                <version>${brotli4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aayushatharva.brotli4j</groupId>
+                <artifactId>native-linux-aarch64</artifactId>
+                <version>${brotli4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aayushatharva.brotli4j</groupId>
+                <artifactId>native-osx-x86_64</artifactId>
+                <version>${brotli4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aayushatharva.brotli4j</groupId>
+                <artifactId>native-osx-aarch64</artifactId>
+                <version>${brotli4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aayushatharva.brotli4j</groupId>
+                <artifactId>native-windows-x86_64</artifactId>
+                <version>${brotli4j.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- ========================================== -->
+    <!-- Dependencies                               -->
+    <!-- ========================================== -->
+    <dependencies>
+        <!-- Gatling Charts Highcharts (HTML report generation) -->
+        <dependency>
+            <groupId>io.gatling.highcharts</groupId>
+            <artifactId>gatling-charts-highcharts</artifactId>
+            <version>${gatling.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Jackson Databind (JSON serialization for payloads and state) -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+
+        <!-- JUnit 5 (unit tests) -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit-jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- jqwik (property-based testing) -->
+        <dependency>
+            <groupId>net.jqwik</groupId>
+            <artifactId>jqwik</artifactId>
+            <version>${jqwik.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <!-- ========================================== -->
+    <!-- Build Configuration                        -->
+    <!-- ========================================== -->
+    <build>
+        <plugins>
+            <!-- Gatling Maven Plugin (run simulations) -->
+            <plugin>
+                <groupId>io.gatling</groupId>
+                <artifactId>gatling-maven-plugin</artifactId>
+                <version>${gatling-maven-plugin.version}</version>
+            </plugin>
+
+            <!-- Maven Surefire Plugin (JUnit 5 + jqwik tests) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                        <include>**/*Tests.java</include>
+                        <include>**/*Properties.java</include>
+                        <include>**/*PropertyTest.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
