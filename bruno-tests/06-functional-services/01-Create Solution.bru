@@ -1,0 +1,54 @@
+meta {
+  name: 01-Create Solution
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{gatewayUrl}}/{{fsDomainId}}/solutions
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "solutionId": "FuncSvcSolution-{{$timestamp}}",
+    "description": "Solution for functional services tests"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    const solutionId = data.solutionId || data.id;
+    bru.setVar('fsSolutionId', solutionId);
+    console.log('Created solution:', solutionId);
+  }
+}
+
+tests {
+  test("Solution created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  # Create Solution
+  
+  Creates a solution under the domain for functional services tests.
+}

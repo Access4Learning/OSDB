@@ -1,0 +1,51 @@
+meta {
+  name: 17-Create Legacy Provider Queue
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{gatewayUrl}}/{{mpDomainId}}/{{mpSolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "LEGACY_PROVIDER_QUEUE",
+      "ownerId": "{{mpLegacyProviderEnvId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'mpLegacyProvider' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('mpLegacyProviderQueueId', data.queue.id);
+    console.log('Created legacy provider queue:', data.queue.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Legacy provider queue created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

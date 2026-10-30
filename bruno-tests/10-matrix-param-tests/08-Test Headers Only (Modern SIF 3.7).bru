@@ -1,0 +1,45 @@
+meta {
+  name: 08-Test Headers Only (Modern SIF 3.7)
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{mpConsumerRequestsUrl}}/MatrixParamTestObjects
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{mpZoneId}}
+  contextId: DEFAULT
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'mpConsumer' });
+}
+
+assert {
+  res.status: neq 400
+}
+
+tests {
+  test("Headers-only request not rejected (modern SIF 3.7 client)", function() {
+    expect(res.getStatus()).to.not.equal(400);
+    console.log('Headers-only response status:', res.getStatus());
+  });
+}
+
+docs {
+  # Test Headers Only (Modern SIF 3.7)
+  
+  Sends a GET request with zoneId and contextId as HTTP headers only (no matrix params).
+  This is the modern SIF 3.7 approach. The gateway should accept this without error.
+  
+  We expect NOT 400 — the gateway should not reject a valid headers-only request.
+  A 404 is acceptable (no provider registered for this service), but 400 would indicate
+  the gateway is incorrectly requiring matrix parameters.
+}

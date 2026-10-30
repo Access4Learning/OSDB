@@ -1,0 +1,32 @@
+meta {
+  name: Sequence ID Tests
+  seq: 9
+}
+
+docs {
+  # Message Sequence ID Extension Tests
+  
+  End-to-end tests for the `x-sif-sequenceId` header injection feature.
+  
+  ## What This Tests
+  
+  1. Creates a domain/solution/zone infrastructure
+  2. Sets up a provider and a consumer with queue + subscription
+  3. Emits an event WITHOUT the SEQUENCE_ENABLED tag — verifies NO sequence header
+  4. Creates the SEQUENCE_ENABLED entity tag with value "true"
+  5. Emits 3 events in serial — verifies the sequence header is present and strictly increasing
+  6. Deletes the SEQUENCE_ENABLED entity tag
+  7. Emits an event — verifies the sequence header is NO LONGER present
+  
+  ## Prerequisites
+  
+  - All services running (gateway, environment-service, events-connector, queue-service, subscription-service)
+  - Admin credentials configured in .env
+  - The `extensions` module JAR on the events-connector classpath
+  - Redis running (used for atomic sequence generation)
+  
+  ## Run Order
+  
+  Tests are numbered and must be run in sequence (00–23).
+}
+

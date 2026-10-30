@@ -1,0 +1,125 @@
+meta {
+  name: GET Lookup Provider - Success
+  type: http
+  seq: 3
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/providers/lookup?serviceName=StudentPersonals&zoneId={{createdZoneId}}&contextId=DEFAULT
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.provider.id: isDefined
+  res.body.provider.serviceName: eq StudentPersonals
+  res.body.provider.endPoint.location: isDefined
+  res.body.provider.serviceType: isDefined
+  res.body.provider.providerName: isDefined
+  res.body.provider.supportedRequestTypes: isDefined
+}
+
+script:pre-request {
+  const registrationId = bru.getVar('createdProviderRegistrationId');
+  if (!registrationId) {
+    throw new Error('No provider registration ID found. Run "POST Create Provider Registration - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Provider lookup returned successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains all expected fields", function() {
+    const data = res.getBody().provider;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('environmentId');
+    expect(data).to.have.property('serviceName');
+    expect(data).to.have.property('zoneId');
+    expect(data).to.have.property('contextId');
+    expect(data).to.have.property('endPoint');
+    expect(data).to.have.property('serviceType');
+    expect(data).to.have.property('providerName');
+    expect(data).to.have.property('supportedRequestTypes');
+    expect(data).to.have.property('registeredAt');
+  });
+  
+  test("Response does not contain deprecated supportedPatterns field", function() {
+    const data = res.getBody().provider;
+    expect(data).to.not.have.property('supportedPatterns');
+  });
+  
+  test("Service name matches lookup query", function() {
+    const data = res.getBody().provider;
+    expect(data.serviceName).to.equal('StudentPersonals');
+  });
+  
+  test("Returned provider matches created registration", function() {
+    const data = res.getBody().provider;
+    const expectedId = bru.getVar('createdProviderRegistrationId');
+    expect(data.id).to.equal(expectedId);
+  });
+  
+  test("Endpoint is correct", function() {
+    const data = res.getBody().provider;
+    expect(data.endPoint.location).to.equal('http://localhost:9090/StudentPersonals');
+  });
+  
+  test("Service type is OBJECT", function() {
+    const data = res.getBody().provider;
+    expect(data.serviceType).to.equal('OBJECT');
+  });
+  
+  test("Provider name is TestSIS", function() {
+    const data = res.getBody().provider;
+    expect(data.providerName).to.equal('TestSIS');
+  });
+  
+  test("Supported request types contains IMMEDIATE with correct operations", function() {
+    const data = res.getBody().provider;
+    expect(data.supportedRequestTypes.supportedRequestType).to.be.an('array');
+    const immediateEntry = data.supportedRequestTypes.find(srt => srt.requestType === 'IMMEDIATE');
+    expect(immediateEntry).to.not.be.undefined;
+    expect(immediateEntry.operations.operation).to.be.an('array');
+    expect(immediateEntry.operations.operation).to.include('QUERY');
+    expect(immediateEntry.operations.operation).to.include('UPDATE');
+    expect(immediateEntry.operations.operation).to.include('DELETE');
+  });
+}
+
+docs {
+  # Lookup Provider - Success
+  
+  Looks up a provider registration by serviceName, zoneId, and contextId.
+  
+  ## Prerequisites
+  
+  - Run "POST Create Provider Registration - Success" first
+  - A provider for "StudentPersonals" must exist in the created zone
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: Provider registration with serviceType, providerName, supportedRequestTypes
+  - The deprecated supportedPatterns field should NOT be present
+  
+  ## What This Tests
+  
+  - Provider lookup by serviceName, zoneId, contextId
+  - Returned provider matches the one created earlier
+  - Response contains SIF 3.7 aligned fields (serviceType, providerName, supportedRequestTypes)
+  - Response does not contain deprecated supportedPatterns field
+}

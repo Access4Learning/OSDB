@@ -1,0 +1,58 @@
+meta {
+  name: 01-health-checks
+  seq: 1
+}
+
+docs {
+  # Health Check Tests
+
+  This collection verifies that all SIF Unity Broker services are running and healthy.
+
+  ## Purpose
+
+  Health checks are the first tests to run to ensure the broker is properly deployed and all services are accessible. These tests do not require authentication.
+
+  ## Services Tested
+
+  1. **API Gateway** (port 8080) - Entry point for all external requests
+  2. **Environment Service** (port 8081) - Environment and ACL management
+  3. **Queue Service** (port 8082) - Message queue management
+  4. **Subscription Service** (port 8083) - Subscription management
+  5. **Job Service** (port 8084) - Job state management
+  6. **Requests Connector** (port 8085) - Request routing
+  7. **Responses Connector** (port 8086) - Response routing
+  8. **Events Connector** (port 8087) - Event distribution
+  9. **Services Connector** (port 8088) - Service/job management
+
+  ## Expected Results
+
+  All health check endpoints should return:
+  - HTTP Status: 200 OK
+  - Response body with `status: "UP"` or similar health indicator
+
+  ## Troubleshooting
+
+  If health checks fail:
+
+  1. **Connection Refused**: Service is not running or not accessible
+     - Verify the service is deployed
+     - Check the service URL in your environment configuration
+     - Verify network connectivity
+
+  2. **Timeout**: Service is running but not responding
+     - Check service logs for errors
+     - Verify service has sufficient resources (CPU, memory)
+     - Check for deadlocks or blocking operations
+
+  3. **503 Service Unavailable**: Service is running but dependencies are unhealthy
+     - Check database connectivity (PostgreSQL)
+     - Check Redis connectivity
+     - Check S3/LocalStack connectivity
+
+  ## Running These Tests
+
+  1. Ensure the SIF Unity Broker is deployed and running
+  2. Configure your environment in Bruno (select local, docker-compose, or kubernetes)
+  3. Run all tests in this folder
+  4. All tests should pass before proceeding to other test collections
+}

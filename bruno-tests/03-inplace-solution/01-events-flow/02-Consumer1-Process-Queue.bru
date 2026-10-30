@@ -1,0 +1,131 @@
+meta {
+  name: 02-Consumer1-Process-Queue
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{consumer1QueueUrl}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  deleteMessageId: {{consumer1LastMessageId}}
+}
+
+docs {
+  # Consumer 1 - Process Queue
+
+  Consumer 1 polls their queue and processes all available events using the "ACK AND GET NEXT" pattern.
+
+  ## Prerequisites
+
+  - Run `00-initialize/Initialize Consumer1 Environment` first
+  - Run `00-initialize/Get Consumer1 Subscription and Queue` to get queue URL
+  - Run `01-Provider-Emit-10-Events` to populate the queue
+  - Consumer 1 has an active subscription to the object type
+
+  ## Expected Behavior
+
+  This test uses the SIF 3.x "ACK AND GET NEXT" pattern with matrix parameters:
+  1. First call: GET /messages;deleteMessageId= (empty) → Returns first message
+  2. Process message and extract messageId
+  3. Next call: GET /messages;deleteMessageId=<previous-messageId> → Acknowledges previous, returns next
+  4. Repeat until GET returns 204 (No Content - queue empty)
+
+  ## Response Codes
+
+  - 200 OK: Message retrieved, body contains event data
+  - 204 No Content: Queue is empty, processing complete
+  - 404 Not Found: Queue doesn't exist
+
+  ## How to Run
+
+  1. Click "Send" to get the first message
+  2. Keep clicking "Send" - each call acknowledges the previous message and gets the next
+  3. Stop when you receive 204 (No Content)
+
+  ## Message Processing
+
+  For each message:
+  1. Retrieve message from queue
+  2. Extract messageId from response
+  3. Process the event (logged to console)
+  4. Next request automatically acknowledges this message via deleteMessageId matrix parameter
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  
+  // Verify initialization was run
+  const queueUrl = bru.getVar('consumer1QueueUrl');
+  if (!queueUrl) {
+    throw new Error('Consumer 1 not initialized. Run "00-initialize/Get Consumer1 Subscription and Queue" first.');
+  }
+  
+  // Initialize consumer1LastMessageId to empty string if not set
+  // This prevents {{consumer1LastMessageId}} from appearing as literal text in URL
+  if (!bru.getVar('consumer1LastMessageId')) {
+    bru.setVar('consumer1LastMessageId', '');
+  }
+  
+  auth.setAuthHeaders(req, bru, 'consumer1');
+}
+
+script:post-response {
+  const status = res.getStatus();
+  
+  if (status === 200) {
+    // Message retrieved - extract messageId from response header (lowercase)
+    const messageId = res.getHeader('messageid');
+    
+    if (messageId) {
+      // Store this message ID for the next request (to acknowledge it)
+      bru.setVar('consumer1LastMessageId', messageId);
+      
+      // Track processed messages
+      let processedCount = bru.getVar('consumer1ProcessedCount') || 0;
+      processedCount++;
+      bru.setVar('consumer1ProcessedCount', processedCount);
+      
+      console.log(`Consumer 1: Processed message ${processedCount} (ID: ${messageId})`);
+      
+      // Log message body for debugging
+      const message = res.getBody();
+      console.log('Message data:', JSON.stringify(message, null, 2));
+      console.log('Click "Send" again to acknowledge this message and get the next one');
+    } else {
+      console.warn('Warning: No messageid header found in response');
+    }
+    
+  } else if (status === 204) {
+    // Queue is empty
+    const totalProcessed = bru.getVar('consumer1ProcessedCount') || 0;
+    console.log(`✓ Consumer 1: Queue empty. Total messages processed: ${totalProcessed}`);
+    bru.setVar('consumer1Complete', true);
+    
+    // Reset for next run
+    bru.setVar('consumer1LastMessageId', '');
+    
+  } else {
+    console.error(`Consumer 1: Unexpected status ${status}`);
+  }
+}
+
+tests {
+  test("Valid response", function() {
+    const status = res.getStatus();
+    expect([200, 204]).to.include(status);
+  });
+  
+  test("If message received, has messageid header", function() {
+    if (res.getStatus() === 200) {
+      const messageId = res.getHeader('messageid');
+      expect(messageId).to.exist;
+      expect(messageId).to.be.a('string');
+    }
+  });
+}

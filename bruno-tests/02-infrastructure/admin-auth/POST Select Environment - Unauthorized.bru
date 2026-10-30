@@ -1,0 +1,71 @@
+meta {
+  name: POST Select Environment - Unauthorized
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{gatewayUrl}}/admin-users/sessions/select-environment
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Admin-Session-Token: {{adminSessionToken}}
+}
+
+body:json {
+  {
+    "environmentId": "00000000-0000-0000-0000-000000000000"
+  }
+}
+
+assert {
+  res.status: eq 403
+}
+
+script:pre-request {
+  const token = bru.getVar('adminSessionToken');
+  if (!token) {
+    throw new Error('No admin session token found. Run "Login - Success" first.');
+  }
+}
+
+tests {
+  test("Unauthorized environment selection returns 403", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+  
+  test("Error indicates not authorized", function() {
+    const data = res.getBody();
+    const bodyStr = JSON.stringify(data).toLowerCase();
+    expect(bodyStr).to.include('not authorized');
+  });
+}
+
+docs {
+  # Select Environment - Unauthorized
+  
+  Attempts to select an environment the user does not have access to.
+  
+  ## Prerequisites
+  
+  - Must have a valid admin session token (from successful login)
+  
+  ## Request
+  
+  - Header: `X-Admin-Session-Token` with valid session token
+  - Body: `{ "environmentId": "<non-existent-or-unauthorized-uuid>" }`
+  
+  ## Expected Response
+  
+  - Status: 403 Forbidden
+  - Error message indicating not authorized to access this environment
+  
+  ## What This Tests
+  
+  - Rejection when selecting an environment not in user's access list
+  - Proper 403 status code (not 401 or 404)
+  - Requirements: 4.4
+}

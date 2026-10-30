@@ -1,0 +1,30 @@
+meta {
+  name: 01 Health Check
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{gatewayUrl}}/actuator/health
+  body: none
+  auth: none
+}
+
+tests {
+  test("Gateway is healthy", function() {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.status).to.equal('UP');
+  });
+}
+
+docs {
+  # Health Check
+  
+  Verifies the gateway is reachable and healthy.
+  Run this first to confirm the deployment is accessible.
+  
+  ## Expected Response
+  - Status: 200
+  - Body: { "status": "UP" }
+}

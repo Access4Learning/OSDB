@@ -1,0 +1,32 @@
+meta {
+  name: zones-contexts
+  seq: 3
+}
+
+docs {
+  # Zones and Contexts Tests
+  
+  Tests for zone and context management APIs.
+  
+  ## What Are Zones and Contexts?
+  
+  Zones and contexts provide multi-tenancy and data segmentation:
+  - **Zones**: Logical groupings (e.g., by district, region)
+  - **Contexts**: Operational contexts (e.g., DEFAULT, ASSESSMENT, GRADEBOOK)
+  
+  ## Tests Included
+  
+  - Create zone
+  - List zones
+  - Get zone by ID
+  - Create context
+  - List contexts
+  - Get context by ID
+  
+  ## Important Notes
+  
+  - Zones and contexts require authentication
+  - Default zone and context are typically pre-configured
+  - All requests must specify zone and context
+  - ACLs are scoped to zone/context combinations
+}

@@ -1,0 +1,47 @@
+meta {
+  name: 00-Create Domain
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{gatewayUrl}}/domains
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "domainId": "SeqTestDomain-{{$timestamp}}",
+    "description": "Domain for sequence ID tests"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('seqDomainId', data.domainId || data.id);
+    console.log('Created sequence test domain:', bru.getVar('seqDomainId'));
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Domain created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

@@ -1,0 +1,46 @@
+meta {
+  name: Requests Connector Health Check
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{requestsConnectorUrl}}/actuator/health
+  body: none
+  auth: none
+}
+
+docs {
+  # Requests Connector Health Check
+  
+  Verifies that the Requests Connector is running and healthy.
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: JSON with status field indicating "UP"
+  
+  ## What This Tests
+  
+  - Requests Connector is running
+  - Service is accessible on the configured port
+  - Connectivity to downstream services is working
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: isDefined
+}
+
+tests {
+  test("Requests Connector is healthy", function() {
+    const data = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(data).to.have.property('status');
+    expect(data.status).to.be.oneOf(['UP', 'SERVING']);
+  });
+  
+  test("Response time is acceptable", function() {
+    expect(res.getResponseTime()).to.be.below(5000);
+  });
+}

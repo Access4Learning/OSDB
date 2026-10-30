@@ -1,0 +1,56 @@
+meta {
+  name: POST Logout - Success
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{gatewayUrl}}/admin-users/sessions/logout
+  body: none
+  auth: none
+}
+
+headers {
+  X-Admin-Session-Token: {{adminSessionToken}}
+}
+
+assert {
+  res.status: eq 204
+}
+
+script:pre-request {
+  const token = bru.getVar('adminSessionToken');
+  if (!token) {
+    throw new Error('No admin session token found. Run "Login - Success" first.');
+  }
+}
+
+tests {
+  test("Logout returns 204 No Content", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  # Logout - Success
+  
+  Logs out the current admin session, invalidating the session token.
+  
+  ## Prerequisites
+  
+  - Must have a valid admin session token (from successful login)
+  
+  ## Request
+  
+  - Header: `X-Admin-Session-Token` with valid session token
+  
+  ## Expected Response
+  
+  - Status: 204 No Content
+  
+  ## What This Tests
+  
+  - Successful logout invalidates the session token in Redis
+  - Subsequent requests with the same token should fail with 401
+  - Requirements: 3.1
+}

@@ -1,0 +1,100 @@
+meta {
+  name: 09-Create Phase Data DELAYED
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{gatewayUrl}}/{{fsDomainId}}/{{fsSolutionId}}/services/DataExport/{{fsJobId}}/extraction
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{fsZoneId}}
+  contextId: DEFAULT
+  serviceType: FUNCTIONAL
+  requestType: DELAYED
+  requestId: {{fsPhaseRequestId}}
+  queueId: {{fsConsumerQueueId}}
+  messageId: {{fsPhaseMessageId}}
+}
+
+body:json {
+  {
+    "phaseData": {
+      "table": "students",
+      "format": "CSV",
+      "filters": {
+        "gradeLevel": "10"
+      }
+    }
+  }
+}
+
+script:pre-request {
+  const jobId = bru.getVar('fsJobId');
+  if (!jobId) {
+    console.warn('Job ID not set — using placeholder. Run step 08 first to extract jobId from queue.');
+    bru.setVar('fsJobId', '00000000-0000-0000-0000-000000000000');
+  }
+
+  const crypto = require('crypto');
+  const requestId = crypto.randomUUID();
+  bru.setVar('fsPhaseRequestId', requestId);
+
+  const messageId = crypto.randomUUID();
+  bru.setVar('fsPhaseMessageId', messageId);
+
+  console.log('Phase DELAYED requestId:', requestId);
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'fsConsumer' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Create Phase Data DELAYED response status:', status);
+  if (status === 202) {
+    console.log('Phase data submission accepted (DELAYED).');
+  } else {
+    console.error('Unexpected status:', status);
+    console.error('Response:', JSON.stringify(res.getBody(), null, 2));
+  }
+}
+
+assert {
+  res.status: eq 202
+}
+
+tests {
+  test("DELAYED phase data submission returns 202 Accepted", function() {
+    expect(res.getStatus()).to.equal(202);
+  });
+}
+
+docs {
+  # Create Phase Data (DELAYED)
+
+  Consumer sends a DELAYED POST to submit data to the "extraction" phase
+  of the job. The URL includes the functional service name, job ID, and
+  phase name as path segments.
+
+  ## URL Pattern
+
+  `POST /{domainId}/{solutionId}/services/{functionalServiceName}/{jobId}/{phaseName}`
+
+  ## SIF Headers
+
+  - `serviceType: FUNCTIONAL`
+  - `requestType: DELAYED`
+  - `requestId` — new correlation ID for this phase request
+  - `queueId` — consumer's queue for the response
+
+  ## Expected Response
+
+  - Status: 202 Accepted
+}

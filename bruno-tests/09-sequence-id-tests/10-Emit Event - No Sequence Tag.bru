@@ -1,0 +1,60 @@
+meta {
+  name: 10-Emit Event - No Sequence Tag
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{gatewayUrl}}/{{seqDomainId}}/{{seqSolutionId}}/events
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{seqZoneId}}
+  contextId: DEFAULT
+  messageType: event
+  messageId: {{$randomUUID}}
+  eventAction: CREATE
+  serviceType: OBJECT
+  serviceName: SEQTESTOBJECTS
+}
+
+body:json {
+  {
+    "SEQTESTOBJECTS": {
+      "SEQTESTOBJECT": [
+        {
+          "refId": "{{$randomUUID}}",
+          "name": "Event without sequence tag"
+        }
+      ]
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'seqProvider' });
+}
+
+assert {
+  res.status: in [202, 204]
+}
+
+tests {
+  test("Event accepted by broker", function() {
+    expect([202, 204]).to.include(res.getStatus());
+  });
+}
+
+docs {
+  # Emit Event Without SEQUENCE_ENABLED Tag
+  
+  Emits an event BEFORE the SEQUENCE_ENABLED entity tag is created.
+  The sequence filter should be disabled (no tag = disabled), so the
+  consumer should NOT receive an x-sif-sequenceId header.
+}

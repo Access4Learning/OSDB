@@ -1,0 +1,123 @@
+docs {
+  # SIF Unity Broker - Bruno API Test Suite
+
+  Comprehensive API test suite for the SIF Unity Broker using Bruno, an open-source API testing tool.
+
+  ## Overview
+
+  This standalone test suite provides complete coverage of all externally-facing APIs in the SIF Unity Broker. It's designed to be distributed to the open source community for testing deployed broker instances.
+
+  ### What's Included
+
+  - Health checks for all 9 services
+  - Infrastructure API tests (environments, ACLs, queues, subscriptions, etc.)
+  - Standalone solution tests (03-inplace-solution)
+  - Authentication using HMAC-SHA256 with dynamic credential resolution
+  - Message pattern tests (IMMEDIATE, DELAYED, EVENT)
+  - Error handling tests
+  - Cleanup utilities
+
+  ### Key Features
+
+  - **Standalone**: No dependencies on other project modules
+  - **Secure**: Credentials stored in `.env` file (excluded from Git)
+  - **Well-Documented**: Comprehensive documentation at folder and request levels
+  - **Best Practices**: Follows Bruno and SIF 3.7 best practices
+  - **Multiple Environments**: Support for local, Docker Compose, Kubernetes, and standalone deployments
+  - **Dynamic Credentials**: Uses interpolate pattern for flexible credential management
+
+  ## Prerequisites
+
+  ### Required
+
+  1. **Bruno** - Download from [usebruno.com](https://www.usebruno.com/)
+     - GUI application (recommended)
+     - CLI available but optional
+
+  2. **Running SIF Unity Broker** - The test suite assumes the broker is already deployed
+     - Local development setup
+     - Docker Compose deployment
+     - Kubernetes deployment
+     - Or existing production-like environment (for standalone tests)
+
+  3. **Valid Credentials** - Session token and shared secret for authentication
+     - Configure in `.env` file using the pattern: `{prefix}-{role}SessionToken`
+     - See AUTH-CONFIGURATION.md for details
+
+  ## Quick Start
+
+  ### 1. Open in Bruno
+
+  1. Launch Bruno
+  2. Click "Open Collection"
+  3. Navigate to the `bruno-tests` folder
+  4. Select the folder
+
+  ### 2. Configure Credentials
+
+  Copy the example environment file and add your credentials:
+
+  ```bash
+  cp .env.example .env
+  ```
+
+  Edit `.env` and set your credentials using the pattern `{prefix}-{role}SessionToken`:
+
+  ```env
+  # Local development (use 'consumer' role for infrastructure tests)
+  local-consumerSessionToken=your-session-token-here
+  local-consumerSharedSecret=your-shared-secret-here
+
+  # Standalone environment (separate consumer and provider credentials)
+  standalone-consumerSessionToken=consumer-token
+  standalone-consumerSharedSecret=consumer-secret
+  standalone-providerSessionToken=provider-token
+  standalone-providerSharedSecret=provider-secret
+  ```
+
+  **Important**: Never commit `.env` to version control!
+
+  ### 3. Select Environment
+
+  In Bruno:
+  1. Click the environment dropdown (top right)
+  2. Select your environment: `local`, `docker-compose`, `kubernetes`, or `standalone`
+
+  ### 4. Run Tests
+
+  Start with health checks:
+  1. Navigate to `01-health-checks`
+  2. Click "Run Collection" or run individual tests
+  3. Verify all services are healthy
+
+  Then run infrastructure tests:
+  1. Navigate to `02-infrastructure`
+  2. Run tests in each subfolder
+
+  For standalone solution tests:
+  1. Navigate to `03-inplace-solution`
+  2. Run `00-initialize` tests first
+  3. Run consumer and provider tests
+
+  ## Test Collections
+
+  - **01-health-checks**: Verify all services are running
+  - **02-infrastructure**: Test infrastructure APIs (environments, ACLs, queues, etc.)
+  - **03-inplace-solution**: Test existing SIF solutions without creating infrastructure
+
+  ## Documentation
+
+  - **README.md**: This overview and quick start guide
+  - **SETUP.md**: Detailed setup instructions
+  - **AUTH-CONFIGURATION.md**: Authentication configuration guide
+  - **CONTRIBUTING.md**: Guidelines for adding tests
+  - **TROUBLESHOOTING.md**: Common issues and solutions
+  - **TEST-COVERAGE.md**: Test coverage matrix
+
+  ## Support
+
+  For issues or questions:
+  - Check TROUBLESHOOTING.md
+  - Review folder-level documentation (folder.bru files)
+  - Review request-level documentation (docs section in .bru files)
+}

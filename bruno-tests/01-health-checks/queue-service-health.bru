@@ -1,0 +1,48 @@
+meta {
+  name: Queue Service Health Check
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{queueServiceUrl}}/actuator/health
+  body: none
+  auth: none
+}
+
+docs {
+  # Queue Service Health Check
+  
+  Verifies that the Queue Service is running and healthy.
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: JSON with status field indicating "UP"
+  
+  ## What This Tests
+  
+  - Queue Service is running
+  - Service is accessible on the configured port
+  - Database connectivity is working
+  - Redis connectivity is working
+  - S3/LocalStack connectivity is working
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: isDefined
+}
+
+tests {
+  test("Queue Service is healthy", function() {
+    const data = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(data).to.have.property('status');
+    expect(data.status).to.be.oneOf(['UP', 'SERVING']);
+  });
+  
+  test("Response time is acceptable", function() {
+    expect(res.getResponseTime()).to.be.below(5000);
+  });
+}

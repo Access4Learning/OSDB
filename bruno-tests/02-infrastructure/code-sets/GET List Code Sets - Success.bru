@@ -1,0 +1,104 @@
+meta {
+  name: GET List Code Sets - Success
+  type: http
+  seq: 2
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/codeSets
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.codeSets: isDefined
+  res.body.codeSets.codeSet: isDefined
+}
+
+script:pre-request {
+  const domainId = bru.getVar('createdDomainId');
+  if (!domainId) {
+    throw new Error('No domain ID found. Run domain/solution/environment setup first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Code sets listed successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has SIF collection wrapper", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('codeSets');
+    expect(data.codeSets).to.have.property('codeSet');
+    expect(data.codeSets.codeSet).to.be.an('array');
+  });
+  
+  test("Collection contains previously created code set", function() {
+    const codeSetId = bru.getVar('createdCodeSetId');
+    if (codeSetId) {
+      const codeSets = res.getBody().codeSets.codeSet;
+      const found = codeSets.some(cs => cs.id === codeSetId);
+      expect(found).to.be.true;
+    }
+  });
+  
+  test("Each code set has required fields", function() {
+    const codeSets = res.getBody().codeSets.codeSet;
+    if (codeSets.length > 0) {
+      const cs = codeSets[0];
+      expect(cs).to.have.property('id');
+      expect(cs).to.have.property('zone');
+      expect(cs).to.have.property('version');
+      expect(cs).to.have.property('timestamp');
+    }
+  });
+  
+  test("Code sets include codeItems", function() {
+    const codeSetId = bru.getVar('createdCodeSetId');
+    if (codeSetId) {
+      const codeSets = res.getBody().codeSets.codeSet;
+      const cs = codeSets.find(c => c.id === codeSetId);
+      if (cs && cs.codeItems) {
+        expect(cs.codeItems).to.have.property('codeItem');
+        expect(cs.codeItems.codeItem).to.be.an('array');
+      }
+    }
+  });
+}
+
+docs {
+  # List Code Sets - Success
+  
+  Retrieves all code sets for the solution.
+  
+  ## Prerequisites
+  
+  - Domain and solution must exist (createdDomainId, createdSolutionId)
+  - At least one code set should exist — run "POST Create Code Set - Success" first
+  - Valid authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: `{ "codeSets": { "codeSet": [...] } }` — SIF collection wrapper
+  
+  ## What This Tests
+  
+  - Code set listing returns 200 (Requirement 14.2)
+  - Response uses SIF collection wrapper (codeSets.codeSet array)
+  - Collection contains previously created code set
+  - Each code set includes full codeItems
+}

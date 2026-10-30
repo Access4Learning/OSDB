@@ -1,0 +1,48 @@
+meta {
+  name: GET List Contexts After Create
+  type: http
+  seq: 5
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/zones/{{createdZoneId}}/contexts
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Both contexts exist", function() {
+    const data = res.getBody();
+    expect(data.contexts).to.exist;
+    expect(data.contexts.context).to.be.an('array');
+    expect(data.contexts.context.length).to.be.at.least(2);
+  
+    const ids = data.contexts.context.map(c => c.id);
+    expect(ids).to.include('DEFAULT');
+    expect(ids).to.include('ASSESSMENT');
+  });
+}
+
+docs {
+  # List Contexts After Create
+  
+  Verifies that both the auto-created DEFAULT context and the manually created
+  ASSESSMENT context exist in the zone.
+}

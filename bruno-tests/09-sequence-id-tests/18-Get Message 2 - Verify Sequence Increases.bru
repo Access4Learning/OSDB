@@ -1,0 +1,63 @@
+meta {
+  name: 18-Get Message 2 - Verify Sequence Increases
+  type: http
+  seq: 19
+}
+
+get {
+  url: {{gatewayUrl}}/{{seqDomainId}}/{{seqSolutionId}}/queues/{{seqConsumerQueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  connectionId: seqConsumer
+  X-Environment-Id: {{seqConsumerEnvId}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'seqConsumer' });
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const messageId = res.getHeaders()?.messageid;
+    bru.setVar('seqLastMessageId', messageId);
+
+    const seqId = res.getHeaders()?.['x-sif-sequenceid'];
+    if (seqId) {
+      const prev = bru.getVar('seqLastSequenceId');
+      console.log('Message 2 sequence ID:', seqId, '(previous:', prev, ')');
+      bru.setVar('seqPreviousSequenceId', prev);
+      bru.setVar('seqLastSequenceId', parseInt(seqId, 10));
+    }
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Message delivered with x-sif-sequenceId header", function() {
+    const headers = res.getHeaders();
+    expect(headers['x-sif-sequenceid']).to.exist;
+  });
+
+  test("Sequence ID is strictly greater than previous", function() {
+    const currentSeqId = parseInt(res.getHeaders()['x-sif-sequenceid'], 10);
+    const previousSeqId = bru.getVar('seqPreviousSequenceId');
+    console.log('Comparing: current=' + currentSeqId + ' > previous=' + previousSeqId);
+    expect(currentSeqId).to.be.greaterThan(previousSeqId);
+  });
+}
+
+docs {
+  # Verify Sequence ID Increases (Event 2)
+  
+  The second event's x-sif-sequenceId must be strictly greater than
+  the first event's value, proving monotonic increase via Redis INCR.
+}

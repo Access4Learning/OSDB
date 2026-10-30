@@ -1,0 +1,65 @@
+meta {
+  name: 19-PUT Alert Rejected
+  type: http
+  seq: 22
+}
+
+put {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/alerts/{{altAlertId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "alert": {
+      "reporter": "UpdatedReporter",
+      "exchange": "REQUEST",
+      "level": "WARNING"
+    }
+  }
+}
+
+assert {
+  res.status: eq 405
+}
+
+script:pre-request {
+  const alertId = bru.getVar('altAlertId');
+  if (!alertId) {
+    throw new Error('altAlertId not set. Run step 15 first to create an alert.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Update alert rejected with 405", function() {
+    expect(res.getStatus()).to.equal(405);
+  });
+
+  test("Error indicates alerts are immutable", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    const bodyStr = JSON.stringify(data).toLowerCase();
+    expect(bodyStr).to.include('immutable');
+  });
+}
+
+docs {
+  # PUT Alert Rejected
+  
+  Attempts to update an existing alert via PUT. The SIF 3.7 specification
+  prohibits alert updates — alerts are immutable.
+  
+  ## Expected Response
+  
+  - Status: 405 Method Not Allowed
+}

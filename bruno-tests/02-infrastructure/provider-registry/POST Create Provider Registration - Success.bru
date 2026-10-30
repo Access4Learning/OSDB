@@ -1,0 +1,191 @@
+meta {
+  name: POST Create Provider Registration - Success
+  type: http
+  seq: 1
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/providers/provider
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "provider": {
+      "environmentId": "{{createdEnvironmentId}}",
+      "serviceName": "StudentPersonals",
+      "zoneId": "{{createdZoneId}}",
+      "contextId": "DEFAULT",
+      "serviceType": "OBJECT",
+      "endPoint": {
+        "location": "http://localhost:9090/StudentPersonals"
+      },
+      "supportedRequestTypes": {
+        "supportedRequestType": [
+          {
+            "requestType": "IMMEDIATE",
+            "operations": {
+              "operation": [
+                "QUERY",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.provider.id: isDefined
+  res.body.provider.environmentId: isDefined
+  res.body.provider.serviceName: eq StudentPersonals
+  res.body.provider.zoneId: isDefined
+  res.body.provider.endPoint.location: isDefined
+  res.body.provider.serviceType: isDefined
+  res.body.provider.providerName: isDefined
+  res.body.provider.supportedRequestTypes: isDefined
+  res.body.provider.registeredAt: isDefined
+}
+
+script:pre-request {
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No environment ID found. Run "POST Create Environment - Success" first.');
+  }
+  
+  const zoneId = bru.getVar('createdZoneId');
+  if (!zoneId) {
+    throw new Error('No zone ID found. Run "POST Create Zone - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody().provider;
+    bru.setVar('createdProviderRegistrationId', data.id);
+    console.log('Created provider registration:', data.id);
+    console.log('Service:', data.serviceName, 'Zone:', data.zoneId, 'Context:', data.contextId);
+  }
+}
+
+tests {
+  test("Provider registration created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response contains all expected fields", function() {
+    const data = res.getBody().provider;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('environmentId');
+    expect(data).to.have.property('serviceName');
+    expect(data).to.have.property('zoneId');
+    expect(data).to.have.property('contextId');
+    expect(data).to.have.property('endPoint');
+    expect(data).to.have.property('serviceType');
+    expect(data).to.have.property('providerName');
+    expect(data).to.have.property('supportedRequestTypes');
+    expect(data).to.have.property('registeredAt');
+  });
+  
+  test("Response does not contain deprecated supportedPatterns field", function() {
+    const data = res.getBody().provider;
+    expect(data).to.not.have.property('supportedPatterns');
+  });
+  
+  test("Service name matches request", function() {
+    const data = res.getBody().provider;
+    expect(data.serviceName).to.equal('StudentPersonals');
+  });
+  
+  test("Endpoint matches request", function() {
+    const data = res.getBody().provider;
+    expect(data.endPoint.location).to.equal('http://localhost:9090/StudentPersonals');
+  });
+  
+  test("Service type matches request", function() {
+    const data = res.getBody().provider;
+    expect(data.serviceType).to.equal('OBJECT');
+  });
+  
+  test("Provider name is derived from the owning environment, not the request", function() {
+    // providerName is not a field a client can send: ProviderRegistrationBody has no such
+    // component, and the broker derives the response value from the owning environment's
+    // consumerName. This used to assert the literal 'TestSIS' that the request supplied --
+    // which passed only because the request was allowed to set it. Asserting the derivation
+    // is what actually pins the documented behaviour.
+    const data = res.getBody().provider;
+    const expectedName = bru.getVar('createdEnvironmentConsumerName');
+    expect(expectedName, 'createdEnvironmentConsumerName must be set by the environment-create step')
+      .to.be.a('string').and.not.empty;
+    expect(data.providerName).to.equal(expectedName);
+  });
+  
+  test("Supported request types contains IMMEDIATE with correct operations", function() {
+    const data = res.getBody().provider;
+    expect(data.supportedRequestTypes.supportedRequestType).to.be.an('array');
+    expect(data.supportedRequestTypes.supportedRequestType.length).to.equal(1);
+    const immediateEntry = data.supportedRequestTypes.supportedRequestType[0];
+    expect(immediateEntry.requestType).to.equal('IMMEDIATE');
+    expect(immediateEntry.operations.operation).to.be.an('array');
+    expect(immediateEntry.operations.operation).to.include('QUERY');
+    expect(immediateEntry.operations.operation).to.include('UPDATE');
+    expect(immediateEntry.operations.operation).to.include('DELETE');
+  });
+  
+  test("Environment ID matches request", function() {
+    const data = res.getBody().provider;
+    const expectedEnvId = bru.getVar('createdEnvironmentId');
+    expect(data.environmentId).to.equal(expectedEnvId);
+  });
+  
+  test("Registration ID is valid UUID", function() {
+    const data = res.getBody().provider;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    expect(data.id).to.match(uuidRegex);
+  });
+}
+
+docs {
+  # Create Provider Registration - Success
+  
+  Registers a new provider for the "StudentPersonals" service with SIF 3.7 aligned fields:
+  serviceType, providerName, and supportedRequestTypes.
+  
+  ## Prerequisites
+  
+  - A domain and solution must exist (createdDomainId, createdSolutionId)
+  - An environment must exist of type BROKERED (createdEnvironmentId)
+  - A zone must exist (createdZoneId)
+  - Valid admin authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 201 Created
+  - Body: Provider registration with id, environmentId, serviceName, zoneId, contextId,
+    endPoint.location, serviceType, providerName, supportedRequestTypes, registeredAt
+  - The deprecated supportedPatterns field should NOT be present
+  
+  ## What This Tests
+  
+  - Provider registration creation with SIF 3.7 aligned payload
+  - Response contains serviceType, providerName, supportedRequestTypes
+  - Response does not contain deprecated supportedPatterns field
+  - Registration ID is stored for subsequent tests
+}

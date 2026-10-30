@@ -1,0 +1,72 @@
+meta {
+  name: POST Select Environment - Success
+  type: http
+  seq: 4
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/admin-users/sessions/select-environment
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Admin-Session-Token: {{adminSessionToken}}
+}
+
+body:json {
+  {
+    "environmentId": "{{adminUserEnvironmentId}}"
+  }
+}
+
+assert {
+  res.status: eq 204
+}
+
+script:pre-request {
+  const token = bru.getVar('adminSessionToken');
+  if (!token) {
+    throw new Error('No admin session token found. Run "Login - Success" first.');
+  }
+  const envId = bru.getVar('adminUserEnvironmentId');
+  if (!envId) {
+    throw new Error('No environment ID found. Login must return at least one environment.');
+  }
+}
+
+tests {
+  test("Environment selection returns 204 No Content", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  # Select Environment - Success
+  
+  Selects an authorized environment for the current admin session.
+  
+  ## Prerequisites
+  
+  - Must have a valid admin session token (from successful login)
+  - The environment must be in the user's authorized list
+  
+  ## Request
+  
+  - Header: `X-Admin-Session-Token` with valid session token
+  - Body: `{ "environmentId": "<uuid>" }`
+  
+  ## Expected Response
+  
+  - Status: 204 No Content
+  
+  ## What This Tests
+  
+  - Successful environment selection with valid session
+  - Environment stored in session for subsequent requests
+  - Requirements: 4.1
+}

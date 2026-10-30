@@ -1,0 +1,54 @@
+meta {
+  name: 09a-Create Consumer1 Subscription
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{gatewayUrl}}/{{evtDomainId}}/{{evtSolutionId}}/subscriptions/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{evtConsumer1QueueId}}",
+      "aclEntryId": "{{evtConsumer1AclId}}",
+      "messageType": "EVENT"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'evtConsumer1' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('evtConsumer1SubId', data.subscription.id);
+    console.log('Created Consumer1 subscription:', data.subscription.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.subscription.id: isDefined
+  res.body.subscription.messageType: eq EVENT
+}
+
+tests {
+  test("Consumer1 subscription created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().subscription.messageType).to.equal('EVENT');
+  });
+}
+

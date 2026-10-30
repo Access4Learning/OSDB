@@ -1,0 +1,39 @@
+meta {
+  name: consumer
+  seq: 2
+}
+
+docs {
+  # Consumer Tests
+
+  Tests for consumer operations against an existing SIF solution.
+
+  ## Overview
+
+  These tests validate consumer functionality:
+  - Requesting objects from providers
+  - Creating and managing subscriptions
+  - Receiving events
+  - Querying object collections
+
+  ## Authentication
+
+  All tests use consumer credentials from the standalone environment:
+  - `STANDALONE_CONSUMER_SESSION_TOKEN`
+  - `STANDALONE_CONSUMER_SHARED_SECRET`
+
+  ## Test Scenarios
+
+  1. **Request Objects** - Consumer requests objects from provider
+  2. **Request Single Object** - Consumer requests specific object by ID
+  3. **Create Subscription** - Consumer subscribes to object changes
+  4. **List Subscriptions** - Consumer lists active subscriptions
+  5. **Delete Subscription** - Consumer removes subscription
+
+  ## Configuration
+
+  Tests use these variables from the standalone environment:
+  - `testObjectName` - The SIF object type to test (e.g., StudentPersonals)
+  - `testZoneId` - The zone to test in
+  - `consumerRequestsUrl` - Extracted from consumer environment (set by initialization)
+}

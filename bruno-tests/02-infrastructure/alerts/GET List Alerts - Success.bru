@@ -1,0 +1,92 @@
+meta {
+  name: GET List Alerts - Success
+  type: http
+  seq: 4
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/alerts
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.alerts: isDefined
+  res.body.alerts.alert: isDefined
+}
+
+script:pre-request {
+  const domainId = bru.getVar('createdDomainId');
+  if (!domainId) {
+    throw new Error('No domain ID found. Run domain/solution/environment setup first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Alerts listed successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has SIF collection wrapper", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('alerts');
+    expect(data.alerts).to.have.property('alert');
+    expect(data.alerts.alert).to.be.an('array');
+  });
+  
+  test("Collection contains previously created alert", function() {
+    const alertId = bru.getVar('createdAlertId');
+    if (alertId) {
+      const alerts = res.getBody().alerts.alert;
+      const found = alerts.some(a => a.id === alertId);
+      expect(found).to.be.true;
+    }
+  });
+  
+  test("Each alert has required fields", function() {
+    const alerts = res.getBody().alerts.alert;
+    if (alerts.length > 0) {
+      const alert = alerts[0];
+      expect(alert).to.have.property('id');
+      expect(alert).to.have.property('reporter');
+      expect(alert).to.have.property('exchange');
+      expect(alert).to.have.property('level');
+      expect(alert).to.have.property('SIF_ExtendedElements');
+    }
+  });
+}
+
+docs {
+  # List Alerts - Success
+  
+  Retrieves all alerts for the authenticated environment.
+  
+  ## Prerequisites
+  
+  - Domain and solution must exist (createdDomainId, createdSolutionId)
+  - At least one alert should exist — run "POST Create Alert" tests first
+  - Valid admin authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: `{ "alerts": { "alert": [...] } }` — SIF collection wrapper
+  
+  ## What This Tests
+  
+  - Alert listing returns 200 (Requirement 11.4)
+  - Response uses SIF collection wrapper (alerts.alert array)
+  - Collection contains previously created alert
+}

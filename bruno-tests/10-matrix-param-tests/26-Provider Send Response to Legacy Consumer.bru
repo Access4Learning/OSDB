@@ -1,0 +1,66 @@
+meta {
+  name: 26-Provider Send Response to Legacy Consumer
+  type: http
+  seq: 26
+}
+
+post {
+  url: {{gatewayUrl}}/{{mpDomainId}}/{{mpSolutionId}}/responses
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  queueId: {{mpLegacyConsumerQueueId}}
+  relativeServicePath: /LegacyTestObjects
+  serviceType: OBJECT
+  zoneId: {{mpZoneId}}
+  contextId: DEFAULT
+}
+
+body:json {
+  {
+    "TestObject": {
+      "RefId": "test-123",
+      "Name": "Matrix Param Test Response"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'mpLegacyProvider' });
+}
+
+script:post-response {
+  // Wait for message to be enqueued to consumer's queue
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
+  if (res.getStatus() === 202) {
+    const data = res.getBody();
+    console.log('Response accepted:', data.messageId);
+  }
+}
+
+assert {
+  res.status: eq 202
+}
+
+tests {
+  test("Response accepted by responses-connector", function() {
+    expect(res.getStatus()).to.equal(202);
+  });
+}
+
+docs {
+  # Provider Sends Response to Legacy Consumer
+  
+  The original provider sends a response to the legacy consumer's queue via the
+  responses-connector. The responses-connector checks the consumer's
+  legacy tag and formats relativeServicePath with matrix params.
+  
+  Uses relativeServicePath: /LegacyTestObjects header.
+}

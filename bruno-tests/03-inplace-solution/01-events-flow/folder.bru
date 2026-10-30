@@ -1,0 +1,41 @@
+meta {
+  name: 01-events-flow
+  seq: 1
+}
+
+docs {
+  # Events Flow Test
+
+  Tests the complete event flow: provider emits events, consumers receive and process them.
+
+  ## Test Scenario
+
+  1. **Provider**: Emits 10 events for a specific object type
+  2. **Consumer 1**: Processes all events from their queue (loops until 204)
+  3. **Consumer 2**: Processes all events from their queue (loops until 204)
+
+  ## Prerequisites
+
+  - Run `00-initialize` tests first to set up connector URLs
+  - Provider environment with PROVIDE access
+  - Two consumer environments with SUBSCRIBE access and active subscriptions
+  - Proper ACL configuration for the test zone and object type
+
+  ## Expected Flow
+
+  1. Provider sends 10 events via events connector
+  2. Broker distributes events to all subscribed consumers' queues
+  3. Each consumer polls their queue until all messages are processed (204 response)
+
+  ## Test Execution Order
+
+  1. `01-Provider-Emit-10-Events.bru` - Provider emits 10 events
+  2. `02-Consumer1-Process-Queue.bru` - Consumer 1 processes all queued events
+  3. `03-Consumer2-Process-Queue.bru` - Consumer 2 processes all queued events
+
+  ## Notes
+
+  - Queue processing uses a loop that continues until 204 (No Content) is returned
+  - Each consumer should receive all 10 events
+  - Events are processed in order (FIFO)
+}

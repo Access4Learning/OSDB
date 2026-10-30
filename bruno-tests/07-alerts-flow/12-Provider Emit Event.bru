@@ -1,0 +1,100 @@
+meta {
+  name: 12-Provider Emit Event
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/events
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{altZoneId}}
+  contextId: DEFAULT
+  messageType: event
+  messageId: {{altEventMessageId}}
+  eventAction: CREATE
+  serviceType: OBJECT
+  serviceName: TESTOBJECT1s
+}
+
+body:json {
+  {
+    "TESTOBJECT1s": {
+      "TESTOBJECT1": [
+        {
+          "refId": "{{$randomUUID}}",
+          "localId": "alt-test-{{$timestamp}}",
+          "name": "Alert Flow Test Object",
+          "description": "Event emitted by alerts flow test suite"
+        }
+      ]
+    }
+  }
+}
+
+assert {
+  res.status: in [202, 204]
+}
+
+script:pre-request {
+  const zoneId = bru.getVar('altZoneId');
+  if (!zoneId) {
+    throw new Error('altZoneId not set. Run step 02 first.');
+  }
+
+  // Generate a stable messageId UUID and store it for the alert creation step
+  const crypto = require('crypto');
+  const messageId = crypto.randomUUID();
+  bru.setVar('altEventMessageId', messageId);
+  console.log('Generated messageId for event:', messageId);
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'altProvider' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 202 || status === 204) {
+    console.log('Event emitted successfully, status:', status);
+    console.log('Stored altEventMessageId:', bru.getVar('altEventMessageId'));
+  } else {
+    console.error('Failed to emit event, status:', status);
+    console.error('Response:', JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("Event accepted by broker", function() {
+    const status = res.getStatus();
+    expect([202, 204]).to.include(status);
+  });
+
+  test("altEventMessageId stored for alert creation", function() {
+    const messageId = bru.getVar('altEventMessageId');
+    expect(messageId).to.exist;
+    expect(messageId).to.be.a('string');
+    expect(messageId.length).to.be.greaterThan(0);
+  });
+}
+
+docs {
+  # Provider Emit Event
+  
+  Provider sends a CREATE event for TESTOBJECT1s with a messageId header.
+  The gateway's MessageContextCacheFilter caches the message context in Redis
+  (sourceEnvironmentId, zoneId, contextId) keyed by the messageId.
+  
+  The messageId is stored as `altEventMessageId` for use in the alert creation step.
+  
+  ## Expected Behavior
+  
+  - Broker accepts the event (202 or 204)
+  - Event is distributed to consumer's queue (has subscription)
+  - Gateway caches message context in Redis for the messageId
+}

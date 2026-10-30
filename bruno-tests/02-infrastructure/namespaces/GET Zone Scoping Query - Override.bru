@@ -1,0 +1,227 @@
+meta {
+  name: GET Zone Scoping Query - Override
+  type: http
+  seq: 7
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/namespaces
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{zoneScopingTestZone}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.namespaces: isDefined
+  res.body.namespaces.namespace: isDefined
+}
+
+script:pre-request {
+  const domainId = bru.getVar('createdDomainId');
+  if (!domainId) {
+    throw new Error('No domain ID found. Run domain/solution/environment setup first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  
+  // Step 1: Create a global namespace
+  const gatewayUrl = bru.getEnvVar('gatewayUrl');
+  const solutionId = bru.getVar('createdSolutionId');
+  const testPrefix = bru.getEnvVar('testDataPrefix') || 'bruno-test';
+  const zoneScopingUri = 'http://' + testPrefix + '.example.org/zone-scoping-test';
+  const testZone = testPrefix + '-zone-override';
+  
+  bru.setVar('zoneScopingNamespaceUri', zoneScopingUri);
+  bru.setVar('zoneScopingTestZone', testZone);
+  
+  // Set admin auth for the setup requests
+  auth.setAuthHeaders(req, bru, 'admin');
+  
+  const authHeader = bru.getVar('authorizationHeader');
+  const tsHeader = bru.getVar('timestampHeader');
+  
+  const baseUrl = gatewayUrl + '/' + domainId + '/' + solutionId;
+  
+  // Create global namespace
+  const globalPayload = JSON.stringify({
+    namespace: {
+      zone: 'environment-global',
+      uri: zoneScopingUri,
+      url: 'http://example.org/schema/global.xsd'
+    }
+  });
+  
+  const globalRes = require('axios').post(
+    baseUrl + '/namespaces/namespace',
+    globalPayload,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader,
+        'timestamp': tsHeader,
+        'serviceType': 'UTILITY'
+      }
+    }
+  );
+  
+  console.log('Global namespace creation status:', globalRes.status);
+  bru.setVar('zoneScopingGlobalNamespaceId', globalRes.data.namespace.id);
+  
+  // Refresh auth for second request
+  auth.setAuthHeaders(req, bru, 'admin');
+  const authHeader2 = bru.getVar('authorizationHeader');
+  const tsHeader2 = bru.getVar('timestampHeader');
+  
+  // Create zone-specific namespace with same uri
+  const zonePayload = JSON.stringify({
+    namespace: {
+      zone: testZone,
+      uri: zoneScopingUri,
+      url: 'http://example.org/schema/zone-specific.xsd'
+    }
+  });
+  
+  const zoneRes = require('axios').post(
+    baseUrl + '/namespaces/namespace',
+    zonePayload,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader2,
+        'timestamp': tsHeader2,
+        'serviceType': 'UTILITY'
+      }
+    }
+  );
+  
+  console.log('Zone-specific namespace creation status:', zoneRes.status);
+  bru.setVar('zoneScopingZoneNamespaceId', zoneRes.data.namespace.id);
+  
+  // Refresh auth for the actual GET request
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  // Cleanup: delete both namespaces after the test
+  const auth = require('./common/auth.js');
+  const gatewayUrl = bru.getEnvVar('gatewayUrl');
+  const domainId = bru.getVar('createdDomainId');
+  const solutionId = bru.getVar('createdSolutionId');
+  const globalId = bru.getVar('zoneScopingGlobalNamespaceId');
+  const zoneId = bru.getVar('zoneScopingZoneNamespaceId');
+  const baseUrl = gatewayUrl + '/' + domainId + '/' + solutionId;
+  
+  try {
+    // Delete zone-specific namespace
+    auth.setAuthHeaders(req, bru, 'admin');
+    require('axios').delete(
+      baseUrl + '/namespaces/' + zoneId,
+      {
+        headers: {
+          'Authorization': bru.getVar('authorizationHeader'),
+          'timestamp': bru.getVar('timestampHeader')
+        }
+      }
+    );
+    console.log('Cleaned up zone-specific namespace');
+  } catch (e) {
+    console.log('Zone-specific cleanup note:', e.message);
+  }
+  
+  try {
+    // Delete global namespace
+    auth.setAuthHeaders(req, bru, 'admin');
+    require('axios').delete(
+      baseUrl + '/namespaces/' + globalId,
+      {
+        headers: {
+          'Authorization': bru.getVar('authorizationHeader'),
+          'timestamp': bru.getVar('timestampHeader')
+        }
+      }
+    );
+    console.log('Cleaned up global namespace');
+  } catch (e) {
+    console.log('Global cleanup note:', e.message);
+  }
+}
+
+tests {
+  test("Zone-scoped query returned successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has SIF collection wrapper", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('namespaces');
+    expect(data.namespaces).to.have.property('namespace');
+    expect(data.namespaces.namespace).to.be.an('array');
+  });
+  
+  test("Zone-specific entry returned instead of global (matched by URI)", function() {
+    const uri = bru.getVar('zoneScopingNamespaceUri');
+    const namespaces = res.getBody().namespaces.namespace;
+    const matching = namespaces.filter(ns => ns.uri === uri);
+    
+    // Should have exactly one entry (zone-specific overrides global)
+    expect(matching.length).to.equal(1);
+    
+    // The returned entry should be the zone-specific one
+    const ns = matching[0];
+    expect(ns.url).to.equal('http://example.org/schema/zone-specific.xsd');
+  });
+  
+  test("Zone-specific URL returned (not global URL)", function() {
+    const uri = bru.getVar('zoneScopingNamespaceUri');
+    const namespaces = res.getBody().namespaces.namespace;
+    const ns = namespaces.find(n => n.uri === uri);
+    
+    expect(ns).to.exist;
+    expect(ns.url).to.equal('http://example.org/schema/zone-specific.xsd');
+    
+    // Global URL should NOT be present
+    expect(ns.url).to.not.equal('http://example.org/schema/global.xsd');
+  });
+}
+
+docs {
+  # Zone Scoping Query - Override
+  
+  Tests the zone-scoping override behavior: when a global namespace and a
+  zone-specific namespace share the same `uri`, querying with the specific zone
+  should return the zone-specific entry instead of the global one.
+  
+  ## How It Works
+  
+  1. Pre-request script creates a global namespace (zone = "environment-global")
+  2. Pre-request script creates a zone-specific namespace with the same `uri`
+  3. The GET request queries with the specific zone via `zoneId` header
+  4. Assertions verify the zone-specific entry is returned, not the global one
+  5. Post-response script cleans up both namespaces
+  
+  ## Prerequisites
+  
+  - Domain and solution must exist (createdDomainId, createdSolutionId)
+  - Valid admin authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - The namespace with the matching `uri` should have zone-specific url
+  - Global url should NOT appear (zone-specific fully overrides)
+  
+  ## What This Tests
+  
+  - Zone-scoping override behavior (Requirements 7.1, 7.2, 7.3, 7.4)
+  - Zone-specific entries replace global counterparts with same uri
+  - Full override: zone-specific url returned, not global one
+}

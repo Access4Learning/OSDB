@@ -1,0 +1,71 @@
+meta {
+  name: GET List Environments - Success
+  type: http
+  seq: 2
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/environments
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.environments.environment: isArray
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, "admin");
+}
+
+tests {
+  test("Environments list retrieved successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response is an array", function() {
+    const data = res.getBody().environments.environment;
+    expect(data).to.be.an('array');
+  });
+  
+  test("Each environment has required fields", function() {
+    const data = res.getBody().environments.environment;
+    if (data.length > 0) {
+      const env = data[0];
+      expect(env).to.have.property('id');
+      expect(env).to.have.property('consumerName');
+      expect(env).to.have.property('type');
+    }
+  });
+}
+
+docs {
+  # List Environments - Success
+  
+  Retrieves a list of all environments.
+  
+  ## Authentication
+  
+  This request requires authentication using credentials from .env.
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: Array of environment objects
+  
+  ## What This Tests
+  
+  - List operation with authentication
+  - Response contains array of environments
+  - Each environment has required fields
+}

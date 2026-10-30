@@ -1,0 +1,92 @@
+meta {
+  name: GET List Namespaces - Success
+  type: http
+  seq: 2
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/namespaces
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.namespaces: isDefined
+  res.body.namespaces.namespace: isDefined
+}
+
+script:pre-request {
+  const domainId = bru.getVar('createdDomainId');
+  if (!domainId) {
+    throw new Error('No domain ID found. Run domain/solution/environment setup first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Namespaces listed successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has SIF collection wrapper", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('namespaces');
+    expect(data.namespaces).to.have.property('namespace');
+    expect(data.namespaces.namespace).to.be.an('array');
+  });
+  
+  test("Collection contains previously created namespace", function() {
+    const namespaceId = bru.getVar('createdNamespaceId');
+    if (namespaceId) {
+      const namespaces = res.getBody().namespaces.namespace;
+      const found = namespaces.some(ns => ns.id === namespaceId);
+      expect(found).to.be.true;
+    }
+  });
+  
+  test("Each namespace has required fields", function() {
+    const namespaces = res.getBody().namespaces.namespace;
+    if (namespaces.length > 0) {
+      const ns = namespaces[0];
+      expect(ns).to.have.property('id');
+      expect(ns).to.have.property('zone');
+      expect(ns).to.have.property('uri');
+      expect(ns).to.have.property('url');
+    }
+  });
+}
+
+docs {
+  # List Namespaces - Success
+  
+  Retrieves all namespaces for the solution.
+  
+  ## Prerequisites
+  
+  - Domain and solution must exist (createdDomainId, createdSolutionId)
+  - At least one namespace should exist — run "POST Create Namespace - Success" first
+  - Valid authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: `{ "namespaces": { "namespace": [...] } }` — SIF collection wrapper
+  
+  ## What This Tests
+  
+  - Namespace listing returns 200 (Requirement 1.1)
+  - Response uses SIF collection wrapper (namespaces.namespace array)
+  - Collection contains previously created namespace
+  - Each namespace has required fields (id, zone, uri, url)
+}

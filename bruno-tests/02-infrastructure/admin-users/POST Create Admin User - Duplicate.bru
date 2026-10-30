@@ -1,0 +1,80 @@
+meta {
+  name: POST Create Admin User - Duplicate
+  type: http
+  seq: 4
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/admin-users
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "username": "{{createdAdminUsername}}",
+    "password": "AnotherPass456!",
+    "domainUuid": "{{adminDomainUuid}}",
+    "solutionUuid": "{{adminSolutionUuid}}"
+  }
+}
+
+assert {
+  res.status: eq 409
+}
+
+script:pre-request {
+  const username = bru.getVar('createdAdminUsername');
+  if (!username) {
+    throw new Error('No admin username found. Run "POST Create Admin User - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Duplicate user rejected with 409 Conflict", function() {
+    expect(res.getStatus()).to.equal(409);
+  });
+  
+  test("Response contains conflict error message", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('message');
+    expect(data.message.toLowerCase()).to.include('already exists');
+  });
+}
+
+docs {
+  # Create Admin User - Duplicate
+  
+  Attempts to create an admin user with a username that already exists in the same domain+solution.
+  
+  ## Prerequisites
+  
+  - Run "POST Create Admin User - Success" first to create the initial user
+  
+  ## Expected Response
+  
+  - Status: 409 Conflict
+  - Body: Error response indicating username already exists
+  
+  ## What This Tests
+  
+  - Username uniqueness enforcement within domain+solution scope
+  - Proper 409 Conflict response for duplicate usernames
+  
+  ## Requirements Validated
+  
+  - 1.2: Username uniqueness within domain+solution via database unique constraint
+  - 1.3: Duplicate username rejected with 409 Conflict
+}

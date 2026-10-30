@@ -1,0 +1,47 @@
+meta {
+  name: GET List ACLs - Success
+  type: http
+  seq: 2
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/acl-entries
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body: isArray
+}
+
+script:pre-request {
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No environment ID found. Run "Create Environment - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+tests {
+  test("ACL entries retrieved successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.be.an('array');
+  });
+}
+
+docs {
+  # List ACL Entries - Success
+  
+  Retrieves all ACL entries.
+}

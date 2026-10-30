@@ -1,0 +1,54 @@
+meta {
+  name: Functional Services Tests
+  seq: 6
+}
+
+docs {
+  # Functional Services Tests (SIF 3.7 Pass-Through Proxy)
+
+  End-to-end tests for the SIF functional services pass-through proxy architecture.
+  The services-connector routes requests to registered providers without persisting
+  job state — all job state is managed by the external provider.
+
+  ## What This Tests
+
+  1. Creates infrastructure (domain, solution, zone, default context)
+  2. Creates consumer and provider environments (BROKERED)
+  3. Creates ACLs: consumer gets CREATE and QUERY on "DataExport", provider gets PROVIDE
+  4. Registers the provider for the "DataExport" functional service
+  5. Creates a provider queue for receiving DELAYED requests
+  6. Creates a DELAYED_REQUEST subscription binding "DataExport" to the provider's queue
+  7. Creates a consumer queue for DELAYED response delivery
+  8. Consumer sends DELAYED job creation → 202 Accepted
+  9. Provider polls its queue → receives the job request
+  10. Provider sends job response → enqueued to consumer's queue
+  11. Consumer polls its queue → receives the job response
+  12. Consumer sends DELAYED phase operation → 202 Accepted
+  13. Provider polls its queue → receives the phase request
+  14. Provider sends phase response → enqueued to consumer's queue
+  15. Consumer polls its queue → receives the phase response
+  16. Consumer sends DELAYED state operation → 202 Accepted
+  17. Provider polls its queue → receives the state request
+  18. Provider sends state response → enqueued to consumer's queue
+  19. Consumer polls its queue → receives the state response
+
+  ## Architecture
+
+  - The services-connector is a **pass-through proxy** — it does NOT call the Job_Service
+  - The functional service name is in the **URL path**, not the request body
+  - `zoneId` and `contextId` come from **SIF headers**, not the body
+  - Request bodies are **raw SIF payloads** forwarded unchanged to the provider
+  - DELAYED requests return **202 Accepted** immediately; responses are delivered to the consumer's queue
+
+  ## Prerequisites
+
+  - All services running (gateway, environment-service, services-connector, queue-service)
+  - Admin credentials configured in .env
+  - No Job_Service dependency required
+
+  ## Run Order
+
+  Tests are numbered and must be run in sequence (00 through 12).
+  The provider queue + DELAYED_REQUEST subscription (steps 05b–05c)
+  are required for the DELAYED_to_DELAYED flow to work.
+}

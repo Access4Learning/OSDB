@@ -1,0 +1,67 @@
+meta {
+  name: ENV Cannot List All Environments
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/environments
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 403
+}
+
+script:pre-request {
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No first environment ID found. Run infrastructure setup first.');
+  }
+  const anotherEnvId = bru.getVar('createdAnotherEnvironmentId');
+  if (!anotherEnvId) {
+    throw new Error('No second environment ID found. Run "Create Another Environment" first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+tests {
+  test("SECURITY: First environment cannot list all environments", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+
+  test("SECURITY: Error response indicates insufficient permissions", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('code');
+  });
+}
+
+docs {
+  # ENV Cannot List All Environments
+
+  **SECURITY ISOLATION REGRESSION TEST**
+
+  Verifies that the first environment (non-admin) CANNOT call the
+  list environments endpoint. Only admin environments should be able
+  to list all environments.
+
+  ## What This Tests
+
+  - First environment authenticates with its own credentials
+  - Calls GET /environments (list all)
+  - Expected: 403 Forbidden
+  - If this returns 200, it's a security isolation failure
+
+  ## Prerequisites
+
+  - First environment must exist (createdEnvironmentId)
+  - Second environment must exist (createdAnotherEnvironmentId)
+}

@@ -1,0 +1,46 @@
+meta {
+  name: Environment Service Health Check
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{environmentServiceUrl}}/actuator/health
+  body: none
+  auth: none
+}
+
+docs {
+  # Environment Service Health Check
+  
+  Verifies that the Environment Service is running and healthy.
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: JSON with status field indicating "UP"
+  
+  ## What This Tests
+  
+  - Environment Service is running
+  - Service is accessible on the configured port
+  - Database connectivity is working
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: isDefined
+}
+
+tests {
+  test("Environment Service is healthy", function() {
+    const data = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(data).to.have.property('status');
+    expect(data.status).to.be.oneOf(['UP', 'SERVING']);
+  });
+  
+  test("Response time is acceptable", function() {
+    expect(res.getResponseTime()).to.be.below(5000);
+  });
+}

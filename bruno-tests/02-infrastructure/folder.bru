@@ -1,0 +1,43 @@
+meta {
+  name: 02-infrastructure
+  seq: 2
+}
+
+docs {
+  # Infrastructure Tests
+
+  This collection tests all SIF Unity Broker infrastructure services and APIs.
+
+  ## Purpose
+
+  Infrastructure tests verify that all core services (environments, ACLs, provider registry, queues, subscriptions, jobs) work correctly through their REST APIs.
+
+  ## Test Organization
+
+  Tests are organized into subfolders by service:
+
+  1. **environments/** - Environment registration and management
+  2. **acls/** - Access Control List management
+  3. **provider-registry/** - Provider registration and discovery
+  4. **zones-contexts/** - Zone and context management
+  5. **queues/** - Queue creation and operations
+  6. **subscriptions/** - Subscription management
+  7. **jobs/** - Job state management
+
+  ## Prerequisites
+
+  - All health checks must pass
+  - Valid credentials configured in .env file
+  - Bootstrap ADMIN environment (if required)
+
+  ## Test Data
+
+  All tests create resources with the `bruno-test` prefix to identify test data. Tests clean up after themselves, but the cleanup collection (99-cleanup) can be run to remove any orphaned test resources.
+
+  ## Running These Tests
+
+  1. Run health checks first to ensure services are available
+  2. Run tests in each subfolder sequentially
+  3. Review test results and verify all assertions pass
+  4. Run cleanup collection if needed
+}

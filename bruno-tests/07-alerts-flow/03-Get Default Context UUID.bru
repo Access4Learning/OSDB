@@ -1,0 +1,53 @@
+meta {
+  name: 03-Get Default Context UUID
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/zones/{{altZoneId}}/contexts
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const zoneId = bru.getVar('altZoneId');
+  if (!zoneId) {
+    throw new Error('altZoneId not set. Run step 02 first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const data = res.getBody();
+    const contexts = data.contexts && data.contexts.context ? data.contexts.context : [];
+    const defaultCtx = contexts.find(c => c.id === 'DEFAULT');
+    if (defaultCtx) {
+      console.log('Test zone DEFAULT context UUID:', defaultCtx.uuid);
+    } else {
+      console.error('DEFAULT context not found in test zone');
+    }
+  }
+}
+
+tests {
+  test("DEFAULT context exists in test zone", function() {
+    const data = res.getBody();
+    const contexts = data.contexts.context;
+    const defaultCtx = contexts.find(c => c.id === 'DEFAULT');
+    expect(defaultCtx).to.exist;
+    expect(defaultCtx.uuid).to.exist;
+  });
+}

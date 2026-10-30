@@ -1,0 +1,51 @@
+meta {
+  name: 15-Create Legacy Provider PROVIDE ACL
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{gatewayUrl}}/{{mpDomainId}}/{{mpSolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{mpLegacyProviderEnvId}}",
+    "serviceName": "LegacyTestObjects",
+    "zoneId": "{{mpZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "PROVIDE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('mpLegacyProviderAclId', data.id);
+    console.log('Created PROVIDE ACL for legacy provider (LegacyTestObjects):', data.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Legacy provider PROVIDE ACL created for LegacyTestObjects", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

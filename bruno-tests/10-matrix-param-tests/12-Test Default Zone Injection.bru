@@ -1,0 +1,43 @@
+meta {
+  name: 12-Test Default Zone Injection
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{mpConsumerRequestsUrl}}/MatrixParamTestObjects
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'mpConsumer' });
+}
+
+assert {
+  res.status: neq 400
+}
+
+tests {
+  test("Default zone injected from environment config (no explicit zone)", function() {
+    expect(res.getStatus()).to.not.equal(400);
+    console.log('Default zone injection response status:', res.getStatus());
+  });
+}
+
+docs {
+  # Test Default Zone Injection
+  
+  Sends a GET request WITHOUT any zoneId header or matrix parameter.
+  The gateway should inject the environment's defaultZoneId (configured during
+  environment creation) so the request can be routed correctly.
+  
+  A 400 would indicate the gateway failed to inject the default zone.
+  A non-400 response (even 404 if no provider) proves the default was applied.
+}

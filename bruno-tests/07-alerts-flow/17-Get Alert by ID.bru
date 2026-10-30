@@ -1,0 +1,100 @@
+meta {
+  name: 17-Get Alert by ID
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/alerts/{{altAlertId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  requestAction: QUERY
+  serviceType: UTILITY
+  serviceName: alerts
+}
+
+assert {
+  res.status: eq 200
+  res.body.alert: isDefined
+  res.body.alert.id: isDefined
+  res.body.alert.reporter: eq AlertFlowConsumer
+  res.body.alert.exchange: eq EVENT
+  res.body.alert.level: eq ERROR
+  res.body.alert.SIF_ExtendedElements: isDefined
+}
+
+script:pre-request {
+  const alertId = bru.getVar('altAlertId');
+  if (!alertId) {
+    throw new Error('altAlertId not set. Run step 15 first to create an alert.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Alert retrieved successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response wrapped under 'alert' key", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('alert');
+  });
+
+  test("Alert ID matches requested ID", function() {
+    const data = res.getBody();
+    const expectedId = bru.getVar('altAlertId');
+    expect(data.alert.id).to.equal(expectedId);
+  });
+
+  test("Alert fields match originally created alert", function() {
+    const alert = res.getBody().alert;
+    expect(alert.reporter).to.equal('AlertFlowConsumer');
+    expect(alert.exchange).to.equal('EVENT');
+    expect(alert.level).to.equal('ERROR');
+    expect(alert.cause).to.equal('AlertFlowProvider');
+    expect(alert.description).to.equal('Invalid student record format');
+  });
+
+  test("SIF_ExtendedElements has correct PESC-JSON structure", function() {
+    const alert = res.getBody().alert;
+    expect(alert.SIF_ExtendedElements).to.have.property('SIF_ExtendedElement');
+    expect(alert.SIF_ExtendedElements.SIF_ExtendedElement).to.be.an('array');
+
+    const elements = alert.SIF_ExtendedElements.SIF_ExtendedElement;
+    if (elements.length > 0) {
+      expect(elements[0]).to.have.property('Name');
+      expect(elements[0]).to.have.property('value');
+    }
+  });
+
+  test("Extended elements contain server-populated fields", function() {
+    const elements = res.getBody().alert.SIF_ExtendedElements.SIF_ExtendedElement;
+    const names = elements.map(e => e.Name);
+    expect(names).to.include('reportingEnvironmentFingerprint');
+    expect(names).to.include('createdAt');
+    expect(names).to.include('sourceEnvironmentId');
+    expect(names).to.include('originatingZoneId');
+    expect(names).to.include('originatingContextId');
+  });
+}
+
+docs {
+  # Get Alert by ID
+  
+  Retrieves the specific alert created in step 15 by its UUID.
+  Verifies all fields match and extended elements are present.
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: `{ "alert": { ... } }` with matching alert data
+  - All extended elements present (sourceEnvironmentId, originatingZoneId, etc.)
+}

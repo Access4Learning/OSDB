@@ -1,0 +1,58 @@
+meta {
+  name: 04b-Create Consumer QUERY ACL
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{gatewayUrl}}/{{fsDomainId}}/{{fsSolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{fsConsumerEnvId}}",
+    "serviceName": "DataExport",
+    "zoneId": "{{fsZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "QUERY",
+    "accessLevel": "APPROVED"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('fsConsumerQueryAclId', data.id);
+    console.log('Created consumer QUERY ACL:', data.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Consumer QUERY ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  # Create Consumer QUERY ACL
+
+  Grants the consumer QUERY access to the DataExport functional service.
+  QUERY is required for listing jobs (GET) and getting job details (GET).
+}

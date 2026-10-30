@@ -1,0 +1,82 @@
+meta {
+  name: POST Create Context - Success
+  type: http
+  seq: 4
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/zones/{{createdZoneId}}/contexts/context
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "context": {
+      "id": "ASSESSMENT",
+      "description": "Assessment context created by Bruno API tests"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const zoneId = bru.getVar('createdZoneId');
+  if (!zoneId) {
+    throw new Error('No zone ID found. Run "Create Zone - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdContextId', data.context.id);
+    console.log('Created context:', data.context.id, 'uuid:', data.context.uuid);
+  }
+}
+
+tests {
+  test("Context created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response is wrapped under context with id", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('context');
+    expect(data.context).to.have.property('id');
+    expect(data.context).to.have.property('zoneId');
+    expect(data.context.id).to.equal('ASSESSMENT');
+  });
+}
+
+docs {
+  # Create Context - Success
+  
+  Creates a new context in an existing zone (in addition to the auto-created DEFAULT)
+  via the singular SIF object-service subpath `POST /zones/{zoneId}/contexts/context`
+  with the body wrapped under the `context` key and the identifier supplied under `id`.
+  
+  ## Prerequisites
+  
+  - A zone must be created first (run "Create Zone - Success")
+  
+  ## Expected Response
+  
+  - Status: 201 Created
+  - Body: `{ "context": { "id": ..., ... } }` with the business identifier under `id`
+}

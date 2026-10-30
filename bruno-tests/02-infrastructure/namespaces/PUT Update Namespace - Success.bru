@@ -1,0 +1,103 @@
+meta {
+  name: PUT Update Namespace - Success
+  type: http
+  seq: 4
+  tags: [
+    nondestructive
+  ]
+}
+
+put {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/namespaces/{{createdNamespaceId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceType: UTILITY
+}
+
+body:json {
+  {
+    "namespace": {
+      "zone": "environment-global",
+      "uri": "http://www.sifassociation.org/infrastructure/3.7",
+      "url": "http://specification.sifassociation.org/Implementation/Infrastructure/3.7/XSD/Schema_NoIncludes_Annotated_Strict/SIF_Message_Updated.xsd"
+    }
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.namespace: isDefined
+  res.body.namespace.url: eq http://specification.sifassociation.org/Implementation/Infrastructure/3.7/XSD/Schema_NoIncludes_Annotated_Strict/SIF_Message_Updated.xsd
+}
+
+script:pre-request {
+  const namespaceId = bru.getVar('createdNamespaceId');
+  if (!namespaceId) {
+    throw new Error('No namespace ID found. Run "POST Create Namespace - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Namespace updated successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response wrapped under 'namespace' key", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('namespace');
+  });
+  
+  test("Namespace ID unchanged after update", function() {
+    const data = res.getBody();
+    const expectedId = bru.getVar('createdNamespaceId');
+    expect(data.namespace.id).to.equal(expectedId);
+  });
+  
+  test("URL updated to new value", function() {
+    const data = res.getBody();
+    expect(data.namespace.url).to.equal('http://specification.sifassociation.org/Implementation/Infrastructure/3.7/XSD/Schema_NoIncludes_Annotated_Strict/SIF_Message_Updated.xsd');
+  });
+  
+  test("Zone unchanged", function() {
+    const data = res.getBody();
+    expect(data.namespace.zone).to.equal('environment-global');
+  });
+  
+  test("URI unchanged", function() {
+    const data = res.getBody();
+    expect(data.namespace.uri).to.equal('http://www.sifassociation.org/infrastructure/3.7');
+  });
+}
+
+docs {
+  # Update Namespace - Success
+  
+  Updates an existing namespace with a new payload. PUT does full replacement
+  of the entire namespace object.
+  
+  ## Prerequisites
+  
+  - Run "POST Create Namespace - Success" first to set `createdNamespaceId`
+  - Valid admin authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: `{ "namespace": { ... } }` with updated values
+  
+  ## What This Tests
+  
+  - Namespace update returns 200 (Requirement 4.1)
+  - Full replacement: url updated to new value
+  - Namespace ID remains unchanged after update
+  - Zone and URI preserved (same values sent in update)
+}

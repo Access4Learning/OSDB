@@ -1,0 +1,47 @@
+meta {
+  name: Delayed Provider Tests
+  seq: 8
+}
+
+docs {
+  # Delayed Provider Tests
+  
+  End-to-end tests for request/response flows against a DELAYED-only provider.
+  Unlike the immediate provider tests, this provider does NOT support IMMEDIATE
+  requests — it only handles DELAYED requests by polling a queue.
+  
+  ## What This Tests
+  
+  1. Creates a complete domain/solution/zone infrastructure
+  2. Creates a provider environment with PROVIDE ACL for DELAYED_TEST_OBJECTs
+  3. Creates a consumer environment with QUERY ACL for DELAYED_TEST_OBJECTs
+  4. Creates a provider queue (for receiving delayed requests from the broker)
+  5. Registers the provider with DELAYED-only pattern (includes queue ID)
+  6. Consumer creates a queue, sends DELAYED request, polls for response
+  
+  ## DELAYED-Only Provider Pattern
+  
+  The provider registers with supportedRequestTypes: [{ requestType: "DELAYED" }].
+  The broker enqueues consumer requests to the provider's queue instead of
+  proxying them via HTTP. The provider polls its queue, processes requests,
+  and submits responses via the Responses Connector.
+  
+  ## Prerequisites
+  
+  - All services running (gateway, environment-service, requests-connector, queue-service, responses-connector)
+  - Test provider application built (java -jar with --provider.queue-id flag)
+  - Admin credentials configured in .env
+  
+  ## Run Order
+  
+  Tests are numbered and must be run in sequence:
+  - 00-03: Infrastructure setup (domain, solution, zone, default context)
+  - 04-05: Environment creation (provider, consumer)
+  - 06-07: ACL creation (PROVIDE for provider, QUERY for consumer)
+  - 08: Create provider queue (for receiving delayed requests)
+  - 09: Register provider with DELAYED pattern (includes queue ID)
+  - 10: Create consumer queue (for receiving responses)
+  - 11: Consumer sends DELAYED request (with queueId header)
+  - 12: Consumer polls queue for the delayed response
+  - 13: Consumer ACKs the response message
+}

@@ -1,0 +1,91 @@
+meta {
+  name: POST Create Object - Success
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{providerServicesUrl}}/{{testObjectName}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{testZoneId}}
+  contextId: default
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "refId": "{{$randomUUID}}",
+    "localId": "{{testDataPrefix}}-{{$timestamp}}",
+    "name": {
+      "familyName": "Test",
+      "givenName": "Student"
+    }
+  }
+}
+
+docs {
+  # Create Object - Success (Provider)
+  
+  Tests a provider creating/publishing an object.
+  
+  ## Prerequisites
+  
+  - Run "00-initialize" tests first to set up connector URLs
+  - Provider environment with PROVIDE access to the object type
+  - Proper ACL configuration
+  
+  ## Expected Response
+  
+  - Status: 201 Created
+  - Location header with object URL
+  - Body: Created object with ID
+  
+  ## What This Tests
+  
+  - Provider can create objects via services connector
+  - Authentication works with provider credentials
+  - Zone and context headers are processed
+  - Object is stored in the broker
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  
+  // Verify initialization was run
+  const servicesUrl = bru.getVar('providerServicesUrl');
+  if (!servicesUrl) {
+    throw new Error('Provider not initialized. Run "00-initialize/Initialize Provider Environment" first.');
+  }
+  
+  auth.setAuthHeaders(req, bru, 'provider');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdObjectId', data.id || data.refId);
+    console.log('Created object:', bru.getVar('createdObjectId'));
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Object created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response contains object data", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    expect(data).to.have.property('refId');
+  });
+}

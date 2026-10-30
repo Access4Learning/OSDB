@@ -1,0 +1,112 @@
+meta {
+  name: 07c-Provider Send Job Response
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{gatewayUrl}}/{{fsDomainId}}/{{fsSolutionId}}/responses/DataExport
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  queueId: {{fsResponseQueueId}}
+  requestId: {{fsResponseRequestId}}
+  serviceType: FUNCTIONAL
+  zoneId: {{fsZoneId}}
+  contextId: DEFAULT
+}
+
+body:json {
+  {
+    "serviceName": "DataExport",
+    "serviceType": "FUNCTIONAL",
+    "payload": {
+      "job": {
+        "id": "{{fsProviderJobId}}",
+        "name": "DataExport-Test",
+        "state": "NOTSTARTED",
+        "description": "Export student data in CSV format",
+        "phases": {
+          "phase": [
+            {
+              "name": "extraction",
+              "required": true,
+              "state": "NOTSTARTED"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+
+script:pre-request {
+  const queueId = bru.getVar('fsResponseQueueId');
+  if (!queueId) {
+    console.warn('Consumer queueId not set from provider poll. Using fsConsumerQueueId.');
+    bru.setVar('fsResponseQueueId', bru.getVar('fsConsumerQueueId'));
+  }
+
+  // Generate a job ID that the "provider" assigns
+  const crypto = require('crypto');
+  const jobId = crypto.randomUUID();
+  bru.setVar('fsProviderJobId', jobId);
+  bru.setVar('fsJobId', jobId);
+  console.log('Provider assigned jobId:', jobId);
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'fsProvider' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Provider send job response status:', status);
+  if (status === 202) {
+    const body = res.getBody();
+    console.log('Response accepted:', JSON.stringify(body, null, 2));
+  } else {
+    console.error('Unexpected status:', status);
+    console.error('Response:', JSON.stringify(res.getBody(), null, 2));
+  }
+}
+
+assert {
+  res.status: eq 202
+}
+
+tests {
+  test("Provider response accepted (202)", function() {
+    expect(res.getStatus()).to.equal(202);
+  });
+}
+
+docs {
+  # Provider Send Job Response
+
+  The provider sends a response to the consumer's job creation request
+  via the responses-connector. The response is enqueued to the consumer's
+  queue (identified by the queueId header).
+
+  ## Flow
+
+  1. Consumer sent DELAYED job creation → broker returned 202
+  2. Broker enqueued request to provider's queue
+  3. Provider polled its queue and got the request (step 07b)
+  4. **This step**: Provider sends response to consumer's queue
+  5. Next step: Consumer polls its queue for the response
+
+  ## Headers
+
+  - `queueId` — the consumer's queue ID (extracted from the request message)
+  - `requestId` — correlation ID from the original request
+  - `serviceType: FUNCTIONAL`
+
+  ## Expected Response
+
+  - Status: 202 Accepted (response enqueued to consumer's queue)
+}

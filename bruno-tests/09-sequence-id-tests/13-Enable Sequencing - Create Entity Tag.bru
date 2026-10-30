@@ -1,0 +1,62 @@
+meta {
+  name: 13-Enable Sequencing - Create Entity Tag
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{gatewayUrl}}/{{seqDomainId}}/{{seqSolutionId}}/tags
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "entityType": "SOLUTION",
+    "entityId": "{{seqSolutionUuid}}",
+    "tagKey": "SEQUENCE_ENABLED",
+    "tagValue": "true"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('seqTagId', data.id);
+    console.log('Created SEQUENCE_ENABLED tag:', data.id, 'value:', data.tagValue);
+  }
+  //wait for cache to update
+  await new Promise(resolve => setTimeout(resolve, 30000));
+}
+
+tests {
+  test("SEQUENCE_ENABLED entity tag created with value 'true'", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody();
+    expect(data.tagKey).to.equal('SEQUENCE_ENABLED');
+    expect(data.tagValue).to.equal('true');
+  });
+}
+
+docs {
+  # Enable Sequencing via Entity Tag
+  
+  Creates a SEQUENCE_ENABLED entity tag on the SOLUTION entity with value "true".
+  After this, the MessageSequenceFilter will inject x-sif-sequenceId headers
+  on all events for this domain/solution pair.
+}

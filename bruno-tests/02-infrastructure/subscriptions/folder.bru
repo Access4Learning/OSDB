@@ -1,0 +1,36 @@
+meta {
+  name: subscriptions
+  seq: 7
+}
+
+docs {
+  # Subscription Management Tests
+  
+  Tests for subscription management APIs.
+  
+  ## What Are Subscriptions?
+  
+  Subscriptions link consumers to event streams. Each subscription specifies:
+  - Subscriber environment ID
+  - Queue ID (where events are delivered)
+  - Service name (which events to receive)
+  - Zone and context
+  - Subscription type (EVENT, DELAYED_REQUEST)
+  
+  ## Tests Included
+  
+  - Create subscription
+  - List subscriptions
+  - Get subscription by ID
+  - Update subscription
+  - Delete subscription
+  - Query subscriptions by service/zone/context
+  - Error scenarios
+  
+  ## Important Notes
+  
+  - Subscriptions require authentication
+  - Subscribers must have SUBSCRIBE ACL entries
+  - Events are delivered to all matching subscriptions
+  - Subscriptions can filter by service, zone, and context
+}

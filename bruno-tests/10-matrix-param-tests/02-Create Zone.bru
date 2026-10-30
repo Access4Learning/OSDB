@@ -1,0 +1,50 @@
+meta {
+  name: 02-Create Zone
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{gatewayUrl}}/{{mpDomainId}}/{{mpSolutionId}}/zones/zone
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+body:json {
+  {
+    "zone": {
+      "id": "mp-zone-{{$timestamp}}",
+      "description": "Zone for matrix parameter tests"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('mpZoneId', data.zone.id);
+    console.log('Created zone:', bru.getVar('mpZoneId'));
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Zone created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

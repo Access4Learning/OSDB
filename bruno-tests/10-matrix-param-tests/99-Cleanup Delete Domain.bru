@@ -1,0 +1,53 @@
+meta {
+  name: 99-Cleanup Delete Domain
+  type: http
+  seq: 99
+  tags: [
+    destructive
+  ]
+}
+
+delete {
+  url: {{gatewayUrl}}/domains/{{mpDomainId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const domainId = bru.getVar('mpDomainId');
+  if (!domainId) {
+    throw new Error('No domain ID found. Run "00-Create Domain" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 204) {
+    bru.setVar('mpDomainId', null);
+    console.log('Matrix param test domain deleted successfully (cascade cleanup)');
+  }
+}
+
+assert {
+  res.status: eq 204
+}
+
+tests {
+  test("Domain deleted (cascade cleanup)", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  # Cleanup - Delete Domain
+  
+  Deletes the test domain, which cascades to delete all solutions, zones,
+  environments, ACLs, and tags created during this test suite.
+}

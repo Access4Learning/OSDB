@@ -1,0 +1,56 @@
+meta {
+  name: GET Lookup Provider - After Delete
+  type: http
+  seq: 7
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/providers/lookup?serviceName=StudentPersonals&zoneId={{createdZoneId}}&contextId=DEFAULT
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 404
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Deleted provider is no longer found", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+}
+
+docs {
+  # Lookup Provider - After Delete
+  
+  Verifies that the previously deleted provider registration is no longer
+  discoverable via the lookup endpoint.
+  
+  ## Prerequisites
+  
+  - Run "DELETE Delete Provider Registration - Success" first
+  - The "StudentPersonals" provider should have been deleted
+  
+  ## Expected Response
+  
+  - Status: 404 Not Found
+  
+  ## What This Tests
+  
+  - Provider is no longer discoverable after deletion
+  - Lookup correctly returns 404 for deleted registrations
+  - Delete operation fully removes the registration
+}

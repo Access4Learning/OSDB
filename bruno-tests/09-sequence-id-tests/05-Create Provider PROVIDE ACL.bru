@@ -1,0 +1,43 @@
+meta {
+  name: 05-Create Provider PROVIDE ACL
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{gatewayUrl}}/{{seqDomainId}}/{{seqSolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{seqProviderEnvId}}",
+    "serviceName": "SEQTESTOBJECTS",
+    "zoneId": "{{seqZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "PROVIDE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Provider PROVIDE ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

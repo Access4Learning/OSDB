@@ -1,0 +1,66 @@
+meta {
+  name: ENV Cannot Get Another Environment
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/environments/{{createdAnotherEnvironmentId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 403
+}
+
+script:pre-request {
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No first environment ID found. Run infrastructure setup first.');
+  }
+  const anotherEnvId = bru.getVar('createdAnotherEnvironmentId');
+  if (!anotherEnvId) {
+    throw new Error('No second environment ID found. Run "Create Another Environment" first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+tests {
+  test("SECURITY: First environment cannot GET another environment by ID", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+
+  test("SECURITY: Cross-environment read is blocked", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('code');
+  });
+}
+
+docs {
+  # ENV Cannot Get Another Environment
+
+  **SECURITY ISOLATION REGRESSION TEST**
+
+  Verifies that the first environment CANNOT read the second environment's
+  data by ID. Environments must only be able to access their own data.
+
+  ## What This Tests
+
+  - First environment authenticates with its own credentials
+  - Calls GET /environments/{secondEnvironmentId}
+  - Expected: 403 Forbidden
+  - If this returns 200, it's a catastrophic security isolation failure
+
+  ## Prerequisites
+
+  - First environment must exist (createdEnvironmentId)
+  - Second environment must exist (createdAnotherEnvironmentId)
+}

@@ -1,0 +1,75 @@
+meta {
+  name: 00 Setup - Resolve Domain UUID
+  type: http
+  seq: 0
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/domains
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const data = res.getBody();
+    const domains = data.domains && data.domains.domain ? data.domains.domain : [];
+    
+    // Find the domain matching the environment's domainId
+    const targetDomainId = bru.getEnvVar('domainId') || bru.getVar('createdDomainId');
+    const domain = domains.find(d => d.domainId === targetDomainId) || domains[0];
+    
+    if (domain) {
+      bru.setVar('adminDomainUuid', domain.id);
+      console.log('Resolved domain UUID:', domain.id, '(domainId:', domain.domainId, ')');
+      
+      // Now we need to resolve the solution UUID — store domainId for next step
+      bru.setVar('resolvedDomainId', domain.domainId);
+    } else {
+      console.log('WARNING: No domain found. Available domains:', JSON.stringify(domains.map(d => d.domainId)));
+    }
+  }
+}
+
+tests {
+  test("Domain UUID resolved", function() {
+    expect(res.getStatus()).to.equal(200);
+    const domainUuid = bru.getVar('adminDomainUuid');
+    expect(domainUuid).to.exist;
+  });
+}
+
+docs {
+  # Setup - Resolve Domain UUID
+  
+  Resolves the domain UUID from the domains list for use in admin user tests.
+  The admin user creation endpoint requires UUIDs, not string IDs.
+  
+  ## What This Does
+  
+  - Fetches the domains list
+  - Finds the domain matching the environment's `domainId` variable
+  - Stores the domain's internal UUID as `adminDomainUuid`
+  
+  ## Prerequisites
+  
+  - A domain must exist (run post-deployment tests first)
+  - Valid admin HMAC credentials
+}

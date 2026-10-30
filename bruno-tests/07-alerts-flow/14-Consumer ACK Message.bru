@@ -1,0 +1,80 @@
+meta {
+  name: 14-Consumer ACK Message
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/queues/{{altConsumerQueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  connectionId: altConsumer
+  X-Environment-Id: {{altConsumerEnvId}}
+  deleteMessageId: {{altConsumerLastMessageId}}
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+script:pre-request {
+  const messageId = bru.getVar('altConsumerLastMessageId');
+  if (!messageId) {
+    throw new Error('altConsumerLastMessageId not set. Run step 13 first to get a message.');
+  }
+
+  console.log('ACKing messageId:', messageId);
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'altConsumer' });
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const messageId = res.getHeaders()?.messageid;
+    if (messageId) {
+      bru.setVar('altConsumerLastMessageId', messageId);
+      console.log('Next message ID:', messageId);
+    }
+    console.log('Next payload:', JSON.stringify(res.getBody(), null, 2));
+  } else if (res.getStatus() === 204) {
+    console.log('Previous message ACKed. No more messages in queue.');
+    bru.setVar('altConsumerLastMessageId', '');
+  }
+}
+
+tests {
+  test("ACK succeeds", function() {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+
+  test("Queue drained or next message available", function() {
+    if (res.getStatus() === 204) {
+      console.log('Queue is now empty after ACK.');
+    } else if (res.getStatus() === 200) {
+      const headers = res.getHeaders();
+      expect(headers).to.have.property('messageid');
+    }
+  });
+}
+
+docs {
+  # Consumer ACK Message
+  
+  Acknowledges the previously delivered message using the deleteMessageId
+  matrix parameter, and retrieves the next message (SIF "Get Next and Pop" §9.3.1).
+  
+  ## Prerequisites
+  
+  - Run step 13 first to get a message and its messageid
+  
+  ## Expected Response
+  
+  - Status: 200 OK if another message is available
+  - Status: 204 No Content if the queue is now empty
+}

@@ -1,0 +1,51 @@
+meta {
+  name: 05 Verify Environment List
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{gatewayUrl}}/{{domainId}}/{{solutionId}}/environments
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Can list environments", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("At least one environment exists", function() {
+    const data = res.getBody();
+    // Response might be an array or wrapped object
+    const envs = Array.isArray(data) ? data : (data.environments || data.content || []);
+    expect(envs.length).to.be.greaterThan(0);
+  });
+}
+
+docs {
+  # Verify Environment List
+  
+  Confirms the deployment is fully operational by listing environments
+  using admin credentials.
+  
+  ## What This Proves
+  - Authentication is working (HMAC validation)
+  - Database is connected and has data
+  - Gateway routing is functional
+  - The full request path works end-to-end
+}

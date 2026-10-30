@@ -1,0 +1,56 @@
+meta {
+  name: 00-Create Domain
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{gatewayUrl}}/domains
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "domainId": "FuncSvcDomain-{{$timestamp}}",
+    "description": "Domain for functional services tests"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    const domainId = data.domainId || data.id;
+    bru.setVar('fsDomainId', domainId);
+    console.log('Created domain:', domainId);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Domain created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody();
+    expect(data).to.exist;
+  });
+}
+
+docs {
+  # Create Domain
+
+  Creates a domain for the functional services test suite.
+}

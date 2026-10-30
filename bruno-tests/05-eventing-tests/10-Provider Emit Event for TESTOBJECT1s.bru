@@ -1,0 +1,95 @@
+meta {
+  name: 10-Provider Emit Event for TESTOBJECT1s
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{gatewayUrl}}/{{evtDomainId}}/{{evtSolutionId}}/events
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{evtZoneId}}
+  contextId: DEFAULT
+  messageType: event
+  messageId: {{$randomUUID}}
+  eventAction: CREATE
+  serviceType: OBJECT
+  serviceName: TESTOBJECT1s
+  xtestheader: yepitcomesthrough
+}
+
+body:json {
+  {
+    "TESTOBJECT1s": {
+      "TESTOBJECT1": [
+        {
+          "refId": "{{$randomUUID}}",
+          "localId": "evt-test-{{$timestamp}}",
+          "name": "Test Object 1 Event",
+          "description": "Event emitted by eventing test suite"
+        }
+      ]
+    }
+  }
+}
+
+assert {
+  res.status: in [202, 204]
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'evtProvider' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 202 || status === 204) {
+    console.log('Event emitted successfully, status:', status);
+  } else {
+    console.error('Failed to emit event, status:', status);
+    console.error('Response:', JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("Event accepted by broker", function() {
+    const status = res.getStatus();
+    expect([202, 204]).to.include(status);
+  });
+}
+
+docs {
+  # Provider Emits Event for TESTOBJECT1s
+  
+  The ObjectProvider sends a CREATE event for TESTOBJECT1s.
+  
+  The body is wrapped in the SIF collection format:
+  ```json
+  {
+    "TESTOBJECT1s": {
+      "TESTOBJECT1": [{ ... }]
+    }
+  }
+  ```
+  
+  ## Expected Behavior
+  
+  - Broker accepts the event (202 or 204)
+  - Event is distributed to Consumer1 and Consumer3 queues (they have subscriptions)
+  - Consumer2 does NOT receive the event (no subscription)
+  
+  ## SIF Headers
+  
+  - `serviceName: TESTOBJECT1s` — the object type
+  - `serviceType: OBJECT` — object service
+  - `eventAction: CREATE` — create event
+  - `messageType: EVENT` — event message
+  - `zoneId` / `contextId` — routing context
+}

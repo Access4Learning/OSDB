@@ -1,0 +1,30 @@
+meta {
+  name: Matrix Parameter Backward Compatibility Tests
+  seq: 10
+}
+
+docs {
+  # Matrix Parameter Backward Compatibility Tests
+  
+  End-to-end tests for SIF 3.3 matrix parameter backward compatibility.
+  Tests inbound parsing (gateway), conflict detection, default injection,
+  and the legacy tag toggle for outbound formatting.
+  
+  ## What This Tests
+  
+  1. Matrix params in URL are parsed and forwarded as headers
+  2. Headers-only requests work (modern SIF 3.7 clients)
+  3. Conflict between matrix params and headers returns 400
+  4. Default zone injection when no zone specified
+  5. Default context injection (always "DEFAULT")
+  6. Entity tag SIF_LEGACY_MATRIX_PARAMS toggle
+  
+  ## Self-Contained
+  
+  This folder creates its own domain, solution, zone, and environments.
+  The final test deletes the domain (cascade cleanup).
+  
+  ## Run Order
+  
+  Tests are numbered and must be run in sequence.
+}

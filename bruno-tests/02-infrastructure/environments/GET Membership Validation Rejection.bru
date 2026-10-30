@@ -1,0 +1,67 @@
+meta {
+  name: GET Membership Validation Rejection
+  type: http
+  seq: 8
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/wrong-domain/wrong-solution/environments
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 403
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru);
+}
+
+tests {
+  test("Request rejected with 403 Forbidden", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+  
+  test("Response indicates membership validation failure", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    if (data.errorCode) {
+      expect(data.errorCode).to.match(/MEMBERSHIP/);
+    }
+  });
+}
+
+docs {
+  # Membership Validation Rejection
+  
+  Verifies that the gateway rejects requests when the authenticated environment
+  does not belong to the domain/solution specified in the URL path.
+  
+  ## Test Scenario
+  
+  Authenticate as a valid environment (which belongs to a specific domain/solution),
+  but send the request to a different domain/solution path (`wrong-domain/wrong-solution`).
+  The gateway should return HTTP 403 Forbidden because the environment's domain/solution
+  does not match the URL path.
+  
+  ## Expected Response
+  
+  - Status: 403 Forbidden
+  - Body: Error response with membership validation error code
+  
+  ## What This Tests
+  
+  - Membership validation enforcement (Requirement 4.1, 4.2, 4.3, 4.4)
+  - Environment cannot access resources outside its domain/solution scope
+  - Gateway correctly compares environment membership against URL path
+}

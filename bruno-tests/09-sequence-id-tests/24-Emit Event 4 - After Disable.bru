@@ -1,0 +1,68 @@
+meta {
+  name: 24-Emit Event 4 - After Disable
+  type: http
+  seq: 25
+}
+
+post {
+  url: {{gatewayUrl}}/{{seqDomainId}}/{{seqSolutionId}}/events
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{seqZoneId}}
+  contextId: DEFAULT
+  messageType: event
+  messageId: {{$randomUUID}}
+  eventAction: CREATE
+  serviceType: OBJECT
+  serviceName: SEQTESTOBJECTS
+}
+
+body:json {
+  {
+    "SEQTESTOBJECTS": {
+      "SEQTESTOBJECT": [
+        {
+          "refId": "{{$randomUUID}}",
+          "name": "Event 4 after sequencing disabled"
+        }
+      ]
+    }
+  }
+}
+
+script:pre-request {
+  // Wait a moment for the toggle cache to expire (default TTL is 30s,
+  // but in test environments it may be configured shorter).
+  // If the cache hasn't expired yet, the header may still appear.
+  // For a reliable test, configure sif.extensions.sequencing.toggle-cache-ttl=1s
+  // in the events-connector's application-dev.yml.
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'seqProvider' });
+}
+
+assert {
+  res.status: in [202, 204]
+}
+
+tests {
+  test("Event 4 accepted", function() {
+    expect([202, 204]).to.include(res.getStatus());
+  });
+}
+
+docs {
+  # Emit Event After Disabling Sequencing
+  
+  Emits an event after the SEQUENCE_ENABLED tag has been deleted.
+  The consumer should NOT receive an x-sif-sequenceId header
+  (once the toggle cache expires).
+  
+  Note: If the toggle cache TTL hasn't expired, the header may still
+  appear. Configure a short TTL (e.g., 1s) for testing.
+}

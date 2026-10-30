@@ -1,0 +1,76 @@
+meta {
+  name: POST Create Solution - Success
+  type: http
+  seq: 1
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/solutions
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "solutionId": "{{testDataPrefix}}-solution-{{$timestamp}}",
+    "description": "Solution created by Bruno API tests"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdSolutionId', data.solutionId || data.id);
+    console.log('Created solution:', data.solutionId || data.id);
+  }
+}
+
+tests {
+  test("Solution created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response contains solution data", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+  });
+}
+
+docs {
+  # Create Solution - Success
+  
+  Creates a new solution under the specified domain.
+  
+  ## URL Pattern
+  
+  `POST /{domainId}/solutions` — the domainId from the URL path is used as the parent domain.
+  
+  ## Expected Response
+  
+  - Status: 201 Created
+  - Body: Created solution with ID and metadata
+  
+  ## What This Tests
+  
+  - Solution creation at `/{domainId}/solutions` path
+  - Domain ID is taken from the URL path
+  - Response contains solution data
+}

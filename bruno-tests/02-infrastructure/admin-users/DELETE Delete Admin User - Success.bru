@@ -1,0 +1,71 @@
+meta {
+  name: DELETE Delete Admin User - Success
+  type: http
+  seq: 6
+  tags: [
+    destructive
+  ]
+}
+
+delete {
+  url: {{gatewayUrl}}/admin-users/{{createdAdminUserId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 204
+}
+
+script:pre-request {
+  const userId = bru.getVar('createdAdminUserId');
+  if (!userId) {
+    throw new Error('No admin user ID found. Run "POST Create Admin User - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 204) {
+    bru.setVar('createdAdminUserId', null);
+    bru.setVar('createdAdminUsername', null);
+    console.log('Admin user deleted successfully');
+  }
+}
+
+tests {
+  test("Admin user deleted successfully", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  # Delete Admin User - Success
+  
+  Deletes an admin user by ID.
+  
+  ## Prerequisites
+  
+  - Run "POST Create Admin User - Success" first to set `createdAdminUserId`
+  
+  ## Expected Response
+  
+  - Status: 204 No Content
+  
+  ## What This Tests
+  
+  - Admin user deletion by ID
+  - Successful cleanup of test user
+  - Cascade delete of associated user_environment_access records
+  
+  ## Requirements Validated
+  
+  - 1.1: Admin user deletion
+}

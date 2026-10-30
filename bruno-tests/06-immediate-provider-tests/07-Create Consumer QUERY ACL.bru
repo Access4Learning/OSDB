@@ -1,0 +1,51 @@
+meta {
+  name: 07-Create Consumer QUERY ACL
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{gatewayUrl}}/{{immDomainId}}/{{immSolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{immConsumerEnvId}}",
+    "serviceName": "IMMEDIATE_TEST_OBJECTs",
+    "zoneId": "{{immZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "QUERY",
+    "accessLevel": "APPROVED"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('immConsumerAclId', data.id);
+    console.log('Created QUERY ACL for consumer:', data.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Consumer QUERY ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

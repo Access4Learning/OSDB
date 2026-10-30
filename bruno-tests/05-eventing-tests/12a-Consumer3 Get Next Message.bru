@@ -1,0 +1,91 @@
+meta {
+  name: 12a-Consumer3 Get Next Message
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{gatewayUrl}}/{{evtDomainId}}/{{evtSolutionId}}/queues/{{evtConsumer3QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  connectionId: evtConsumer3
+  X-Environment-Id: {{evtConsumer3EnvId}}
+}
+
+script:pre-request {
+  const queueId = bru.getVar('evtConsumer3QueueId');
+  if (!queueId) {
+    throw new Error('Consumer3 queue ID not set. Run step 08c first.');
+  }
+
+  const envId = bru.getVar('evtConsumer3EnvId');
+  if (!envId) {
+    throw new Error('Consumer3 environment ID not set. Run step 06c first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'evtConsumer3' });
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const messageId = res.getHeaders()?.messageid;
+    if (messageId) {
+      bru.setVar('evtConsumer3LastMessageId', messageId);
+      console.log('Delivered message ID (use as deleteMessageId to ACK):', messageId);
+    }
+
+    console.log('Delivered payload:', JSON.stringify(res.getBody(), null, 2));
+  } else if (res.getStatus() === 204) {
+    console.log('No message available for Consumer3 right now.');
+  }
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+tests {
+  test("Consumer3 request succeeds", function() {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+
+  test("If a message is delivered, it has a body and messageid header", function() {
+    if (res.getStatus() === 200) {
+      const headers = res.getHeaders();
+      expect(res.getBody()).to.exist;
+      expect(headers).to.have.property('messageid');
+    }
+  });
+
+  test("If queue is empty, response is 204", function() {
+    if (res.getStatus() === 204) {
+      expect(res.getBody()).to.satisfy((body) => body === null || body === undefined || body === '');
+    }
+  });
+}
+
+docs {
+  # Consumer3 Get Next Message
+
+  Consumer3 retrieves the next message from their queue using the
+  SIF "Get Next and Pop" pattern (§9.3.1).
+
+  ## SIF Semantics
+
+  - First call (no deleteMessageId): returns the oldest undelivered message
+  - Repeated calls without deleteMessageId: returns the SAME message
+  - The `messageid` response header is the ID to pass as `deleteMessageId` on the next call
+
+  ## Expected Response
+
+  - Status: 200 OK when a message is delivered
+  - Status: 204 No Content when the queue is empty
+  - Header: `messageid` — the message UUID (use as deleteMessageId to ACK)
+  - Body: the delivered message payload
+}

@@ -1,0 +1,64 @@
+meta {
+  name: GET Get Solution by ID - Success
+  type: http
+  seq: 3
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/solutions/{{createdSolutionId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const solutionId = bru.getVar('createdSolutionId');
+  if (!solutionId) {
+    throw new Error('No solution ID found. Run "POST Create Solution - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Solution retrieved successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains solution data", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+  });
+}
+
+docs {
+  # Get Solution by ID - Success
+  
+  Retrieves a specific solution by its ID under the specified domain.
+  
+  ## Prerequisites
+  
+  - Run "POST Create Solution - Success" first to set `createdSolutionId`
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: Solution object with matching ID
+  
+  ## What This Tests
+  
+  - Solution retrieval at `/{domainId}/solutions/{solutionId}` path
+  - Response contains correct solution data
+}

@@ -1,0 +1,67 @@
+meta {
+  name: GET Get Environment - Not Found
+  type: http
+  seq: 7
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/environments/00000000-0000-0000-0000-000000000000
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.error.id: isDefined
+  res.body.error.code: isDefined
+  res.body.error.subCode: isDefined
+  res.body.error.message: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru);
+}
+
+tests {
+  test("Request returns 404 Not Found", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+  
+  test("Response contains SIF 3.7 errorCommon format", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('error');
+    expect(data.error).to.have.property('id');
+    expect(data.error).to.have.property('code');
+    expect(data.error).to.have.property('subCode');
+    expect(data.error).to.have.property('message');
+    expect(data.error).to.have.property('scope');
+    expect(data.error).to.not.have.property('timestamp');
+    expect(data.error.code).to.equal(404);
+  });
+}
+
+docs {
+  # Get Environment - Not Found
+  
+  Attempts to retrieve a non-existent environment.
+  
+  ## Expected Response
+  
+  - Status: 404 Not Found
+  - Body: SIF error format
+  
+  ## What This Tests
+  
+  - 404 error handling
+  - SIF-compliant error response format
+  - Proper error message
+}

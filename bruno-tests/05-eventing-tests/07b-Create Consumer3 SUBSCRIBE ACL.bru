@@ -1,0 +1,52 @@
+meta {
+  name: 07b-Create Consumer3 SUBSCRIBE ACL
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{gatewayUrl}}/{{evtDomainId}}/{{evtSolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{evtConsumer3EnvId}}",
+    "serviceName": "TESTOBJECT1s",
+    "zoneId": "{{evtZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "SUBSCRIBE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('evtConsumer3AclId', data.id);
+    console.log('Created SUBSCRIBE ACL for Consumer3:', data.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Consumer3 SUBSCRIBE ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+

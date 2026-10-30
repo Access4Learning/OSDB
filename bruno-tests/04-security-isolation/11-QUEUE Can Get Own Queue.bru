@@ -1,0 +1,69 @@
+meta {
+  name: QUEUE Can Get Own Queue
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/queues/{{createdQueueId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.queue.id: isDefined
+}
+
+script:pre-request {
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No first environment ID found. Run infrastructure setup first.');
+  }
+  const queueId = bru.getVar('createdQueueId');
+  if (!queueId) {
+    throw new Error('No first queue ID found. Run queue creation first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+tests {
+  test("SECURITY: First environment CAN get its own queue", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("SECURITY: Returned queue matches own queue ID", function() {
+    const data = res.getBody().queue;
+    const expectedId = bru.getVar('createdQueueId');
+    expect(data.id).to.equal(expectedId);
+  });
+}
+
+docs {
+  # QUEUE Can Get Own Queue
+
+  **SECURITY ISOLATION POSITIVE TEST**
+
+  Verifies that the first environment CAN read its own queue.
+  This is the positive counterpart to the cross-environment queue access tests,
+  confirming that isolation doesn't break self-access to owned queues.
+
+  ## What This Tests
+
+  - First environment authenticates with its own credentials
+  - Calls GET /queues/{ownQueueId}
+  - Expected: 200 OK with own queue data
+  - If this returns 403, the isolation rules are too restrictive
+
+  ## Prerequisites
+
+  - First environment must exist (createdEnvironmentId)
+  - First environment's queue must exist (createdQueueId)
+}

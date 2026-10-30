@@ -1,0 +1,131 @@
+meta {
+  name: Get Consumer1 Subscription and Queue
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{consumer1SubscriptionsUrl}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+docs {
+  # Get Consumer 1 Subscription and Queue
+
+  Fetches Consumer 1's subscriptions and extracts the queue URL for the test object.
+
+  ## Purpose
+
+  This test MUST be run after initializing Consumer 1 environment. It:
+  1. Fetches all subscriptions for Consumer 1
+  2. Finds the subscription for the test object in the test zone
+  3. Extracts the queue ID from the subscription
+  4. Constructs and stores the queue URL for polling events
+
+  ## Prerequisites
+
+  - Run `Initialize Consumer1 Environment` first
+  - Consumer 1 has an active subscription for the test object
+  - Subscription includes a queue ID
+
+  ## Expected Response
+
+  - Status: 200 OK
+  - Body: Array of subscription objects
+
+  ## Variables Set
+
+  After successful execution, these variables are available:
+  - `consumer1QueueUrl` - Full URL for polling Consumer 1's event queue
+  - `consumer1SubscriptionId` - ID of the subscription for the test object
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  
+  // Verify Consumer 1 was initialized
+  const subscriptionsUrl = bru.getVar('consumer1SubscriptionsUrl');
+  if (!subscriptionsUrl) {
+    throw new Error('Consumer 1 not initialized. Run "Initialize Consumer1 Environment" first.');
+  }
+  
+  auth.setAuthHeaders(req, bru, 'consumer1');
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const subscriptions = res.getBody();
+    const testZone = bru.getEnvVar('testZoneId');
+    const testObject = bru.getEnvVar('testObjectName');
+    const queuesUrl = bru.getVar('consumer1QueuesUrl');
+    
+    // Find subscription for the test object in the test zone
+    let targetSubscription = null;
+    
+    if (Array.isArray(subscriptions.subscription)) {
+      targetSubscription = subscriptions.subscription.find(sub => 
+        sub.serviceName === testObject && 
+        sub.zoneId === testZone &&
+        sub.contextId === 'DEFAULT'
+      );
+    } else if (subscriptions.subscription) {
+      // Single subscription
+      const sub = subscriptions.subscription;
+      if (sub.serviceName === testObject && sub.zoneId === testZone) {
+        targetSubscription = sub;
+      }
+    }
+    
+    if (targetSubscription) {
+      console.log(`✓ Found subscription for ${testObject} in zone ${testZone}`);
+      bru.setVar('consumer1SubscriptionId', targetSubscription.id);
+      
+      // Extract queue ID and construct queue URL
+      if (targetSubscription.queueId) {
+        const queueUrl = `${queuesUrl}/${targetSubscription.queueId}`;
+        bru.setVar('consumer1QueueUrl', queueUrl);
+        console.log('Consumer 1 Queue URL:', queueUrl);
+      } else {
+        console.warn('✗ Subscription does not have a queueId');
+      }
+    } else {
+      console.warn(`✗ No subscription found for ${testObject} in zone ${testZone}`);
+    }
+    
+    console.log(`Consumer 1: Found ${subscriptions.subscription ? (Array.isArray(subscriptions.subscription) ? subscriptions.subscription.length : 1) : 0} subscription(s)`);
+  } else {
+    console.error('Failed to fetch Consumer 1 subscriptions');
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Subscriptions fetched successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains subscriptions", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('subscription');
+  });
+  
+  test("Subscription found for test object in test zone", function() {
+    const subscriptionId = bru.getVar('consumer1SubscriptionId');
+    expect(subscriptionId).to.exist;
+  });
+  
+  test("Queue URL extracted from subscription", function() {
+    const queueUrl = bru.getVar('consumer1QueueUrl');
+    expect(queueUrl).to.exist;
+    expect(queueUrl).to.be.a('string');
+  });
+}

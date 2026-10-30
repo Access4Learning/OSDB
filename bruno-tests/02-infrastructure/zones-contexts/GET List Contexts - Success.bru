@@ -1,0 +1,62 @@
+meta {
+  name: GET List Contexts - Success
+  type: http
+  seq: 3
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/zones/{{createdZoneId}}/contexts
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const zoneId = bru.getVar('createdZoneId');
+  if (!zoneId) {
+    throw new Error('No zone ID found. Run "Create Zone - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Contexts listed successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has SIF collection wrapper", function() {
+    const data = res.getBody();
+    expect(data.contexts).to.exist;
+    expect(data.contexts.context).to.be.an('array');
+  });
+  
+  test("DEFAULT context exists (auto-created)", function() {
+    const data = res.getBody();
+    const defaultCtx = data.contexts.context.find(c => c.id === 'DEFAULT');
+    expect(defaultCtx).to.exist;
+  });
+}
+
+docs {
+  # List Contexts - Success
+  
+  Lists all contexts in the created zone. Should include the auto-created
+  DEFAULT context.
+  
+  ## Prerequisites
+  
+  - A zone must be created first (run "Create Zone - Success")
+}

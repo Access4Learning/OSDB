@@ -1,0 +1,51 @@
+meta {
+  name: Code Sets
+  seq: 11
+}
+
+docs {
+  # Code Sets Registry Utility Service Tests
+  
+  Tests for the SIF 3.7 Code Sets Registry Utility Service endpoints.
+  
+  ## What Are Code Sets?
+  
+  Code Sets are a centralized registry of legal code values organized under named
+  code sets. Consumers and providers use the registry to verify whether a received
+  code value is legal, even if that value was not defined when the application was
+  originally written. Code sets support zone-scoping: global entries can be
+  overridden by zone-specific entries of the same name.
+  
+  ## URL Pattern
+  
+  Code set endpoints are scoped to a domain and solution:
+  - `POST /{domainId}/{solutionId}/codeSets/codeSet` — Create a code set (admin only)
+  - `GET /{domainId}/{solutionId}/codeSets` — List code sets (zone-scoped)
+  - `GET /{domainId}/{solutionId}/codeSets/{id}` — Get code set by ID (zone-scoped)
+  - `PUT /{domainId}/{solutionId}/codeSets/{id}` — Update code set (admin only)
+  - `DELETE /{domainId}/{solutionId}/codeSets/{id}` — Delete code set (admin only)
+  
+  ## Tests Included
+  
+  - Create code set (admin, valid payload with codeItems and aliases)
+  - List code sets (verify collection format)
+  - Get code set by ID
+  - Update code set (full replacement)
+  - Delete code set
+  - Create code set — non-admin rejected (403)
+  - Zone scoping query — global + zone-specific override
+  
+  ## Prerequisites
+  
+  - A domain and solution must exist (createdDomainId, createdSolutionId)
+  - A codeSets provider must be registered in the environment-global zone
+  - Valid authentication credentials
+  
+  ## Important Notes
+  
+  - Code sets support full CRUD (unlike alerts which are immutable)
+  - Only admin environments can create, update, or delete code sets
+  - Any authenticated environment can query code sets
+  - PUT does full replacement of the entire code set object
+  - Zone-scoping: zone-specific entries override global entries with the same id
+}

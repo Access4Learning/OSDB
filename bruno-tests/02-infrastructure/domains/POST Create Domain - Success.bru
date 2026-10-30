@@ -1,0 +1,72 @@
+meta {
+  name: POST Create Domain - Success
+  type: http
+  seq: 1
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/domains
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "domainId": "{{testDataPrefix}}-domain-{{$timestamp}}",
+    "description": "Domain created by Bruno API tests"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdDomainId', data.domainId || data.id);
+    console.log('Created domain:', data.domainId || data.id);
+  }
+}
+
+tests {
+  test("Domain created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response contains domain data", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+  });
+}
+
+docs {
+  # Create Domain - Success
+  
+  Creates a new domain at the root-level `/domains` endpoint.
+  
+  ## Expected Response
+  
+  - Status: 201 Created
+  - Body: Created domain with ID and metadata
+  
+  ## What This Tests
+  
+  - Domain creation at root-level path
+  - Domain endpoints are accessible with authentication
+  - Response contains domain data
+}

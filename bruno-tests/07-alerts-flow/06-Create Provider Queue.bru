@@ -1,0 +1,58 @@
+meta {
+  name: 06-Create Provider Queue
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "DEFAULTQUEUE",
+      "ownerId": "{{altProviderEnvId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.queue.id: isDefined
+}
+
+script:pre-request {
+  const envId = bru.getVar('altProviderEnvId');
+  if (!envId) {
+    throw new Error('altProviderEnvId not set. Run step 04 first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'altProvider' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('altProviderQueueId', data.queue.id);
+    console.log('Created provider queue:', data.queue.id);
+  }
+}
+
+tests {
+  test("Provider queue created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().queue.name).to.equal('DEFAULTQUEUE');
+  });
+}

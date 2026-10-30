@@ -1,0 +1,80 @@
+meta {
+  name: 16-List Alerts
+  type: http
+  seq: 19
+}
+
+get {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/alerts
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  requestAction: QUERY
+  serviceType: UTILITY
+  serviceName: alerts
+}
+
+assert {
+  res.status: eq 200
+  res.body.alerts: isDefined
+  res.body.alerts.alert: isDefined
+}
+
+script:pre-request {
+  const alertId = bru.getVar('altAlertId');
+  if (!alertId) {
+    throw new Error('altAlertId not set. Run step 15 first to create an alert.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Alerts listed successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response has SIF collection wrapper", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('alerts');
+    expect(data.alerts).to.have.property('alert');
+    expect(data.alerts.alert).to.be.an('array');
+  });
+
+  test("Collection contains the created alert", function() {
+    const alertId = bru.getVar('altAlertId');
+    const alerts = res.getBody().alerts.alert;
+    const found = alerts.some(a => a.id === alertId);
+    expect(found).to.be.true;
+  });
+
+  test("Each alert has required fields", function() {
+    const alerts = res.getBody().alerts.alert;
+    if (alerts.length > 0) {
+      const alert = alerts[0];
+      expect(alert).to.have.property('id');
+      expect(alert).to.have.property('reporter');
+      expect(alert).to.have.property('exchange');
+      expect(alert).to.have.property('level');
+      expect(alert).to.have.property('SIF_ExtendedElements');
+    }
+  });
+}
+
+docs {
+  # List Alerts
+  
+  Lists all alerts using admin credentials. Verifies the collection
+  contains the alert created in step 15.
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: `{ "alerts": { "alert": [...] } }` — SIF collection wrapper
+  - Collection contains the previously created alert
+}

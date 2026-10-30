@@ -1,0 +1,54 @@
+meta {
+  name: 23-Create Legacy Consumer Environment
+  type: http
+  seq: 23
+}
+
+post {
+  url: {{gatewayUrl}}/{{mpDomainId}}/{{mpSolutionId}}/environments/environment
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environment": {
+      "consumerName": "MPLegacyConsumer-{{$timestamp}}",
+      "type": "BROKERED",
+      "defaultZone": {
+        "id": "{{mpZoneId}}"
+      }
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody().environment;
+    bru.setVar('mpLegacyConsumerEnvId', data.id);
+    bru.setVar('mpLegacyConsumerSessionToken', data.sessionToken);
+    bru.setVar('mpLegacyConsumerSharedSecret', data.sharedSecret);
+    console.log('Created legacy consumer environment:', data.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Legacy consumer environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

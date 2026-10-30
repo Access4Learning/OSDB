@@ -1,0 +1,251 @@
+meta {
+  name: GET Zone Scoping Query - Override
+  type: http
+  seq: 7
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/codeSets
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{zoneScopingTestZone}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.codeSets: isDefined
+  res.body.codeSets.codeSet: isDefined
+}
+
+script:pre-request {
+  const domainId = bru.getVar('createdDomainId');
+  if (!domainId) {
+    throw new Error('No domain ID found. Run domain/solution/environment setup first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  
+  // Step 1: Create a global code set
+  const gatewayUrl = bru.getEnvVar('gatewayUrl');
+  const solutionId = bru.getVar('createdSolutionId');
+  const testPrefix = bru.getEnvVar('testDataPrefix') || 'bruno-test';
+  const zoneScopingId = testPrefix + '-ZoneScoping';
+  const testZone = testPrefix + '-zone-override';
+  
+  bru.setVar('zoneScopingCodeSetId', zoneScopingId);
+  bru.setVar('zoneScopingTestZone', testZone);
+  
+  // Set admin auth for the setup requests
+  auth.setAuthHeaders(req, bru, 'admin');
+  
+  const authHeader = bru.getVar('authorizationHeader');
+  const tsHeader = bru.getVar('timestampHeader');
+  
+  const baseUrl = gatewayUrl + '/' + domainId + '/' + solutionId;
+  
+  // Create global code set
+  const globalPayload = JSON.stringify({
+    codeSet: {
+      id: zoneScopingId,
+      zone: 'environment-global',
+      version: '1.0-global',
+      timestamp: '2024-01-01T00:00:00Z',
+      codeItems: {
+        codeItem: [{
+          code: 'G1',
+          value: 'Global Value',
+          action: 'ADD',
+          timestamp: '2024-01-01T00:00:00Z'
+        }]
+      }
+    }
+  });
+  
+  const globalRes = require('axios').post(
+    baseUrl + '/codeSets/codeSet',
+    globalPayload,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader,
+        'timestamp': tsHeader,
+        'serviceType': 'UTILITY'
+      }
+    }
+  );
+  
+  console.log('Global code set creation status:', globalRes.status);
+  
+  // Refresh auth for second request
+  auth.setAuthHeaders(req, bru, 'admin');
+  const authHeader2 = bru.getVar('authorizationHeader');
+  const tsHeader2 = bru.getVar('timestampHeader');
+  
+  // Create zone-specific code set with same id
+  const zonePayload = JSON.stringify({
+    codeSet: {
+      id: zoneScopingId,
+      zone: testZone,
+      version: '1.0-zone-specific',
+      timestamp: '2024-02-01T00:00:00Z',
+      codeItems: {
+        codeItem: [{
+          code: 'Z1',
+          value: 'Zone Specific Value',
+          action: 'ADD',
+          timestamp: '2024-02-01T00:00:00Z'
+        }]
+      }
+    }
+  });
+  
+  const zoneRes = require('axios').post(
+    baseUrl + '/codeSets/codeSet',
+    zonePayload,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader2,
+        'timestamp': tsHeader2,
+        'serviceType': 'UTILITY'
+      }
+    }
+  );
+  
+  console.log('Zone-specific code set creation status:', zoneRes.status);
+  
+  // Refresh auth for the actual GET request
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  // Cleanup: delete both code sets after the test
+  const auth = require('./common/auth.js');
+  const gatewayUrl = bru.getEnvVar('gatewayUrl');
+  const domainId = bru.getVar('createdDomainId');
+  const solutionId = bru.getVar('createdSolutionId');
+  const codeSetId = bru.getVar('zoneScopingCodeSetId');
+  const testZone = bru.getVar('zoneScopingTestZone');
+  const baseUrl = gatewayUrl + '/' + domainId + '/' + solutionId;
+  
+  try {
+    // Delete zone-specific code set
+    auth.setAuthHeaders(req, bru, 'admin');
+    require('axios').delete(
+      baseUrl + '/codeSets/' + codeSetId + '?zone=' + testZone,
+      {
+        headers: {
+          'Authorization': bru.getVar('authorizationHeader'),
+          'timestamp': bru.getVar('timestampHeader'),
+          'zoneId': testZone
+        }
+      }
+    );
+    console.log('Cleaned up zone-specific code set');
+  } catch (e) {
+    console.log('Zone-specific cleanup note:', e.message);
+  }
+  
+  try {
+    // Delete global code set
+    auth.setAuthHeaders(req, bru, 'admin');
+    require('axios').delete(
+      baseUrl + '/codeSets/' + codeSetId,
+      {
+        headers: {
+          'Authorization': bru.getVar('authorizationHeader'),
+          'timestamp': bru.getVar('timestampHeader')
+        }
+      }
+    );
+    console.log('Cleaned up global code set');
+  } catch (e) {
+    console.log('Global cleanup note:', e.message);
+  }
+}
+
+tests {
+  test("Zone-scoped query returned successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has SIF collection wrapper", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('codeSets');
+    expect(data.codeSets).to.have.property('codeSet');
+    expect(data.codeSets.codeSet).to.be.an('array');
+  });
+  
+  test("Zone-specific entry returned instead of global", function() {
+    const codeSetId = bru.getVar('zoneScopingCodeSetId');
+    const codeSets = res.getBody().codeSets.codeSet;
+    const matching = codeSets.filter(cs => cs.id === codeSetId);
+    
+    // Should have exactly one entry (zone-specific overrides global)
+    expect(matching.length).to.equal(1);
+    
+    // The returned entry should be the zone-specific one
+    const cs = matching[0];
+    expect(cs.version).to.equal('1.0-zone-specific');
+    expect(cs.timestamp).to.equal('2024-02-01T00:00:00Z');
+  });
+  
+  test("Zone-specific code items returned (not global)", function() {
+    const codeSetId = bru.getVar('zoneScopingCodeSetId');
+    const codeSets = res.getBody().codeSets.codeSet;
+    const cs = codeSets.find(c => c.id === codeSetId);
+    
+    expect(cs).to.exist;
+    expect(cs.codeItems).to.have.property('codeItem');
+    
+    const items = cs.codeItems.codeItem;
+    const zoneItem = items.find(i => i.code === 'Z1');
+    expect(zoneItem).to.exist;
+    expect(zoneItem.value).to.equal('Zone Specific Value');
+    
+    // Global item should NOT be present (full override, not merge)
+    const globalItem = items.find(i => i.code === 'G1');
+    expect(globalItem).to.not.exist;
+  });
+}
+
+docs {
+  # Zone Scoping Query - Override
+  
+  Tests the zone-scoping override behavior: when a global code set and a
+  zone-specific code set share the same `id`, querying with the specific zone
+  should return the zone-specific entry instead of the global one.
+  
+  ## How It Works
+  
+  1. Pre-request script creates a global code set (zone = "environment-global")
+  2. Pre-request script creates a zone-specific code set with the same `id`
+  3. The GET request queries with the specific zone via `zoneId` header
+  4. Assertions verify the zone-specific entry is returned, not the global one
+  5. Post-response script cleans up both code sets
+  
+  ## Prerequisites
+  
+  - Domain and solution must exist (createdDomainId, createdSolutionId)
+  - Valid admin authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - The code set with the matching `id` should have zone-specific version/data
+  - Global code items should NOT appear (zone-specific fully overrides)
+  
+  ## What This Tests
+  
+  - Zone-scoping override behavior (Requirement 14.7)
+  - Zone-specific entries replace global counterparts with same id
+  - Full override: zone-specific codeItems returned, not global ones
+}

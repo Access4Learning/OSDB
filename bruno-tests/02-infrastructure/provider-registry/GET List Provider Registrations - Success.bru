@@ -1,0 +1,104 @@
+meta {
+  name: GET List Provider Registrations - Success
+  type: http
+  seq: 5
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/providers?environmentId={{createdEnvironmentId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.providers.provider: isArray
+}
+
+script:pre-request {
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No environment ID found. Run "POST Create Environment - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Provider registrations listed successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response is an array", function() {
+    const data = res.getBody().providers.provider;
+    expect(data).to.be.an('array');
+  });
+  
+  test("Array contains at least one registration", function() {
+    const data = res.getBody().providers.provider;
+    expect(data.length).to.be.greaterThan(0);
+  });
+  
+  test("Each registration contains SIF 3.7 aligned fields", function() {
+    const data = res.getBody().providers.provider;
+    data.forEach(function(registration) {
+      expect(registration).to.have.property('id');
+      expect(registration).to.have.property('environmentId');
+      expect(registration).to.have.property('serviceName');
+      expect(registration).to.have.property('zoneId');
+      expect(registration).to.have.property('endPoint');
+      expect(registration).to.have.property('serviceType');
+      expect(registration).to.have.property('providerName');
+      expect(registration).to.have.property('supportedRequestTypes');
+      expect(registration).to.have.property('registeredAt');
+    });
+  });
+  
+  test("No registration contains deprecated supportedPatterns field", function() {
+    const data = res.getBody().providers.provider;
+    data.forEach(function(registration) {
+      expect(registration).to.not.have.property('supportedPatterns');
+    });
+  });
+  
+  test("Created registration is in the list", function() {
+    const data = res.getBody().providers.provider;
+    const expectedId = bru.getVar('createdProviderRegistrationId');
+    const found = data.some(r => r.id === expectedId);
+    expect(found).to.be.true;
+  });
+}
+
+docs {
+  # List Provider Registrations - Success
+  
+  Lists all provider registrations for a specific environment.
+  
+  ## Prerequisites
+  
+  - Run "POST Create Provider Registration - Success" first
+  - An environment must exist (createdEnvironmentId)
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: Array of provider registrations with SIF 3.7 aligned fields
+  - Each registration contains serviceType, providerName, supportedRequestTypes
+  - No registration contains deprecated supportedPatterns field
+  
+  ## What This Tests
+  
+  - Listing provider registrations by environmentId
+  - Response is an array containing the created registration
+  - Each registration has SIF 3.7 aligned fields
+  - No registration has deprecated supportedPatterns field
+}

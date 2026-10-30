@@ -1,0 +1,144 @@
+meta {
+  name: POST Create Alert - With MessageID
+  type: http
+  seq: 1
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/alerts/alert
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  requestAction: CREATE
+  serviceType: UTILITY
+  serviceName: alerts
+  messageId: {{testDataPrefix}}-msg-{{$timestamp}}
+}
+
+body:json {
+  {
+    "alert": {
+      "reporter": "BrunoTestApp",
+      "exchange": "REQUEST",
+      "level": "ERROR",
+      "cause": "DataValidation",
+      "description": "Invalid student record format during Bruno API test",
+      "messageID": "{{testDataPrefix}}-msg-{{$timestamp}}",
+      "body": "<StudentPersonal>test</StudentPersonal>",
+      "error": "java.lang.IllegalArgumentException: test error",
+      "xpath": "/StudentPersonal/Name/FirstName",
+      "category": 4,
+      "code": 11,
+      "internal": "ERR-4011"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.alert: isDefined
+  res.body.alert.id: isDefined
+  res.body.alert.reporter: eq BrunoTestApp
+  res.body.alert.exchange: eq REQUEST
+  res.body.alert.level: eq ERROR
+  res.body.alert.SIF_ExtendedElements: isDefined
+}
+
+script:pre-request {
+  const domainId = bru.getVar('createdDomainId');
+  if (!domainId) {
+    throw new Error('No domain ID found. Run domain/solution/environment setup first.');
+  }
+  
+  const solutionId = bru.getVar('createdSolutionId');
+  if (!solutionId) {
+    throw new Error('No solution ID found. Run domain/solution/environment setup first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdAlertId', data.alert.id);
+    console.log('Created alert:', data.alert.id);
+    console.log('Reporter:', data.alert.reporter);
+    console.log('Exchange:', data.alert.exchange);
+    console.log('Level:', data.alert.level);
+  }
+}
+
+tests {
+  test("Alert created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response wrapped under 'alert' key", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('alert');
+  });
+  
+  test("Alert has broker-assigned UUID", function() {
+    const data = res.getBody();
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    expect(data.alert.id).to.match(uuidRegex);
+  });
+  
+  test("Alert fields match request", function() {
+    const alert = res.getBody().alert;
+    expect(alert.reporter).to.equal('BrunoTestApp');
+    expect(alert.exchange).to.equal('REQUEST');
+    expect(alert.level).to.equal('ERROR');
+    expect(alert.cause).to.equal('DataValidation');
+    expect(alert.description).to.equal('Invalid student record format during Bruno API test');
+  });
+  
+  test("SIF_ExtendedElements present in response", function() {
+    const alert = res.getBody().alert;
+    expect(alert).to.have.property('SIF_ExtendedElements');
+    expect(alert.SIF_ExtendedElements).to.have.property('SIF_ExtendedElement');
+    expect(alert.SIF_ExtendedElements.SIF_ExtendedElement).to.be.an('array');
+  });
+  
+  test("Extended elements contain server-populated fields", function() {
+    const elements = res.getBody().alert.SIF_ExtendedElements.SIF_ExtendedElement;
+    const names = elements.map(e => e.Name);
+    expect(names).to.include('reportingEnvironmentFingerprint');
+    expect(names).to.include('createdAt');
+  });
+}
+
+docs {
+  # Create Alert - With MessageID
+  
+  Creates a new alert with a `messageID` field, which triggers message context
+  correlation via the Redis cache.
+  
+  ## Prerequisites
+  
+  - Domain and solution must exist (createdDomainId, createdSolutionId)
+  - An alerts provider must be registered in the environment-global zone
+  - Valid admin authentication credentials
+  - The messageId header triggers the gateway MessageContextCacheFilter to cache context
+  
+  ## Expected Response
+  
+  - Status: 201 Created
+  - Body: `{ "alert": { ... } }` with broker-assigned ID and SIF_ExtendedElements
+  
+  ## What This Tests
+  
+  - Alert creation with messageID (Requirement 11.1)
+  - Response includes SIF_ExtendedElements with server-populated fields
+  - Response wrapped under 'alert' key per SIF convention
+}

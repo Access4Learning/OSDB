@@ -1,0 +1,61 @@
+meta {
+  name: 06-Create Consumer Queue
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{gatewayUrl}}/{{fsDomainId}}/{{fsSolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "DEFAULTQUEUE",
+      "ownerId": "{{fsConsumerEnvId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'fsConsumer' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('fsConsumerQueueId', data.queue.id);
+    console.log('Created consumer queue:', data.queue.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.queue.id: isDefined
+}
+
+tests {
+  test("Consumer queue created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().queue.name).to.equal('DEFAULTQUEUE');
+  });
+}
+
+docs {
+  # Create Consumer Queue
+
+  Creates a queue for the consumer environment. DELAYED functional service
+  responses will be delivered to this queue. The consumer polls this queue
+  to retrieve responses asynchronously.
+}

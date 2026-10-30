@@ -1,0 +1,42 @@
+meta {
+  name: 09-Test Matrix Params Only (Legacy SIF 3.3)
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{mpConsumerRequestsUrl}}/MatrixParamTestObjects;zoneId={{mpZoneId}};contextId=DEFAULT
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'mpConsumer' });
+}
+
+assert {
+  res.status: neq 400
+}
+
+tests {
+  test("Matrix params parsed successfully (legacy SIF 3.3 client)", function() {
+    expect(res.getStatus()).to.not.equal(400);
+    console.log('Matrix-params-only response status:', res.getStatus());
+  });
+}
+
+docs {
+  # Test Matrix Params Only (Legacy SIF 3.3)
+  
+  Sends a GET request with zoneId and contextId as matrix parameters in the URL
+  (no zoneId/contextId headers). This is the legacy SIF 3.3 approach.
+  
+  The gateway should parse the matrix params from the URL and treat them as if
+  they were headers. A 400 would indicate the gateway cannot parse matrix params.
+}

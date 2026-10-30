@@ -1,0 +1,64 @@
+meta {
+  name: GET Get Domain by ID - Success
+  type: http
+  seq: 3
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/domains/{{createdDomainId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const domainId = bru.getVar('createdDomainId');
+  if (!domainId) {
+    throw new Error('No domain ID found. Run "POST Create Domain - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Domain retrieved successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains domain data", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+  });
+}
+
+docs {
+  # Get Domain by ID - Success
+  
+  Retrieves a specific domain by its ID.
+  
+  ## Prerequisites
+  
+  - Run "POST Create Domain - Success" first to set `createdDomainId`
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: Domain object with matching ID
+  
+  ## What This Tests
+  
+  - Domain retrieval by ID at root-level path
+  - Response contains correct domain data
+}

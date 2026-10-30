@@ -1,0 +1,75 @@
+meta {
+  name: MSG Cannot Deliver From Another Queue
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/api/queues/{{createdAnotherQueueId}}/deliver
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "maxMessages": 10,
+    "visibilityTimeoutSeconds": 30
+  }
+}
+
+assert {
+  res.status: eq 403
+}
+
+script:pre-request {
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No first environment ID found. Run infrastructure setup first.');
+  }
+  const anotherQueueId = bru.getVar('createdAnotherQueueId');
+  if (!anotherQueueId) {
+    throw new Error('No second queue ID found. Run "Create Another Queue" first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+tests {
+  test("SECURITY: First environment cannot deliver messages from another environment's queue", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+
+  test("SECURITY: Cross-environment message consumption is blocked", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('code');
+  });
+}
+
+docs {
+  # MSG Cannot Deliver From Another Queue
+
+  **SECURITY ISOLATION REGRESSION TEST**
+
+  Verifies that the first environment CANNOT deliver (consume) messages
+  from a queue owned by the second environment. This prevents unauthorized
+  reading of another environment's messages.
+
+  ## What This Tests
+
+  - First environment authenticates with its own credentials
+  - Calls POST /api/queues/{secondEnvironmentQueueId}/deliver
+  - Expected: 403 Forbidden
+  - If this returns 200, message consumption across environments is possible
+
+  ## Prerequisites
+
+  - First environment must exist (createdEnvironmentId)
+  - Second environment's queue must exist (createdAnotherQueueId)
+}

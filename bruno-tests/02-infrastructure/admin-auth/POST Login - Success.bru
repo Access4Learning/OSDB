@@ -1,0 +1,110 @@
+meta {
+  name: POST Login - Success
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{gatewayUrl}}/admin-users/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "username": "{{adminUserUsername}}",
+    "password": "{{adminUserPassword}}",
+    "domainUuid": "{{adminUserDomainUuid}}",
+    "solutionUuid": "{{adminUserSolutionUuid}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.sessionToken: isDefined
+  res.body.expiresAt: isDefined
+  res.body.environments: isDefined
+}
+
+script:pre-request {
+  const username = bru.getVar('adminUserUsername');
+  if (!username) {
+    throw new Error('No admin user credentials found. Run admin user creation tests first.');
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const data = res.getBody();
+    bru.setVar('adminSessionToken', data.sessionToken);
+    console.log('Login successful. Session token stored.');
+    console.log('Environments returned:', data.environments.length);
+    if (data.environments.length > 0) {
+      bru.setVar('adminUserEnvironmentId', data.environments[0].id);
+      console.log('First environment ID stored:', data.environments[0].id);
+    }
+  }
+}
+
+tests {
+  test("Login returns 200 OK", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains session token", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('sessionToken');
+    expect(data.sessionToken).to.be.a('string');
+    expect(data.sessionToken.length).to.be.greaterThan(0);
+  });
+  
+  test("Response contains expiry timestamp", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('expiresAt');
+    expect(data.expiresAt).to.be.a('string');
+  });
+  
+  test("Response contains environments list", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('environments');
+    expect(data.environments).to.be.an('array');
+  });
+  
+  test("Each environment has id and applicationName", function() {
+    const data = res.getBody();
+    if (data.environments.length > 0) {
+      const env = data.environments[0];
+      expect(env).to.have.property('id');
+      expect(env).to.have.property('applicationName');
+    }
+  });
+}
+
+docs {
+  # Login - Success
+  
+  Authenticates an admin user with valid credentials.
+  
+  ## Request
+  
+  - `username` — admin user's username
+  - `password` — admin user's password
+  - `domainUuid` — UUID of the domain
+  - `solutionUuid` — UUID of the solution
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: `{ sessionToken, expiresAt, environments[] }`
+  
+  ## What This Tests
+  
+  - Successful authentication with valid credentials
+  - Session token generation
+  - Environment list returned with user's authorized environments
+  - Requirements: 3.1, 3.3
+}

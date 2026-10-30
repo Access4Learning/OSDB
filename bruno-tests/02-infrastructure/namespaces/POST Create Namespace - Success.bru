@@ -1,0 +1,125 @@
+meta {
+  name: POST Create Namespace - Success
+  type: http
+  seq: 1
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/namespaces/namespace
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  requestAction: CREATE
+  serviceType: UTILITY
+  serviceName: namespaces
+}
+
+body:json {
+  {
+    "namespace": {
+      "zone": "environment-global",
+      "uri": "http://www.sifassociation.org/infrastructure/3.7",
+      "url": "http://specification.sifassociation.org/Implementation/Infrastructure/3.7/XSD/Schema_NoIncludes_Annotated_Strict/SIF_Message.xsd"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.namespace: isDefined
+  res.body.namespace.id: isDefined
+  res.body.namespace.zone: eq environment-global
+  res.body.namespace.uri: eq http://www.sifassociation.org/infrastructure/3.7
+}
+
+script:pre-request {
+  const domainId = bru.getVar('createdDomainId');
+  if (!domainId) {
+    throw new Error('No domain ID found. Run domain/solution/environment setup first.');
+  }
+  
+  const solutionId = bru.getVar('createdSolutionId');
+  if (!solutionId) {
+    throw new Error('No solution ID found. Run domain/solution/environment setup first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdNamespaceId', data.namespace.id);
+    console.log('Created namespace:', data.namespace.id);
+    console.log('Zone:', data.namespace.zone);
+    console.log('URI:', data.namespace.uri);
+    console.log('URL:', data.namespace.url);
+  }
+}
+
+tests {
+  test("Namespace created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response wrapped under 'namespace' key", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('namespace');
+  });
+  
+  test("Namespace has broker-assigned UUID id", function() {
+    const data = res.getBody();
+    expect(data.namespace.id).to.exist;
+    // Verify it looks like a UUID (8-4-4-4-12 hex pattern)
+    expect(data.namespace.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+  });
+  
+  test("Namespace has correct zone", function() {
+    const data = res.getBody();
+    expect(data.namespace.zone).to.equal('environment-global');
+  });
+  
+  test("Namespace has correct uri", function() {
+    const data = res.getBody();
+    expect(data.namespace.uri).to.equal('http://www.sifassociation.org/infrastructure/3.7');
+  });
+  
+  test("Namespace has correct url", function() {
+    const data = res.getBody();
+    expect(data.namespace.url).to.equal('http://specification.sifassociation.org/Implementation/Infrastructure/3.7/XSD/Schema_NoIncludes_Annotated_Strict/SIF_Message.xsd');
+  });
+}
+
+docs {
+  # Create Namespace - Success
+  
+  Creates a new namespace with a valid payload. The broker assigns a UUID id
+  (any id provided in the request body is ignored).
+  
+  ## Prerequisites
+  
+  - Domain and solution must exist (createdDomainId, createdSolutionId)
+  - A namespaces provider must be registered in the environment-global zone
+  - Valid admin authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 201 Created
+  - Body: `{ "namespace": { ... } }` with broker-assigned UUID id
+  
+  ## What This Tests
+  
+  - Namespace creation with valid payload (Requirement 3.1)
+  - Response wrapped under 'namespace' key (SIF 3.7 convention)
+  - Broker assigns UUID id (Requirement 3.6)
+  - Namespace ID stored for subsequent tests
+}

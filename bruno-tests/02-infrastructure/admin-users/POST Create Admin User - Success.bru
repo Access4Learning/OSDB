@@ -1,0 +1,111 @@
+meta {
+  name: POST Create Admin User - Success
+  type: http
+  seq: 2
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/admin-users
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "username": "{{adminTestUsername}}",
+    "password": "SecurePass123!",
+    "domainUuid": "{{adminDomainUuid}}",
+    "solutionUuid": "{{adminSolutionUuid}}"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.username: isDefined
+  res.body.domainUuid: isDefined
+  res.body.solutionUuid: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+  
+  // Generate a unique username for this test run
+  const timestamp = Date.now();
+  bru.setVar('adminTestUsername', 'bruno-test-user-' + timestamp);
+  
+  // Resolve domain and solution UUIDs if not already set
+  const domainUuid = bru.getVar('adminDomainUuid');
+  const solutionUuid = bru.getVar('adminSolutionUuid');
+  if (!domainUuid || !solutionUuid) {
+    console.log('NOTE: adminDomainUuid and adminSolutionUuid must be set before running this test.');
+    console.log('Run the post-deployment domain/solution creation tests first, then set these vars.');
+    console.log('Or set them manually from the domain/solution list responses.');
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdAdminUserId', data.id);
+    bru.setVar('createdAdminUsername', data.username);
+    console.log('Created admin user:', data.id, data.username);
+  }
+}
+
+tests {
+  test("Admin user created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response contains admin user data", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('username');
+    expect(data).to.have.property('domainUuid');
+    expect(data).to.have.property('solutionUuid');
+    expect(data).to.have.property('createdAt');
+  });
+  
+  test("Password is not returned in response", function() {
+    const data = res.getBody();
+    expect(data).to.not.have.property('password');
+    expect(data).to.not.have.property('passwordHash');
+  });
+}
+
+docs {
+  # Create Admin User - Success
+  
+  Creates a new admin user with valid credentials.
+  
+  ## Prerequisites
+  
+  - Valid admin HMAC credentials configured in .env
+  - adminDomainUuid and adminSolutionUuid variables set (from post-deployment tests)
+  
+  ## Expected Response
+  
+  - Status: 201 Created
+  - Body: Created admin user with id, username, domainUuid, solutionUuid, createdAt
+  
+  ## What This Tests
+  
+  - Happy path admin user creation
+  - Password is not returned in response
+  - Response contains all expected fields
+  
+  ## Requirements Validated
+  
+  - 1.1: Admin user creation with UUID PK, username, bcrypt password, domain+solution scope
+}

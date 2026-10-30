@@ -1,0 +1,57 @@
+meta {
+  name: 25-Get Message 4 - Verify No Sequence Header Again
+  type: http
+  seq: 26
+}
+
+get {
+  url: {{gatewayUrl}}/{{seqDomainId}}/{{seqSolutionId}}/queues/{{seqConsumerQueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  connectionId: seqConsumer
+  X-Environment-Id: {{seqConsumerEnvId}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'seqConsumer' });
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const seqHeader = res.getHeaders()?.['x-sif-sequenceid'];
+    console.log('x-sif-sequenceId header after disable:', seqHeader || '(not present)');
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Message delivered", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("x-sif-sequenceId header is NOT present (sequencing disabled again)", function() {
+    const headers = res.getHeaders();
+    expect(headers['x-sif-sequenceid']).to.not.exist;
+  });
+}
+
+docs {
+  # Verify No Sequence Header After Disabling
+  
+  After deleting the SEQUENCE_ENABLED entity tag (and waiting for cache expiry),
+  the consumer should no longer receive the x-sif-sequenceId header.
+  
+  This confirms the full lifecycle: disabled → enabled → disabled.
+  
+  Note: If this test fails because the header IS present, the toggle cache
+  hasn't expired yet. Either wait longer or configure a shorter TTL.
+}

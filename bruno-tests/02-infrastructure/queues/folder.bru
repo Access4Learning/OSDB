@@ -1,0 +1,38 @@
+meta {
+  name: queues
+  seq: 5
+}
+
+docs {
+  # Queue Management Tests
+  
+  Tests for queue creation and operation APIs.
+  
+  ## What Are Queues?
+  
+  Queues store messages for asynchronous processing. Each queue has:
+  - Owner environment ID
+  - Queue name
+  - Zone and context
+  - Queue type (CONSUMER, PROVIDER, SUBSCRIPTION)
+  - Message storage (Redis + S3)
+  
+  ## Tests Included
+  
+  - Create queue
+  - List queues
+  - Get queue by ID
+  - Enqueue message
+  - Dequeue/poll message
+  - Peek at messages
+  - Acknowledge message
+  - Delete queue
+  - Error scenarios
+  
+  ## Important Notes
+  
+  - Queues require authentication
+  - Messages persist to S3 before success is returned
+  - Unacknowledged messages are redelivered
+  - Queues are automatically created for DELAYED pattern requests
+}

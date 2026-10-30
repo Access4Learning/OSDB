@@ -1,0 +1,78 @@
+meta {
+  name: 07-Create Provider Alerts Subscription
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/subscriptions/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{altProviderQueueId}}",
+      "aclEntryId": "{{altProviderAlertsAclId}}",
+      "messageType": "EVENT"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.subscription.id: isDefined
+}
+
+script:pre-request {
+  const queueId = bru.getVar('altProviderQueueId');
+  if (!queueId) {
+    throw new Error('altProviderQueueId not set. Run step 06 first.');
+  }
+
+  const aclId = bru.getVar('altProviderAlertsAclId');
+  if (!aclId) {
+    throw new Error('altProviderAlertsAclId not set. Run step 03c first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'altProvider' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('altProviderAlertsSubId', data.subscription.id);
+    console.log('Created provider alerts subscription:', data.subscription.id);
+  }
+}
+
+tests {
+  test("Provider alerts subscription created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Subscription message type is EVENT", function() {
+    expect(res.getBody().subscription.messageType).to.equal('EVENT');
+  });
+}
+
+docs {
+  # Create Provider Alerts Subscription
+  
+  Subscribes the provider to alerts events on the environment-global zone
+  with DEFAULT context. When an alert is created referencing a message
+  from this provider, the alert event will be delivered to the provider's queue.
+  
+  ## Prerequisites
+  
+  - altProviderQueueId set (step 06)
+  - altProviderAlertsAclId set (step 03c)
+}

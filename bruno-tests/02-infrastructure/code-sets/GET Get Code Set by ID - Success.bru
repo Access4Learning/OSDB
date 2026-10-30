@@ -1,0 +1,110 @@
+meta {
+  name: GET Get Code Set by ID - Success
+  type: http
+  seq: 3
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/codeSets/{{createdCodeSetId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.codeSet: isDefined
+  res.body.codeSet.id: isDefined
+  res.body.codeSet.zone: isDefined
+  res.body.codeSet.version: isDefined
+  res.body.codeSet.timestamp: isDefined
+}
+
+script:pre-request {
+  const codeSetId = bru.getVar('createdCodeSetId');
+  if (!codeSetId) {
+    throw new Error('No code set ID found. Run "POST Create Code Set - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Code set retrieved successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response wrapped under 'codeSet' key", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('codeSet');
+  });
+  
+  test("Code set ID matches requested ID", function() {
+    const data = res.getBody();
+    const expectedId = bru.getVar('createdCodeSetId');
+    expect(data.codeSet.id).to.equal(expectedId);
+  });
+  
+  test("Code set contains all expected fields", function() {
+    const cs = res.getBody().codeSet;
+    expect(cs).to.have.property('id');
+    expect(cs).to.have.property('zone');
+    expect(cs).to.have.property('version');
+    expect(cs).to.have.property('timestamp');
+  });
+  
+  test("Code set fields match originally created values", function() {
+    const cs = res.getBody().codeSet;
+    expect(cs.zone).to.equal('environment-global');
+    expect(cs.version).to.equal('2024.1');
+    expect(cs.timestamp).to.equal('2024-06-15T10:30:00Z');
+    expect(cs.source).to.equal('https://nces.ed.gov/ipeds/cipcode');
+  });
+  
+  test("Code set contains codeItems with correct structure", function() {
+    const cs = res.getBody().codeSet;
+    expect(cs).to.have.property('codeItems');
+    expect(cs.codeItems).to.have.property('codeItem');
+    expect(cs.codeItems.codeItem).to.be.an('array');
+    expect(cs.codeItems.codeItem.length).to.equal(2);
+  });
+  
+  test("Code items have correct values", function() {
+    const items = res.getBody().codeSet.codeItems.codeItem;
+    const item1 = items.find(i => i.code === '1');
+    expect(item1).to.exist;
+    expect(item1.value).to.equal('American Indian or Alaska Native');
+    expect(item1.action).to.equal('ADD');
+  });
+}
+
+docs {
+  # Get Code Set by ID - Success
+  
+  Retrieves a specific code set by its identifier.
+  
+  ## Prerequisites
+  
+  - Run "POST Create Code Set - Success" first to set `createdCodeSetId`
+  - Valid authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: `{ "codeSet": { ... } }` with matching code set data
+  
+  ## What This Tests
+  
+  - Code set retrieval by ID returns 200 (Requirement 14.3)
+  - Response wrapped under 'codeSet' key
+  - Code set ID matches the requested ID
+  - All fields match the originally created values
+}

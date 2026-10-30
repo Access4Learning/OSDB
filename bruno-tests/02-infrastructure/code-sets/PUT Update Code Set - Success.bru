@@ -1,0 +1,150 @@
+meta {
+  name: PUT Update Code Set - Success
+  type: http
+  seq: 4
+  tags: [
+    nondestructive
+  ]
+}
+
+put {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/codeSets/{{createdCodeSetId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceType: UTILITY
+}
+
+body:json {
+  {
+    "codeSet": {
+      "zone": "environment-global",
+      "version": "2024.2",
+      "timestamp": "2024-07-01T12:00:00Z",
+      "source": "https://nces.ed.gov/ipeds/cipcode/v2",
+      "codeItems": {
+        "codeItem": [
+          {
+            "code": "1",
+            "value": "American Indian or Alaska Native",
+            "description": "Updated description for race ethnicity code 1",
+            "action": "CHANGE",
+            "timestamp": "2024-07-01T12:00:00Z"
+          },
+          {
+            "code": "2",
+            "value": "Asian",
+            "action": "ADD",
+            "timestamp": "2024-06-15T10:30:00Z"
+          },
+          {
+            "code": "3",
+            "value": "Black or African American",
+            "action": "ADD",
+            "timestamp": "2024-07-01T12:00:00Z"
+          }
+        ]
+      }
+    }
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.codeSet: isDefined
+  res.body.codeSet.version: eq 2024.2
+  res.body.codeSet.timestamp: eq 2024-07-01T12:00:00Z
+}
+
+script:pre-request {
+  const codeSetId = bru.getVar('createdCodeSetId');
+  if (!codeSetId) {
+    throw new Error('No code set ID found. Run "POST Create Code Set - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Code set updated successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response wrapped under 'codeSet' key", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('codeSet');
+  });
+  
+  test("Code set ID unchanged after update", function() {
+    const data = res.getBody();
+    const expectedId = bru.getVar('createdCodeSetId');
+    expect(data.codeSet.id).to.equal(expectedId);
+  });
+  
+  test("Version updated to new value", function() {
+    const data = res.getBody();
+    expect(data.codeSet.version).to.equal('2024.2');
+  });
+  
+  test("Timestamp updated to new value", function() {
+    const data = res.getBody();
+    expect(data.codeSet.timestamp).to.equal('2024-07-01T12:00:00Z');
+  });
+  
+  test("Source updated to new value", function() {
+    const data = res.getBody();
+    expect(data.codeSet.source).to.equal('https://nces.ed.gov/ipeds/cipcode/v2');
+  });
+  
+  test("Code items fully replaced (3 items now)", function() {
+    const cs = res.getBody().codeSet;
+    expect(cs.codeItems.codeItem).to.be.an('array');
+    expect(cs.codeItems.codeItem.length).to.equal(3);
+  });
+  
+  test("First code item action changed to CHANGE", function() {
+    const items = res.getBody().codeSet.codeItems.codeItem;
+    const item1 = items.find(i => i.code === '1');
+    expect(item1).to.exist;
+    expect(item1.action).to.equal('CHANGE');
+    expect(item1.description).to.equal('Updated description for race ethnicity code 1');
+  });
+  
+  test("New code item added in update", function() {
+    const items = res.getBody().codeSet.codeItems.codeItem;
+    const item3 = items.find(i => i.code === '3');
+    expect(item3).to.exist;
+    expect(item3.value).to.equal('Black or African American');
+    expect(item3.action).to.equal('ADD');
+  });
+}
+
+docs {
+  # Update Code Set - Success
+  
+  Updates an existing code set with a new payload. PUT does full replacement
+  of the entire code set object including all codeItems.
+  
+  ## Prerequisites
+  
+  - Run "POST Create Code Set - Success" first to set `createdCodeSetId`
+  - Valid admin authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: `{ "codeSet": { ... } }` with updated values
+  
+  ## What This Tests
+  
+  - Code set update returns 200 (Requirement 14.4)
+  - Full replacement: version, timestamp, source, and codeItems all updated
+  - Code set ID remains unchanged after update
+  - codeItems array fully replaced (not merged)
+}

@@ -1,0 +1,80 @@
+meta {
+  name: 08b-Create Provider DELAYED_REQUEST Subscription
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{gatewayUrl}}/{{dlyDomainId}}/{{dlySolutionId}}/subscriptions/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{dlyProviderQueueId}}",
+      "aclEntryId": "{{dlyProviderAclId}}",
+      "messageType": "DELAYED_REQUEST"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.subscription.id: isDefined
+}
+
+script:pre-request {
+  const queueId = bru.getVar('dlyProviderQueueId');
+  if (!queueId) {
+    throw new Error('Provider queue ID not set. Run step 08 first.');
+  }
+  
+  const aclId = bru.getVar('dlyProviderAclId');
+  if (!aclId) {
+    throw new Error('Provider ACL ID not set. Run step 06 first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'dlyProvider' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('dlyProviderSubId', data.subscription.id);
+    console.log('Created DELAYED_REQUEST subscription:', data.subscription.id);
+    console.log('Queue:', data.subscription.queueId);
+  }
+}
+
+tests {
+  test("Provider DELAYED_REQUEST subscription created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().subscription.id).to.exist;
+  });
+}
+
+docs {
+  # Create Provider DELAYED_REQUEST Subscription
+  
+  Creates a DELAYED_REQUEST subscription that tells the broker where to
+  route delayed requests for DELAYED_TEST_OBJECTs. The subscription maps
+  the provider's PROVIDE ACL to its queue.
+  
+  When a consumer sends a DELAYED request for DELAYED_TEST_OBJECTs, the
+  requests-connector queries this subscription to find the provider's
+  queue ID, then enqueues the request there.
+  
+  ## Prerequisites
+  
+  - Provider PROVIDE ACL created (step 06) — provides `dlyProviderAclId`
+  - Provider queue created (step 08) — provides `dlyProviderQueueId`
+}

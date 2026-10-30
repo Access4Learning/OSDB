@@ -1,0 +1,45 @@
+meta {
+  name: provider
+  seq: 3
+}
+
+docs {
+  # Provider Tests
+
+  Tests for provider operations against an existing SIF solution.
+
+  ## Overview
+
+  These tests validate provider functionality:
+  - Publishing objects
+  - Responding to consumer requests
+  - Sending events
+  - Updating and deleting objects
+
+  ## Authentication
+
+  All tests use provider credentials from the standalone environment:
+  - `STANDALONE_PROVIDER_SESSION_TOKEN`
+  - `STANDALONE_PROVIDER_SHARED_SECRET`
+
+  ## Test Scenarios
+
+  1. **Create Object** - Provider publishes a new object
+  2. **Update Object** - Provider updates an existing object
+  3. **Delete Object** - Provider removes an object
+  4. **Send Event** - Provider sends an event notification
+  5. **List Objects** - Provider lists published objects
+
+  ## Configuration
+
+  Tests use these variables from the standalone environment:
+  - `testObjectName` - The SIF object type to test (e.g., StudentPersonals)
+  - `testZoneId` - The zone to test in
+  - `providerServicesUrl` - Extracted from provider environment (set by initialization)
+
+  ## Important Notes
+
+  - Provider tests may create data in the broker
+  - Consider cleanup implications for production environments
+  - Some tests store object IDs for subsequent operations
+}

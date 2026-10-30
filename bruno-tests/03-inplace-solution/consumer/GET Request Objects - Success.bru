@@ -1,0 +1,70 @@
+meta {
+  name: GET Request Objects - Success
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{consumerRequestsUrl}}/{{testObjectName}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{testZoneId}}
+  contextId: default
+}
+
+docs {
+  # Request Objects - Success (Consumer)
+  
+  Tests a consumer requesting objects from a provider.
+  
+  ## Prerequisites
+  
+  - Run "00-initialize" tests first to set up connector URLs
+  - Consumer environment with CONSUME access to the object type
+  - Provider environment with objects available
+  - Proper ACL configuration
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: Array of objects or collection response
+  
+  ## What This Tests
+  
+  - Consumer can request objects via requests connector
+  - Authentication works with consumer credentials
+  - Zone and context headers are processed
+  - Provider responds with data
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  
+  // Verify initialization was run
+  const requestsUrl = bru.getVar('consumerRequestsUrl');
+  if (!requestsUrl) {
+    throw new Error('Consumer not initialized. Run "00-initialize/Initialize Consumer Environment" first.');
+  }
+  
+  auth.setAuthHeaders(req, bru, 'consumer');
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Request successful", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains data", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+  });
+}

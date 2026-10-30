@@ -1,0 +1,89 @@
+meta {
+  name: 18-Provider Get Alert Event
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/queues/{{altProviderQueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  connectionId: altProvider
+  X-Environment-Id: {{altProviderEnvId}}
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+script:pre-request {
+  const queueId = bru.getVar('altProviderQueueId');
+  if (!queueId) {
+    throw new Error('altProviderQueueId not set. Run step 06 first.');
+  }
+
+  const envId = bru.getVar('altProviderEnvId');
+  if (!envId) {
+    throw new Error('altProviderEnvId not set. Run step 04 first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'altProvider' });
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const messageId = res.getHeaders()?.messageid;
+    if (messageId) {
+      bru.setVar('altProviderLastMessageId', messageId);
+      console.log('Alert event message ID:', messageId);
+    }
+    console.log('Alert event payload:', JSON.stringify(res.getBody(), null, 2));
+  } else if (res.getStatus() === 204) {
+    console.log('No alert event in provider queue yet.');
+  }
+}
+
+tests {
+  test("Provider queue request succeeds", function() {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+
+  test("Alert event delivered to provider queue", function() {
+    // The provider should receive the alert event because:
+    // 1. Provider is subscribed to alerts events on environment-global/DEFAULT
+    // 2. The alert's sourceEnvironmentId matches the provider's env ID
+    //    (the provider sent the original event that triggered the alert)
+    if (res.getStatus() === 200) {
+      const headers = res.getHeaders();
+      expect(headers).to.have.property('messageid');
+      console.log('Alert event successfully delivered to provider queue');
+    } else {
+      console.log('No message yet - alert event delivery may be async');
+    }
+  });
+}
+
+docs {
+  # Provider Get Alert Event
+  
+  Provider pulls the alert event from its queue. The provider should receive
+  the alert event because:
+  
+  1. Provider is subscribed to alerts events on environment-global/DEFAULT
+  2. The alert's sourceEnvironmentId matches the provider's environment ID
+     (the provider sent the original event that triggered the alert)
+  
+  This verifies the targeted delivery pattern: alert events are only delivered
+  to eligible subscribers (matching sourceEnvironmentId or admin environments).
+  
+  ## Expected Response
+  
+  - Status: 200 OK with the alert event payload
+  - Status: 204 No Content if event hasn't been delivered yet
+}

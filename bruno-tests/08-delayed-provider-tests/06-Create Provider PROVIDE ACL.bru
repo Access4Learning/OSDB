@@ -1,0 +1,51 @@
+meta {
+  name: 06-Create Provider PROVIDE ACL
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{gatewayUrl}}/{{dlyDomainId}}/{{dlySolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{dlyProviderEnvId}}",
+    "serviceName": "DELAYED_TEST_OBJECTs",
+    "zoneId": "{{dlyZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "PROVIDE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('dlyProviderAclId', data.id);
+    console.log('Created PROVIDE ACL for provider:', data.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Provider PROVIDE ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

@@ -1,0 +1,35 @@
+meta {
+  name: Admin Authentication
+}
+
+docs {
+  # Admin User Authentication Tests
+  
+  Tests for admin user login, session management, and environment selection.
+  
+  ## Endpoints Tested
+  
+  - `POST /admin-users/login` — authenticate with username/password (no auth required)
+  - `POST /admin-users/sessions/select-environment` — select environment (admin session required)
+  - `POST /admin-users/sessions/logout` — logout (admin session required)
+  - `GET /admin-users/sessions/current` — get current session info (admin session required)
+  
+  ## Authentication
+  
+  The login endpoint requires no authentication. All session endpoints require
+  the `X-Admin-Session-Token` header with a valid session token obtained from login.
+  
+  ## Prerequisites
+  
+  - An admin user must exist (created via admin-users tests or setup)
+  - The admin user must have at least one environment association
+  - Valid domain and solution UUIDs
+  
+  ## Test Data
+  
+  Tests use Bruno variables set by previous tests:
+  - `adminUserUsername` / `adminUserPassword` — credentials from user creation
+  - `adminSessionToken` — session token from successful login
+  - `adminUserDomainUuid` / `adminUserSolutionUuid` — scope identifiers
+  - `adminUserEnvironmentId` — an environment the user has access to
+}

@@ -1,0 +1,70 @@
+meta {
+  name: 00-initialize
+  seq: 1
+}
+
+docs {
+  # Initialization Tests
+
+  These tests MUST be run first before any other standalone tests.
+
+  ## Purpose
+
+  The initialization tests fetch environment details from the broker and extract connector URLs that are used by all subsequent tests.
+
+  ## Execution Order
+
+  1. **Initialize Consumer Environment** - Fetches consumer environment and extracts URLs
+  2. **Initialize Provider Environment** - Fetches provider environment and extracts URLs
+
+  ## What Gets Initialized
+
+  ### Consumer Environment
+  - `consumerRequestsUrl` - URL for requesting objects from providers
+  - `consumerEventsUrl` - URL for receiving event notifications
+  - `consumerQueuesUrl` - URL for queue operations
+  - `consumerEnvironmentId` - Consumer environment UUID
+  - `consumerEnvironmentName` - Consumer application name
+
+  ### Provider Environment
+  - `providerServicesUrl` - URL for publishing objects
+  - `providerResponsesUrl` - URL for responding to requests
+  - `providerEventsUrl` - URL for sending events
+  - `providerQueuesUrl` - URL for queue operations
+  - `providerEnvironmentId` - Provider environment UUID
+  - `providerEnvironmentName` - Provider application name
+
+  ## Prerequisites
+
+  Your `.env` file must contain:
+  ```env
+  STANDALONE_GATEWAY_URL=http://localhost:8080
+  STANDALONE_CONSUMER_ENVIRONMENT_ID=uuid-of-consumer-environment
+  STANDALONE_CONSUMER_SESSION_TOKEN=consumer-session-token
+  STANDALONE_CONSUMER_SHARED_SECRET=consumer-shared-secret
+  STANDALONE_PROVIDER_ENVIRONMENT_ID=uuid-of-provider-environment
+  STANDALONE_PROVIDER_SESSION_TOKEN=provider-session-token
+  STANDALONE_PROVIDER_SHARED_SECRET=provider-shared-secret
+  ```
+
+  ## How to Get Environment IDs
+
+  If you don't know your environment IDs, you can:
+
+  1. Use the admin credentials to list all environments:
+     ```
+     GET {{gatewayUrl}}/environments
+     ```
+
+  2. Find your consumer and provider environments in the response
+
+  3. Copy their `id` values to your `.env` file
+
+  ## Troubleshooting
+
+  **401 Unauthorized**: Check your session tokens and shared secrets in `.env`
+
+  **404 Not Found**: Verify the environment IDs are correct
+
+  **Missing connector URLs**: Ensure your environments are fully configured in the broker
+}

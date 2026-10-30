@@ -1,0 +1,51 @@
+meta {
+  name: 20-Create Consumer Queue
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{gatewayUrl}}/{{mpDomainId}}/{{mpSolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "MP_CONSUMER_QUEUE",
+      "ownerId": "{{mpConsumerEnvId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'mpConsumer' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('mpConsumerQueueId', data.queue.id);
+    console.log('Created consumer queue:', data.queue.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Consumer queue created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

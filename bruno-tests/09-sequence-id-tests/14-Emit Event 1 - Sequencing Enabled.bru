@@ -1,0 +1,52 @@
+meta {
+  name: 14-Emit Event 1 - Sequencing Enabled
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{gatewayUrl}}/{{seqDomainId}}/{{seqSolutionId}}/events
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{seqZoneId}}
+  contextId: DEFAULT
+  messageType: event
+  messageId: {{$randomUUID}}
+  eventAction: CREATE
+  serviceType: OBJECT
+  serviceName: SEQTESTOBJECTS
+}
+
+body:json {
+  {
+    "SEQTESTOBJECTS": {
+      "SEQTESTOBJECT": [
+        {
+          "refId": "{{$randomUUID}}",
+          "name": "Event 1 with sequencing enabled"
+        }
+      ]
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'seqProvider' });
+}
+
+assert {
+  res.status: in [202, 204]
+}
+
+tests {
+  test("Event 1 accepted", function() {
+    expect([202, 204]).to.include(res.getStatus());
+  });
+}

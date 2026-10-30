@@ -1,0 +1,47 @@
+meta {
+  name: 02 Setup - Create Solution
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/solutions
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "solutionId": "rotation-test-solution",
+    "description": "Solution for credential rotation test"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdSolutionId', data.solutionId || data.id);
+    console.log('Created solution:', bru.getVar('createdSolutionId'));
+  }
+}
+
+tests {
+  test("Solution created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

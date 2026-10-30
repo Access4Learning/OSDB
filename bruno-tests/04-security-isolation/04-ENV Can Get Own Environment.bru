@@ -1,0 +1,64 @@
+meta {
+  name: ENV Can Get Own Environment
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/environments/{{createdEnvironmentId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No first environment ID found. Run infrastructure setup first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+tests {
+  test("SECURITY: First environment CAN get its own environment", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("SECURITY: Returned environment matches own ID", function() {
+    const data = res.getBody();
+    const expectedId = bru.getVar('createdEnvironmentId');
+    expect(data.id).to.equal(expectedId);
+  });
+}
+
+docs {
+  # ENV Can Get Own Environment
+
+  **SECURITY ISOLATION POSITIVE TEST**
+
+  Verifies that the first environment CAN read its own environment data.
+  This is the positive counterpart to the cross-environment access tests,
+  confirming that isolation doesn't break self-access.
+
+  ## What This Tests
+
+  - First environment authenticates with its own credentials
+  - Calls GET /environments/{ownEnvironmentId}
+  - Expected: 200 OK with own environment data
+  - If this returns 403, the isolation rules are too restrictive
+
+  ## Prerequisites
+
+  - First environment must exist (createdEnvironmentId)
+}

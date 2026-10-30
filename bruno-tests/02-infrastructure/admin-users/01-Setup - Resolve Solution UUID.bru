@@ -1,0 +1,78 @@
+meta {
+  name: 01 Setup - Resolve Solution UUID
+  type: http
+  seq: 1
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{resolvedDomainId}}/solutions
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const domainId = bru.getVar('resolvedDomainId') || bru.getEnvVar('domainId');
+  if (!domainId) {
+    throw new Error('No domain ID found. Run "00 Setup - Resolve Domain UUID" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const data = res.getBody();
+    const solutions = data.solutions && data.solutions.solution ? data.solutions.solution : [];
+    
+    // Find the solution matching the environment's solutionId
+    const targetSolutionId = bru.getEnvVar('solutionId') || bru.getVar('createdSolutionId');
+    const solution = solutions.find(s => s.solutionId === targetSolutionId) || solutions[0];
+    
+    if (solution) {
+      bru.setVar('adminSolutionUuid', solution.id);
+      console.log('Resolved solution UUID:', solution.id, '(solutionId:', solution.solutionId, ')');
+    } else {
+      console.log('WARNING: No solution found. Available solutions:', JSON.stringify(solutions.map(s => s.solutionId)));
+    }
+  }
+}
+
+tests {
+  test("Solution UUID resolved", function() {
+    expect(res.getStatus()).to.equal(200);
+    const solutionUuid = bru.getVar('adminSolutionUuid');
+    expect(solutionUuid).to.exist;
+  });
+}
+
+docs {
+  # Setup - Resolve Solution UUID
+  
+  Resolves the solution UUID from the solutions list for use in admin user tests.
+  The admin user creation endpoint requires UUIDs, not string IDs.
+  
+  ## What This Does
+  
+  - Fetches the solutions list for the resolved domain
+  - Finds the solution matching the environment's `solutionId` variable
+  - Stores the solution's internal UUID as `adminSolutionUuid`
+  
+  ## Prerequisites
+  
+  - Run "00 Setup - Resolve Domain UUID" first
+  - A solution must exist in the domain
+  - Valid admin HMAC credentials
+}

@@ -1,0 +1,87 @@
+meta {
+  name: 09-Consumer Send IMMEDIATE Request
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{immConsumerRequestsUrl}}/IMMEDIATE_TEST_OBJECTs
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{immZoneId}}
+  contextId: DEFAULT
+  queryIntention: ALL
+  navigationPageSize: 5
+  navigationpage: 5
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const requestsUrl = bru.getVar('immConsumerRequestsUrl');
+  if (!requestsUrl) {
+    throw new Error('Consumer requests URL not set. Run step 05 first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'immConsumer' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('IMMEDIATE request response status:', status);
+  
+  if (status === 200) {
+    const data = res.getBody();
+    console.log('Response body:', JSON.stringify(data, null, 2));
+  } else {
+    console.error('Request failed:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("IMMEDIATE request returned 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains TESTOBJECT data", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    // The test provider returns: { "TESTOBJECT": { "RefId": "...", "Name": "<timestamp>-TESTOBJECT" } }
+    if (data.TESTOBJECT) {
+      expect(data.TESTOBJECT.RefId).to.exist;
+      expect(data.TESTOBJECT.Name).to.include('TESTOBJECT');
+    }
+  });
+}
+
+docs {
+  # Consumer Sends IMMEDIATE Request
+  
+  The consumer sends a GET request to the requests connector for
+  IMMEDIATE_TEST_OBJECTs. The broker looks up the registered provider,
+  forwards the request to the test-provider app (localhost:9090),
+  and returns the provider's response synchronously.
+  
+  ## Expected Flow
+  
+  1. Consumer → Requests Connector: GET /IMMEDIATE_TEST_OBJECTs
+  2. Requests Connector → Provider Registry: lookup provider for IMMEDIATE_TEST_OBJECTs
+  3. Requests Connector → Test Provider (localhost:9090): forward GET
+  4. Test Provider → Requests Connector: 200 with TESTOBJECT payload
+  5. Requests Connector → Consumer: 200 with TESTOBJECT payload
+  
+  ## Prerequisites
+  
+  - All infrastructure setup complete (steps 00-08)
+  - Test provider application running on port 9090
+  - Consumer has QUERY ACL for IMMEDIATE_TEST_OBJECTs
+  - Provider registered with IMMEDIATE pattern
+}

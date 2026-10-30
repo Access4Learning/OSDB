@@ -1,0 +1,34 @@
+meta {
+  name: environments
+  seq: 4
+}
+
+docs {
+  # Environment Management Tests
+  
+  Tests for environment registration and management APIs.
+  
+  ## What Are Environments?
+  
+  Environments represent applications (Consumers, Providers, or Brokers) that interact with the SIF Unity Broker. Each environment has:
+  - Unique session token for authentication
+  - Shared secret for HMAC signature generation
+  - Application metadata (name, type, instance ID)
+  - Associated ACL entries for permissions
+  
+  ## Tests Included
+  
+  - Create environment (success and validation errors)
+  - List environments
+  - Get environment by ID
+  - Update environment
+  - Delete environment
+  - Error scenarios (404, 400)
+  
+  ## Important Notes
+  
+  - POST /environments does NOT require authentication (bootstrap endpoint)
+  - All other environment operations require authentication
+  - Deleting an environment revokes its session token
+  - Test environments are prefixed with `bruno-test`
+}

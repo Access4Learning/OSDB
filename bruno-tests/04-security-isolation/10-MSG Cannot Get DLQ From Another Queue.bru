@@ -1,0 +1,67 @@
+meta {
+  name: MSG Cannot Get DLQ From Another Queue
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/api/queues/{{createdAnotherQueueId}}/dead-letter
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 403
+}
+
+script:pre-request {
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No first environment ID found. Run infrastructure setup first.');
+  }
+  const anotherQueueId = bru.getVar('createdAnotherQueueId');
+  if (!anotherQueueId) {
+    throw new Error('No second queue ID found. Run "Create Another Queue" first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+tests {
+  test("SECURITY: First environment cannot get dead-letter messages from another environment's queue", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+
+  test("SECURITY: Cross-environment DLQ access is blocked", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('code');
+  });
+}
+
+docs {
+  # MSG Cannot Get DLQ From Another Queue
+
+  **SECURITY ISOLATION REGRESSION TEST**
+
+  Verifies that the first environment CANNOT read dead-letter messages
+  from a queue owned by the second environment. Dead-letter queues may
+  contain sensitive failed messages that must remain isolated.
+
+  ## What This Tests
+
+  - First environment authenticates with its own credentials
+  - Calls GET /api/queues/{secondEnvironmentQueueId}/dead-letter
+  - Expected: 403 Forbidden
+  - If this returns 200, DLQ isolation across environments is broken
+
+  ## Prerequisites
+
+  - First environment must exist (createdEnvironmentId)
+  - Second environment's queue must exist (createdAnotherQueueId)
+}

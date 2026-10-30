@@ -1,0 +1,91 @@
+meta {
+  name: 12b-Consumer3 ACK and Get Next
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{gatewayUrl}}/{{evtDomainId}}/{{evtSolutionId}}/queues/{{evtConsumer3QueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  connectionId: evtConsumer3
+  X-Environment-Id: {{evtConsumer3EnvId}}
+  deleteMessageId: {{evtConsumer3LastMessageId}}
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+script:pre-request {
+  //bru.skipRequest();
+  const messageId = bru.getVar('evtConsumer3LastMessageId');
+  if (!messageId) {
+    throw new Error('No messageId set. Run step 12a first to get a message.');
+  }
+  
+  console.log('ACKing messageId:', messageId);
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'evtConsumer3' });
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const messageId = res.getHeaders()?.messageid;
+    if (messageId) {
+      bru.setVar('evtConsumer3LastMessageId', messageId);
+      console.log('Next message ID:', messageId);
+    }
+  
+    console.log('Next payload:', JSON.stringify(res.getBody(), null, 2));
+  } else if (res.getStatus() === 204) {
+    console.log('Previous message ACKed. No more messages in queue.');
+    bru.setVar('evtConsumer3LastMessageId', '');
+  }
+}
+
+tests {
+  test("ACK and Get Next succeeds", function() {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+  
+  test("If no more messages, response is 204 (queue drained)", function() {
+    if (res.getStatus() === 204) {
+      console.log('Queue is now empty after ACK.');
+    }
+  });
+  
+  test("If another message exists, it has messageid header", function() {
+    if (res.getStatus() === 200) {
+      const headers = res.getHeaders();
+      expect(headers).to.have.property('messageid');
+    }
+  });
+}
+
+docs {
+  # Consumer3 ACK and Get Next
+  
+  Acknowledges the previously delivered message using the deleteMessageId
+  matrix parameter (set to the messageid from the previous response),
+  and retrieves the next message from the queue.
+  
+  This implements the SIF 3.x "Get Next and Pop" pattern (§9.3.1):
+  - The deleteMessageId is the messageid UUID from the previous GET response
+  - The service deletes that message and returns the next one (200) or empty (204)
+  
+  ## Prerequisites
+  
+  - Run step 12a first to get a message and its messageid
+  
+  ## Expected Response
+  
+  - Status: 200 OK if another message is available
+  - Status: 204 No Content if the queue is now empty
+}

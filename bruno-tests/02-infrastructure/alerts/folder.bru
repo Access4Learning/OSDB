@@ -1,0 +1,48 @@
+meta {
+  name: alerts
+  seq: 10
+}
+
+docs {
+  # Alerts Utility Service Tests
+  
+  Tests for the SIF 3.7 Alerts Utility Service endpoints.
+  
+  ## What Are Alerts?
+  
+  Alerts are a system-wide, immutable log of errors, warnings, and status changes.
+  Any authenticated environment can create alerts. Query access is ownership-scoped
+  (non-admins see only their own alerts, admins see all). Update and Delete are
+  prohibited per the SIF 3.7 specification.
+  
+  ## URL Pattern
+  
+  Alert endpoints are scoped to a domain and solution:
+  - `POST /{domainId}/{solutionId}/alerts/alert` — Create an alert
+  - `GET /{domainId}/{solutionId}/alerts` — List alerts
+  - `GET /{domainId}/{solutionId}/alerts/{id}` — Get alert by ID
+  - `PUT /{domainId}/{solutionId}/alerts/{id}` — Rejected (405)
+  - `DELETE /{domainId}/{solutionId}/alerts/{id}` — Rejected (405)
+  
+  ## Tests Included
+  
+  - Create alert with messageID
+  - Create alert without messageID
+  - Create alert with invalid messageID
+  - List alerts
+  - Get alert by ID
+  - Update alert rejected (405)
+  - Delete alert rejected (405)
+  
+  ## Prerequisites
+  
+  - A domain and solution must exist (createdDomainId, createdSolutionId)
+  - An alerts provider must be registered in the environment-global zone
+  - Valid authentication credentials
+  
+  ## Important Notes
+  
+  - Alerts are immutable: PUT and DELETE return 405
+  - Response payloads include SIF_ExtendedElements with server-populated fields
+  - Non-admin consumers see only their own alerts
+}

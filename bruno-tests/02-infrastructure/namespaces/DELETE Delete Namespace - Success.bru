@@ -1,0 +1,65 @@
+meta {
+  name: DELETE Delete Namespace - Success
+  type: http
+  seq: 5
+  tags: [
+    destructive
+  ]
+}
+
+delete {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/namespaces/{{createdNamespaceId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 204
+}
+
+script:pre-request {
+  const namespaceId = bru.getVar('createdNamespaceId');
+  if (!namespaceId) {
+    throw new Error('No namespace ID found. Run "POST Create Namespace - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 204) {
+    console.log('Namespace deleted:', bru.getVar('createdNamespaceId'));
+  }
+}
+
+tests {
+  test("Namespace deleted successfully", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  # Delete Namespace - Success
+  
+  Deletes an existing namespace by its broker-assigned UUID identifier.
+  
+  ## Prerequisites
+  
+  - Run "POST Create Namespace - Success" first to set `createdNamespaceId`
+  - Valid admin authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 204 No Content
+  
+  ## What This Tests
+  
+  - Namespace deletion returns 204 (Requirement 5.1)
+  - Successful cleanup returns 204 with no body
+}

@@ -1,0 +1,62 @@
+meta {
+  name: 03b-Get Env-Global Context UUID
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/zones/environment-global/contexts
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const solutionId = bru.getVar('altSolutionId');
+  if (!solutionId) {
+    throw new Error('altSolutionId not set. Run step 01 first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const data = res.getBody();
+    const contexts = data.contexts && data.contexts.context ? data.contexts.context : [];
+    const defaultCtx = contexts.find(c => c.id === 'DEFAULT');
+    if (defaultCtx) {
+      console.log('Env-global DEFAULT context UUID:', defaultCtx.uuid);
+    } else {
+      console.error('DEFAULT context not found in environment-global zone');
+    }
+  }
+}
+
+tests {
+  test("DEFAULT context exists in environment-global zone", function() {
+    const data = res.getBody();
+    const contexts = data.contexts.context;
+    const defaultCtx = contexts.find(c => c.id === 'DEFAULT');
+    expect(defaultCtx).to.exist;
+    expect(defaultCtx.uuid).to.exist;
+  });
+}
+
+docs {
+  # Get Environment-Global Zone DEFAULT Context UUID
+  
+  Retrieves the DEFAULT context UUID from the environment-global zone.
+  This is needed to create the provider's SUBSCRIBE ACL for alerts events.
+  
+  The environment-global zone is auto-created when the solution is created.
+}

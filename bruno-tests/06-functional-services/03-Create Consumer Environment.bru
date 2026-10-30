@@ -1,0 +1,62 @@
+meta {
+  name: 03-Create Consumer Environment
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{gatewayUrl}}/{{fsDomainId}}/{{fsSolutionId}}/environments/environment
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environment": {
+      "consumerName": "FuncSvcConsumer-{{$timestamp}}",
+      "type": "BROKERED"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody().environment;
+    bru.setVar('fsConsumerEnvId', data.id);
+    bru.setVar('fsConsumerSessionToken', data.sessionToken);
+    bru.setVar('fsConsumerSharedSecret', data.sharedSecret);
+    console.log('Created consumer environment:', data.id);
+    console.log('Consumer name:', data.environmentName);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Consumer environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody();
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('sessionToken');
+  });
+}
+
+docs {
+  # Create Consumer Environment
+
+  Creates a consumer environment that will submit functional service jobs.
+  Stores the session token and shared secret for subsequent authenticated requests.
+}

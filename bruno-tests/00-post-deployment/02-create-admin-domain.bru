@@ -1,0 +1,62 @@
+meta {
+  name: 02 Create Admin Domain
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{gatewayUrl}}/domains
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "domainId": "{{domainId}}",
+    "description": "Default domain for OSDB deployment"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdDomainId', data.domainId || bru.getEnvVar('domainId'));
+    console.log('Domain created:', data.domainId || bru.getEnvVar('domainId'));
+  }
+}
+
+tests {
+  test("Domain created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  # Create Admin Domain
+  
+  Creates the initial domain (tenant) for the OSDB deployment.
+  This is the top-level organizational boundary.
+  
+  ## Prerequisites
+  - Gateway is healthy (step 01)
+  - Admin credentials configured in .env
+  
+  ## Environment Variables Required
+  - aws-demo-adminSessionToken
+  - aws-demo-adminSharedSecret
+}

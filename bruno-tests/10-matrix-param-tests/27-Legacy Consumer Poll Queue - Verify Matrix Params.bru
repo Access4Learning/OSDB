@@ -1,0 +1,70 @@
+meta {
+  name: 27-Legacy Consumer Poll Queue - Verify Matrix Params
+  type: http
+  seq: 27
+}
+
+get {
+  url: {{gatewayUrl}}/{{mpDomainId}}/{{mpSolutionId}}/queues/{{mpLegacyConsumerQueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  connectionId: mpLegacyConsumer
+  X-Environment-Id: {{mpLegacyConsumerEnvId}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'mpLegacyConsumer' });
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const headers = res.getHeaders();
+    const rsp = headers['relativeservicepath'] || headers['relativeServicePath'];
+    console.log('relativeServicePath from queue:', rsp);
+    console.log('zoneId header:', headers['zoneid'] || headers['zoneId']);
+    console.log('contextId header:', headers['contextid'] || headers['contextId']);
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Response delivered to legacy consumer queue", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("relativeServicePath contains matrix params (legacy format)", function() {
+    const headers = res.getHeaders();
+    const rsp = headers['relativeservicepath'] || headers['relativeServicePath'] || '';
+    const rspStr = Array.isArray(rsp) ? rsp.join(',') : rsp;
+    expect(rspStr).to.exist;
+    expect(rspStr).to.contain(';');
+    expect(rspStr).to.contain('contextId=');
+    expect(rspStr).to.contain('zoneId=');
+    console.log('PASS: relativeServicePath has matrix params:', rspStr);
+  });
+  
+  test("zoneId and contextId headers are also present (always)", function() {
+    const headers = res.getHeaders();
+    const zoneId = headers['zoneid'] || headers['zoneId'];
+    const contextId = headers['contextid'] || headers['contextId'];
+    expect(zoneId).to.exist;
+    expect(contextId).to.exist;
+  });
+}
+
+docs {
+  # Legacy Consumer Polls Queue - Verify Matrix Params
+  
+  The legacy-tagged consumer polls its queue. The response should have
+  relativeServicePath with matrix params because the consumer has
+  SIF_LEGACY_MATRIX_PARAMS=true.
+}

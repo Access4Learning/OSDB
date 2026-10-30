@@ -1,0 +1,61 @@
+meta {
+  name: 03b-Create Provider Environment
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{gatewayUrl}}/{{fsDomainId}}/{{fsSolutionId}}/environments/environment
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environment": {
+      "consumerName": "FuncSvcProvider-{{$timestamp}}",
+      "type": "BROKERED"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody().environment;
+    bru.setVar('fsProviderEnvId', data.id);
+    bru.setVar('fsProviderSessionToken', data.sessionToken);
+    bru.setVar('fsProviderSharedSecret', data.sharedSecret);
+    console.log('Created provider environment:', data.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Provider environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody();
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('sessionToken');
+  });
+}
+
+docs {
+  # Create Provider Environment
+
+  Creates a provider environment that will handle functional service jobs (DataExport).
+  In SIF, the services connector routes job requests to the registered provider.
+}

@@ -1,0 +1,55 @@
+meta {
+  name: 08c-Get Provider Queue Details
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{gatewayUrl}}/{{dlyDomainId}}/{{dlySolutionId}}/queues/{{dlyProviderQueueId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const queueId = bru.getVar('dlyProviderQueueId');
+  if (!queueId) {
+    throw new Error('Provider queue ID not set. Run step 08 first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'dlyProvider' });
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const data = res.getBody().queue;
+    console.log('Provider Queue Details:');
+    console.log('  ID:', data.id);
+    console.log('  Name:', data.name);
+    console.log('  Owner:', data.ownerId);
+    console.log('  Message Count:', data.messageCount || data.queueDepth || 'unknown');
+    console.log('  Full response:', JSON.stringify(data, null, 2));
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Provider queue details retrieved", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  # Get Provider Queue Details
+  
+  Troubleshooting step — checks the provider's queue to see if messages
+  have been enqueued by the requests-connector.
+}

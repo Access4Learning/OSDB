@@ -1,0 +1,59 @@
+meta {
+  name: 04a-Create Consumer CREATE ACL
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{gatewayUrl}}/{{fsDomainId}}/{{fsSolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{fsConsumerEnvId}}",
+    "serviceName": "DataExport",
+    "zoneId": "{{fsZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "CREATE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('fsConsumerCreateAclId', data.id);
+    console.log('Created consumer CREATE ACL:', data.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Consumer CREATE ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  # Create Consumer CREATE ACL
+
+  Grants the consumer CREATE access to the DataExport functional service.
+  CREATE is required for job creation (POST) and all phase/state operations
+  at the broker level.
+}

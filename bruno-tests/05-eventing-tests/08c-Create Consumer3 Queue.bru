@@ -1,0 +1,54 @@
+meta {
+  name: 08c-Create Consumer3 Queue
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{gatewayUrl}}/{{evtDomainId}}/{{evtSolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "DEFAULTQUEUE",
+      "ownerId": "{{evtConsumer3EnvId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'evtConsumer3' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('evtConsumer3QueueId', data.queue.id);
+    console.log('Created Consumer3 queue:', data.queue.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.queue.id: isDefined
+}
+
+tests {
+  test("Consumer3 queue created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().queue.name).to.equal('DEFAULTQUEUE');
+  });
+}
+

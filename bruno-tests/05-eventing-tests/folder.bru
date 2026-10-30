@@ -1,0 +1,36 @@
+meta {
+  name: Eventing Tests
+  seq: 5
+}
+
+docs {
+  # Eventing Tests
+  
+  End-to-end tests for the SIF event distribution flow, including
+  the "Get Next and Pop" message delivery pattern (SIF §9.3.1).
+  
+  ## What This Tests
+  
+  1. Creates a complete domain/solution/zone infrastructure
+  2. Creates a provider environment with PROVIDE ACL for TESTOBJECT1s
+  3. Creates 3 consumer environments with queues
+  4. Only consumers 1 and 3 get SUBSCRIBE ACL + subscriptions (consumer 2 does not)
+  5. Provider emits an event for TESTOBJECT1s
+  6. Verifies queue details — consumers 1 and 3 have messages, consumer 2 does not
+  7. Consumer3 retrieves a message (Get Next) and ACKs it (Get Next and Pop)
+  
+  ## Prerequisites
+  
+  - All services running (gateway, environment-service, events-connector, queue-service, subscription-service)
+  - Admin credentials configured in .env
+  
+  ## Run Order
+  
+  Tests are numbered and must be run in sequence:
+  - 00-09: Infrastructure setup (domain, solution, zone, environments, ACLs, queues, subscriptions)
+  - 10: Provider emits event
+  - 11a-11c: Verify queue details for each consumer
+  - 12a: Consumer3 retrieves next message (idempotent — repeated calls return same message)
+  - 12b: Consumer3 ACKs the message and gets next (SIF "Get Next and Pop" §9.3.1)
+}
+

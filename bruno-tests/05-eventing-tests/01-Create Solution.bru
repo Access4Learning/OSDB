@@ -1,0 +1,48 @@
+meta {
+  name: 01-Create Solution
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{gatewayUrl}}/{{evtDomainId}}/solutions
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "solutionId": "EventTestSolution-{{$timestamp}}",
+    "description": "Solution for eventing tests"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('evtSolutionId', data.solutionId || data.id);
+    console.log('Created event test solution:', bru.getVar('evtSolutionId'));
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Solution created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+

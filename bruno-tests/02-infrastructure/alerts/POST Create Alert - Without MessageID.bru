@@ -1,0 +1,134 @@
+meta {
+  name: POST Create Alert - Without MessageID
+  type: http
+  seq: 2
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/alerts/alert
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  requestAction: CREATE
+  serviceType: UTILITY
+  serviceName: alerts
+}
+
+body:json {
+  {
+    "alert": {
+      "reporter": "BrunoTestNoMsgId",
+      "exchange": "RESPONSE",
+      "level": "WARNING",
+      "description": "Alert without messageID - should use default zone and context"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.alert: isDefined
+  res.body.alert.id: isDefined
+  res.body.alert.reporter: eq BrunoTestNoMsgId
+  res.body.alert.exchange: eq RESPONSE
+  res.body.alert.level: eq WARNING
+  res.body.alert.SIF_ExtendedElements: isDefined
+}
+
+script:pre-request {
+  const domainId = bru.getVar('createdDomainId');
+  if (!domainId) {
+    throw new Error('No domain ID found. Run domain/solution/environment setup first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdAlertNoMsgId', data.alert.id);
+    console.log('Created alert (no messageID):', data.alert.id);
+  }
+}
+
+tests {
+  test("Alert created successfully without messageID", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response wrapped under 'alert' key", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('alert');
+  });
+  
+  test("Alert has broker-assigned UUID", function() {
+    const data = res.getBody();
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    expect(data.alert.id).to.match(uuidRegex);
+  });
+  
+  test("SIF_ExtendedElements present with default values", function() {
+    const alert = res.getBody().alert;
+    expect(alert).to.have.property('SIF_ExtendedElements');
+    expect(alert.SIF_ExtendedElements).to.have.property('SIF_ExtendedElement');
+    expect(alert.SIF_ExtendedElements.SIF_ExtendedElement).to.be.an('array');
+  });
+  
+  test("Extended elements contain environment-global zone default", function() {
+    const elements = res.getBody().alert.SIF_ExtendedElements.SIF_ExtendedElement;
+    const zoneElement = elements.find(e => e.Name === 'originatingZoneId');
+    expect(zoneElement).to.exist;
+    // Environment-global zone should contain 'environment' in its name
+    expect(zoneElement.value).to.be.a('string');
+    expect(zoneElement.value.length).to.be.greaterThan(0);
+  });
+  
+  test("Extended elements contain DEFAULT context", function() {
+    const elements = res.getBody().alert.SIF_ExtendedElements.SIF_ExtendedElement;
+    const contextElement = elements.find(e => e.Name === 'originatingContextId');
+    expect(contextElement).to.exist;
+    expect(contextElement.value).to.equal('DEFAULT');
+  });
+  
+  test("Extended elements contain createdAt timestamp", function() {
+    const elements = res.getBody().alert.SIF_ExtendedElements.SIF_ExtendedElement;
+    const createdAtElement = elements.find(e => e.Name === 'createdAt');
+    expect(createdAtElement).to.exist;
+    expect(createdAtElement.value).to.be.a('string');
+    expect(createdAtElement.value.length).to.be.greaterThan(0);
+  });
+}
+
+docs {
+  # Create Alert - Without MessageID
+  
+  Creates a new alert without a `messageID` field. The service should default
+  to the environment-global zone and DEFAULT context for extended elements.
+  
+  ## Prerequisites
+  
+  - Domain and solution must exist (createdDomainId, createdSolutionId)
+  - An alerts provider must be registered in the environment-global zone
+  - Valid admin authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 201 Created
+  - Body: `{ "alert": { ... } }` with default extended elements
+  - Extended elements should have environment-global zone and DEFAULT context
+  
+  ## What This Tests
+  
+  - Alert creation without messageID (Requirement 11.2)
+  - Default extended elements populated (environment-global zone, DEFAULT context)
+}

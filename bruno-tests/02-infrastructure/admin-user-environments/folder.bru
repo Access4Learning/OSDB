@@ -1,0 +1,30 @@
+meta {
+  name: admin-user-environments
+  seq: 14
+}
+
+docs {
+  # Admin User Environment Access Tests
+  
+  Tests for granting, revoking, and listing environment access for admin users.
+  
+  ## Endpoints Tested
+  
+  - POST /{domainId}/{solutionId}/admin-users/{userId}/environments — grant access
+  - DELETE /{domainId}/{solutionId}/admin-users/{userId}/environments/{environmentId} — revoke access
+  - GET /{domainId}/{solutionId}/admin-users/{userId}/environments — list user's environments
+  
+  ## Prerequisites
+  
+  - An admin user must exist (createdAdminUserId)
+  - An environment must exist (createdEnvironmentId)
+  - Admin HMAC credentials for authentication
+  
+  ## What These Tests Cover
+  
+  - Grant environment access (success)
+  - Grant access with domain+solution mismatch (400)
+  - Grant duplicate access (409)
+  - Revoke environment access (204)
+  - List user's environments (200)
+}

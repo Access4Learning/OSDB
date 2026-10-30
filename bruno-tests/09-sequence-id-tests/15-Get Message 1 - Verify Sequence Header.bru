@@ -1,0 +1,64 @@
+meta {
+  name: 15-Get Message 1 - Verify Sequence Header
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{gatewayUrl}}/{{seqDomainId}}/{{seqSolutionId}}/queues/{{seqConsumerQueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  connectionId: seqConsumer
+  X-Environment-Id: {{seqConsumerEnvId}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'seqConsumer' });
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const messageId = res.getHeaders()?.messageid;
+    bru.setVar('seqLastMessageId', messageId);
+
+    const seqId = res.getHeaders()?.['x-sif-sequenceid'];
+    if (seqId) {
+      bru.setVar('seqLastSequenceId', parseInt(seqId, 10));
+      console.log('Message 1 sequence ID:', seqId);
+    } else {
+      console.error('x-sif-sequenceId header NOT found!');
+    }
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Message delivered with x-sif-sequenceId header", function() {
+    expect(res.getStatus()).to.equal(200);
+    const headers = res.getHeaders();
+    expect(headers['x-sif-sequenceid']).to.exist;
+  });
+
+  test("x-sif-sequenceId is a positive integer", function() {
+    const seqId = parseInt(res.getHeaders()['x-sif-sequenceid'], 10);
+    expect(seqId).to.be.a('number');
+    expect(seqId).to.be.greaterThan(0);
+  });
+}
+
+docs {
+  # Verify Sequence Header Present (Event 1)
+  
+  After enabling SEQUENCE_ENABLED, the first event should carry an
+  x-sif-sequenceId header with a positive integer value.
+  This value is saved for comparison with subsequent events.
+}

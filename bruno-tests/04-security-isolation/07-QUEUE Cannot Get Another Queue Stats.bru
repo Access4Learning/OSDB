@@ -1,0 +1,67 @@
+meta {
+  name: QUEUE Cannot Get Another Queue Stats
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/queues/{{createdAnotherQueueId}}/stats
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 403
+}
+
+script:pre-request {
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No first environment ID found. Run infrastructure setup first.');
+  }
+  const anotherQueueId = bru.getVar('createdAnotherQueueId');
+  if (!anotherQueueId) {
+    throw new Error('No second queue ID found. Run "Create Another Queue" first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+tests {
+  test("SECURITY: First environment cannot GET another environment's queue stats", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+
+  test("SECURITY: Cross-environment queue stats access is blocked", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('code');
+  });
+}
+
+docs {
+  # QUEUE Cannot Get Another Queue Stats
+
+  **SECURITY ISOLATION REGRESSION TEST**
+
+  Verifies that the first environment CANNOT read statistics for a queue
+  owned by the second environment. Queue stats can reveal operational
+  information that must remain isolated.
+
+  ## What This Tests
+
+  - First environment authenticates with its own credentials
+  - Calls GET /queues/{secondEnvironmentQueueId}/stats
+  - Expected: 403 Forbidden
+  - If this returns 200, queue stats isolation is broken
+
+  ## Prerequisites
+
+  - First environment must exist (createdEnvironmentId)
+  - Second environment's queue must exist (createdAnotherQueueId)
+}

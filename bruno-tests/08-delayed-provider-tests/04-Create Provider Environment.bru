@@ -1,0 +1,70 @@
+meta {
+  name: 04-Create Provider Environment
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{gatewayUrl}}/{{dlyDomainId}}/{{dlySolutionId}}/environments/environment
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environment": {
+      "consumerName": "DelayedTestProvider-{{$timestamp}}",
+      "type": "BROKERED",
+      "defaultZone": {
+        "id": "{{dlyZoneId}}"
+      }
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody().environment;
+    bru.setVar('dlyProviderEnvId', data.id);
+    bru.setVar('dlyProviderSessionToken', data.sessionToken);
+    bru.setVar('dlyProviderSharedSecret', data.sharedSecret);
+    console.log('Created provider environment:', data.id);
+    console.log('Provider session token:', data.sessionToken);
+    
+    // Extract services connector URL
+    if (data.infrastructureServices && data.infrastructureServices.infrastructureService) {
+      const services = data.infrastructureServices.infrastructureService;
+      const servicesConn = services.find(s => s.name === 'servicesConnector');
+      if (servicesConn) {
+        bru.setVar('dlyProviderServicesUrl', servicesConn.value);
+        console.log('Provider Services URL:', servicesConn.value);
+      }
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.environment.id: isDefined
+  res.body.environment.sessionToken: isDefined
+}
+
+tests {
+  test("Provider environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody().environment;
+    expect(data.id).to.exist;
+    expect(data.sessionToken).to.exist;
+  });
+}

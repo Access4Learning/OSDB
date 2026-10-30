@@ -1,0 +1,55 @@
+meta {
+  name: GET Lookup Provider - Not Found
+  type: http
+  seq: 4
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/providers/lookup?serviceName=NonExistentService&zoneId={{createdZoneId}}&contextId=DEFAULT
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 404
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Lookup for non-existent provider returns 404", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+}
+
+docs {
+  # Lookup Provider - Not Found
+  
+  Attempts to look up a provider for a service name that does not exist.
+  This should return 404 Not Found.
+  
+  ## Prerequisites
+  
+  - A domain and solution must exist (createdDomainId, createdSolutionId)
+  - Valid admin authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 404 Not Found
+  
+  ## What This Tests
+  
+  - Lookup returns 404 when no provider is registered for the given service
+  - Non-existent service names are handled gracefully
+}

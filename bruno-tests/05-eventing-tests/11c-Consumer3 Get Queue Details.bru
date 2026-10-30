@@ -1,0 +1,64 @@
+meta {
+  name: 11c-Consumer3 Get Queue Details
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{gatewayUrl}}/{{evtDomainId}}/{{evtSolutionId}}/queues/{{evtConsumer3QueueId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const queueId = bru.getVar('evtConsumer3QueueId');
+  if (!queueId) {
+    throw new Error('Consumer3 queue ID not set. Run step 08c first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'evtConsumer3' });
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const data = res.getBody().queue;
+    console.log('Consumer3 queue details:', JSON.stringify(data, null, 2));
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.queue.id: isDefined
+  res.body.queue.name: eq DEFAULTQUEUE
+}
+
+tests {
+  test("Consumer3 can view own queue", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Queue name is DEFAULTQUEUE", function() {
+    expect(res.getBody().queue.name).to.equal('DEFAULTQUEUE');
+  });
+
+  test("Queue owner is Consumer3", function() {
+    const data = res.getBody().queue;
+    const expectedOwner = bru.getVar('evtConsumer3EnvId');
+    expect(data.ownerId).to.equal(expectedOwner);
+  });
+}
+
+docs {
+  # Consumer3 Get Queue Details
+  
+  Consumer3 views the details of their DEFAULTQUEUE.
+  Consumer3 has a SUBSCRIBE ACL and an active subscription, so after the
+  provider emits an event, this queue should have a message pending.
+}
+

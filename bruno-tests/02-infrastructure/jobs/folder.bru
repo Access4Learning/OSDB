@@ -1,0 +1,37 @@
+meta {
+  name: jobs
+  seq: 8
+}
+
+docs {
+  # Job Management Tests
+  
+  Tests for job state management APIs.
+  
+  ## What Are Jobs?
+  
+  Jobs represent long-running operations (functional services) with multiple phases. Each job has:
+  - Job ID
+  - Owner environment ID
+  - Job name and description
+  - Current state (PENDING, RUNNING, COMPLETED, FAILED)
+  - Phases with individual states
+  - Creation and update timestamps
+  
+  ## Tests Included
+  
+  - Create job
+  - List jobs
+  - Get job by ID
+  - Update job state
+  - Update phase state
+  - Delete job
+  - Error scenarios
+  
+  ## Important Notes
+  
+  - Jobs require authentication
+  - Jobs are used by the Services Connector
+  - Job state transitions must be valid
+  - Phases track progress of multi-step operations
+}

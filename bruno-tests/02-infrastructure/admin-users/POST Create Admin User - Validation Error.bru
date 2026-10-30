@@ -1,0 +1,78 @@
+meta {
+  name: POST Create Admin User - Validation Error
+  type: http
+  seq: 3
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/admin-users
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "username": "ab",
+    "password": "short",
+    "domainUuid": "{{adminDomainUuid}}",
+    "solutionUuid": "{{adminSolutionUuid}}"
+  }
+}
+
+assert {
+  res.status: eq 400
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Request rejected with 400 Bad Request", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+  
+  test("Response contains error details", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('message');
+  });
+  
+  test("Error message indicates validation failure", function() {
+    const data = res.getBody();
+    expect(data.message).to.be.a('string');
+    expect(data.message.length).to.be.greaterThan(0);
+  });
+}
+
+docs {
+  # Create Admin User - Validation Error
+  
+  Attempts to create an admin user with invalid username (too short) and password (too short).
+  
+  ## Expected Response
+  
+  - Status: 400 Bad Request
+  - Body: Error response with validation message
+  
+  ## What This Tests
+  
+  - Username validation: must be 3-128 chars, alphanumeric/underscore/hyphen only
+  - Password validation: must be 8-72 chars
+  - Proper error response format
+  
+  ## Requirements Validated
+  
+  - 1.7: Username must be 3-128 characters, alphanumeric/underscore/hyphen
+  - 1.8: Password must be 8-72 characters
+  - 1.9: Invalid username/password rejected with 400 and descriptive error
+}

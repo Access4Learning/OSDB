@@ -1,0 +1,77 @@
+meta {
+  name: GET Get Environment by ID - Success
+  type: http
+  seq: 3
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/environments/{{createdEnvironmentId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.environment.id: eq {{createdEnvironmentId}}
+}
+
+script:pre-request {
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No environment ID found. Run "Create Environment - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+tests {
+  test("Environment retrieved successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains correct environment", function() {
+    const data = res.getBody().environment;
+    const expectedId = bru.getVar('createdEnvironmentId');
+    expect(data.id).to.equal(expectedId);
+  });
+  
+  test("Environment has all required fields", function() {
+    const data = res.getBody().environment;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('consumerName');
+    expect(data).to.have.property('type');
+    expect(data).to.have.property('sessionToken');
+    expect(data).to.have.property('createdAt');
+  });
+}
+
+docs {
+  # Get Environment by ID - Success
+  
+  Retrieves a specific environment by its ID.
+  
+  ## Prerequisites
+  
+  - An environment must be created first (run "Create Environment - Success")
+  - The environment ID is stored in `createdEnvironmentId` variable
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: Environment object with matching ID
+  
+  ## What This Tests
+  
+  - Get operation with authentication
+  - Response contains correct environment
+  - All environment fields are present
+}

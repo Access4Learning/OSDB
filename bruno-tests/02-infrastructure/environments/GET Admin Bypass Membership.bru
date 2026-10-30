@@ -1,0 +1,70 @@
+meta {
+  name: GET Admin Bypass Membership
+  type: http
+  seq: 9
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/any-domain/any-solution/environments
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("ADMIN request not rejected by membership validation", function() {
+    const status = res.getStatus();
+    // ADMIN should NOT get 403 - membership validation is bypassed
+    // May get 200 (success) or 404 (domain/solution doesn't exist) but not 403
+    expect(status).to.not.equal(403);
+  });
+  
+  test("Response status indicates bypass worked", function() {
+    const status = res.getStatus();
+    // Accept any non-403 status as proof that membership validation was bypassed
+    // 200 = environments listed, 404 = domain not found (but not membership rejection)
+    expect([200, 404]).to.include(status);
+  });
+}
+
+docs {
+  # ADMIN Bypass Membership Validation
+  
+  Verifies that an ADMIN environment can access any domain/solution URL path
+  without being rejected by membership validation.
+  
+  ## Test Scenario
+  
+  Authenticate as an ADMIN environment and send a request to an arbitrary
+  domain/solution path (`any-domain/any-solution`). The gateway should allow
+  the request through because ADMIN environments are exempt from membership
+  validation.
+  
+  ## Prerequisites
+  
+  - ADMIN environment credentials configured in `.env` (admin role)
+  - The `admin` role must resolve to an environment with type ADMIN
+  
+  ## Expected Response
+  
+  - Status: 200 OK (or other success status, not 403)
+  - The request is not rejected by membership validation
+  
+  ## What This Tests
+  
+  - ADMIN membership bypass (Requirement 4.5)
+  - ADMIN environments can access any domain/solution path
+  - Gateway correctly identifies ADMIN type and skips validation
+}

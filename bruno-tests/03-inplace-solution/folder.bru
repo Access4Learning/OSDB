@@ -1,0 +1,82 @@
+meta {
+  name: 03-inplace-solution
+  seq: 3
+}
+
+docs {
+  # In-Place Solution Tests
+
+  This collection contains tests for validating an existing, pre-configured SIF solution without creating or destroying infrastructure.
+
+  ## Purpose
+
+  These tests are designed to:
+  - Test against production-like environments
+  - Validate existing SIF implementations
+  - Run without admin/bootstrap privileges
+  - Test specific object types in specific zones
+  - Verify end-to-end message flows
+
+  ## Test Organization
+
+  Tests are organized by flow rather than by role:
+
+  ### 00-initialize
+  - Initialize Consumer 1 Environment
+  - Initialize Consumer 2 Environment
+  - Initialize Provider Environment
+
+  ### 01-events-flow
+  - Provider emits 10 events
+  - Consumer 1 processes all events from queue (loops until 204)
+  - Consumer 2 processes all events from queue (loops until 204)
+
+  ## Prerequisites
+
+  1. **Existing SIF Solution**: A running SIF broker with configured environments
+  2. **Consumer Environments**: Two pre-configured consumers with appropriate ACLs and subscriptions
+  3. **Provider Environment**: Pre-configured provider with appropriate ACLs
+  4. **Credentials**: Session tokens and shared secrets for all environments
+
+  ## Configuration
+
+  Configure the standalone environment in your `.env` file:
+
+  ```env
+  # Consumer 1 credentials
+  standalone-consumer1SessionToken=your-consumer1-token
+  standalone-consumer1SharedSecret=your-consumer1-secret
+  
+  # Consumer 2 credentials
+  standalone-consumer2SessionToken=your-consumer2-token
+  standalone-consumer2SharedSecret=your-consumer2-secret
+  
+  # Provider credentials
+  standalone-providerSessionToken=your-provider-token
+  standalone-providerSharedSecret=your-provider-secret
+  ```
+
+  Configure environment IDs in `standalone.bru`:
+
+  ```
+  standaloneConsumer1EnvironmentId: consumer1-uuid
+  standaloneConsumer2EnvironmentId: consumer2-uuid
+  standaloneProviderEnvironmentId: provider-uuid
+  testZoneId: your-zone-id
+  testObjectName: StudentPersonals
+  ```
+
+  ## Running Tests
+
+  1. Select the standalone environment in Bruno
+  2. Ensure your `.env` file has the correct credentials
+  3. Run the 00-initialize tests first (all three)
+  4. Run flow tests in order (e.g., 01-events-flow)
+
+  ## Important Notes
+
+  - These tests do NOT create or delete infrastructure
+  - Tests assume ACLs and subscriptions are already configured
+  - Tests use the configured zone and object name
+  - Queue processing loops automatically until empty (204 response)
+}

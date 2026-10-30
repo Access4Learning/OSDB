@@ -1,0 +1,67 @@
+meta {
+  name: 03c-Create Provider Alerts SUBSCRIBE ACL
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{altProviderEnvId}}",
+    "serviceName": "alerts",
+    "zoneId": "environment-global",
+    "contextId": "DEFAULT",
+    "accessType": "SUBSCRIBE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const envId = bru.getVar('altProviderEnvId');
+  if (!envId) {
+    throw new Error('altProviderEnvId not set. Run step 04 first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('altProviderAlertsAclId', data.id);
+    console.log('Created SUBSCRIBE ACL for alerts on env-global zone:', data.id);
+  }
+}
+
+tests {
+  test("Provider SUBSCRIBE ACL for alerts created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  # Create Provider Alerts SUBSCRIBE ACL
+  
+  Creates a SUBSCRIBE ACL entry for the provider to receive alerts events
+  on the environment-global zone with DEFAULT context.
+  
+  ## Prerequisites
+  
+  - altProviderEnvId set (step 04)
+}

@@ -1,0 +1,80 @@
+meta {
+  name: MSG Cannot Enqueue To Another Queue
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/api/queues/{{createdAnotherQueueId}}/messages
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environment": "test",
+    "zone": "default",
+    "context": "test",
+    "service": "TestService",
+    "payload": {
+      "test": true
+    }
+  }
+}
+
+assert {
+  res.status: eq 403
+}
+
+script:pre-request {
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No first environment ID found. Run infrastructure setup first.');
+  }
+  const anotherQueueId = bru.getVar('createdAnotherQueueId');
+  if (!anotherQueueId) {
+    throw new Error('No second queue ID found. Run "Create Another Queue" first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+tests {
+  test("SECURITY: First environment cannot enqueue messages to another environment's queue", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+
+  test("SECURITY: Cross-environment message injection is blocked", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('code');
+  });
+}
+
+docs {
+  # MSG Cannot Enqueue To Another Queue
+
+  **SECURITY ISOLATION REGRESSION TEST**
+
+  Verifies that the first environment CANNOT enqueue messages to a queue
+  owned by the second environment. This prevents unauthorized message
+  injection across environment boundaries.
+
+  ## What This Tests
+
+  - First environment authenticates with its own credentials
+  - Calls POST /api/queues/{secondEnvironmentQueueId}/messages
+  - Expected: 403 Forbidden
+  - If this returns 201, message injection across environments is possible
+
+  ## Prerequisites
+
+  - First environment must exist (createdEnvironmentId)
+  - Second environment's queue must exist (createdAnotherQueueId)
+}

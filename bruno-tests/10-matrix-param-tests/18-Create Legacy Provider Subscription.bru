@@ -1,0 +1,50 @@
+meta {
+  name: 18-Create Legacy Provider Subscription
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{gatewayUrl}}/{{mpDomainId}}/{{mpSolutionId}}/subscriptions/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{mpLegacyProviderQueueId}}",
+      "aclEntryId": "{{mpLegacyProviderAclId}}",
+      "messageType": "DELAYED_REQUEST"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'mpLegacyProvider' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('mpLegacyProviderSubId', data.subscription.id);
+    console.log('Created DELAYED_REQUEST subscription:', data.subscription.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Legacy provider subscription created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

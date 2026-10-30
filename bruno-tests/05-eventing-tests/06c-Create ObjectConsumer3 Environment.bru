@@ -1,0 +1,53 @@
+meta {
+  name: 06c-Create ObjectConsumer3 Environment
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{gatewayUrl}}/{{evtDomainId}}/{{evtSolutionId}}/environments/environment
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environment": {
+      "consumerName": "ObjectConsumer3-{{$timestamp}}",
+      "type": "BROKERED"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody().environment;
+    bru.setVar('evtConsumer3EnvId', data.id);
+    bru.setVar('evtConsumer3SessionToken', data.sessionToken);
+    bru.setVar('evtConsumer3SharedSecret', data.sharedSecret);
+    console.log('Created ObjectConsumer3 environment:', data.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.environment.id: isDefined
+}
+
+tests {
+  test("ObjectConsumer3 environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+

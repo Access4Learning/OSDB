@@ -1,0 +1,89 @@
+meta {
+  name: 11-Consumer Send DELAYED Request
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{immConsumerRequestsUrl}}/IMMEDIATE_TEST_OBJECTs
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{immZoneId}}
+  contextId: DEFAULT
+  requestType: DELAYED
+  queueId: {{immConsumerQueueId}}
+  testRandomHeader: came through
+  navigationPageSize: 10
+  queryIntention: ALL
+}
+
+assert {
+  res.status: eq 202
+  res.body.messageId: isDefined
+}
+
+script:pre-request {
+  const queueId = bru.getVar('immConsumerQueueId');
+  if (!queueId) {
+    throw new Error('Consumer queue ID not set. Run step 10 first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'immConsumer' });
+}
+
+script:post-response {
+  await new Promise(resolve =>
+  setTimeout(resolve, 3000));
+  
+  const status = res.getStatus();
+  console.log('DELAYED request response status:', status);
+  
+  if (status === 202) {
+    const data = res.getBody();
+    console.log('Accepted — messageId:', data.messageId);
+    console.log('Response will be delivered to queueId:', data.queueId);
+    bru.setVar('immDelayedMessageId', data.messageId);
+  } else {
+    console.error('Unexpected status:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("DELAYED request accepted with 202", function() {
+    expect(res.getStatus()).to.equal(202);
+  });
+  
+  test("Response contains messageId", function() {
+    const data = res.getBody();
+    expect(data.messageId).to.exist;
+  });
+}
+
+docs {
+  # Consumer Sends DELAYED GET Request
+  
+  The consumer sends a GET request with `requestType: DELAYED` and
+  `queueId` header. The broker accepts the request (202) and proxies
+  it to the IMMEDIATE provider in the background. The provider's
+  response is then delivered to the consumer's queue.
+  
+  ## Expected Flow
+  
+  1. Consumer → Requests Connector: GET with requestType=DELAYED, queueId
+  2. Requests Connector: returns 202 Accepted immediately
+  3. Background: Requests Connector → Provider (IMMEDIATE call)
+  4. Background: Provider response → Responses Connector → Consumer's queue
+  5. Consumer polls queue to retrieve the response (step 12)
+  
+  ## Prerequisites
+  
+  - All infrastructure setup complete (steps 00-08)
+  - Consumer queue created (step 10)
+  - Test provider application running on port 9090
+}

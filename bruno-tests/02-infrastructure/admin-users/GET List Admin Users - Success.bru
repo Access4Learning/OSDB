@@ -1,0 +1,81 @@
+meta {
+  name: GET List Admin Users - Success
+  type: http
+  seq: 5
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/admin-users?domainUuid={{adminDomainUuid}}&solutionUuid={{adminSolutionUuid}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Admin users listed successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has SIF collection wrapper", function() {
+    const data = res.getBody();
+    expect(data.adminUsers).to.exist;
+    expect(data.adminUsers.adminUser).to.be.an('array');
+  });
+  
+  test("List contains at least one admin user", function() {
+    const data = res.getBody();
+    expect(data.adminUsers.adminUser.length).to.be.greaterThan(0);
+  });
+  
+  test("Admin user entries have expected fields", function() {
+    const data = res.getBody();
+    const user = data.adminUsers.adminUser[0];
+    expect(user).to.have.property('id');
+    expect(user).to.have.property('username');
+    expect(user).to.have.property('domainUuid');
+    expect(user).to.have.property('solutionUuid');
+  });
+}
+
+docs {
+  # List Admin Users - Success
+  
+  Lists admin users filtered by domain and solution UUIDs.
+  
+  ## Prerequisites
+  
+  - At least one admin user exists (run "POST Create Admin User - Success" first)
+  - Valid admin HMAC credentials
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: SIF collection wrapper with array of admin user objects
+  
+  ## What This Tests
+  
+  - List endpoint with domain+solution query parameters
+  - SIF collection response format (adminUsers.adminUser array)
+  - Admin user entries contain expected fields
+  
+  ## Requirements Validated
+  
+  - 1.1: Admin users scoped to domain+solution
+  - 1.2: Users listed by domain+solution scope
+}

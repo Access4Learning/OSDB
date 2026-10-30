@@ -1,0 +1,160 @@
+meta {
+  name: Initialize Consumer2 Environment
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{gatewayUrl}}/{{domainId}}/{{solutionId}}/environments/{{standaloneConsumer2EnvironmentId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isDefined
+  res.body.connectors: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  
+  // Verify environment ID is configured
+  const envId = bru.getEnvVar('standaloneConsumer2EnvironmentId');
+  if (!envId) {
+    throw new Error('standaloneConsumer2EnvironmentId not configured in standalone environment');
+  }
+  
+  auth.setAuthHeaders(req, bru, 'consumer2');
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const env = res.getBody();
+    
+    // Extract and store infrastructure service URLs for Consumer 2
+    if (env.infrastructureServices && env.infrastructureServices.infrastructureService) {
+      const services = env.infrastructureServices.infrastructureService;
+      
+      const requestsService = services.find(s => s.name === 'REQUESTS_CONNECTOR');
+      if (requestsService) {
+        bru.setVar('consumer2RequestsUrl', requestsService.value);
+        console.log('Consumer 2 Requests URL:', requestsService.value);
+      }
+      
+      const eventsService = services.find(s => s.name === 'EVENTS_CONNECTOR');
+      if (eventsService) {
+        bru.setVar('consumer2EventsUrl', eventsService.value);
+        console.log('Consumer 2 Events URL:', eventsService.value);
+      }
+      
+      const queuesService = services.find(s => s.name === 'QUEUES');
+      if (queuesService) {
+        bru.setVar('consumer2QueuesUrl', queuesService.value);
+        console.log('Consumer 2 Queues URL:', queuesService.value);
+      }
+      
+      const subscriptionsService = services.find(s => s.name === 'SUBSCRIPTIONS');
+      if (subscriptionsService) {
+        bru.setVar('consumer2SubscriptionsUrl', subscriptionsService.value);
+        console.log('Consumer 2 Subscriptions URL:', subscriptionsService.value);
+      }
+    }
+    
+    // Store environment details
+    bru.setVar('consumer2EnvironmentId', env.id);
+    bru.setVar('consumer2ConsumerName', env.consumerName);
+    
+    // Verify consumer has SUBSCRIBE rights for the test object in the test zone
+    const testZone = bru.getEnvVar('testZoneId');
+    const testObject = bru.getEnvVar('testObjectName');
+    
+    let hasSubscribeRights = false;
+    if (env.provisionedZones && env.provisionedZones.provisionedZone) {
+      const zone = env.provisionedZones.provisionedZone.find(z => z.id === testZone);
+      if (zone && zone.services && zone.services.service) {
+        const service = zone.services.service.find(s => s.name === testObject && s.type === 'OBJECT');
+        if (service && service.rights && service.rights.right) {
+          const subscribeRight = service.rights.right.find(r => r.type === 'SUBSCRIBE');
+          hasSubscribeRights = subscribeRight && subscribeRight.value === 'APPROVED';
+        }
+      }
+    }
+    
+    bru.setVar('consumer2HasSubscribeRights', hasSubscribeRights);
+    
+    if (hasSubscribeRights) {
+      console.log(`✓ Consumer 2 has SUBSCRIBE rights for ${testObject} in zone ${testZone}`);
+    } else {
+      console.warn(`✗ Consumer 2 does NOT have SUBSCRIBE rights for ${testObject} in zone ${testZone}`);
+    }
+    
+    console.log('Consumer 2 environment initialized:', env.consumerName);
+  } else {
+    console.error('Failed to fetch consumer 2 environment');
+  }
+}
+
+tests {
+  test("Consumer 2 environment fetched successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Environment has infrastructure services", function() {
+    const env = res.getBody();
+    expect(env).to.have.property('infrastructureServices');
+    expect(env.infrastructureServices).to.have.property('infrastructureService');
+  });
+  
+  test("REQUESTS_CONNECTOR URL is present", function() {
+    const env = res.getBody();
+    const services = env.infrastructureServices.infrastructureService;
+    const requestsService = services.find(s => s.name === 'REQUESTS_CONNECTOR');
+    expect(requestsService).to.exist;
+    expect(requestsService.value).to.be.a('string');
+  });
+  
+  test("Consumer 2 has SUBSCRIBE rights for test object in test zone", function() {
+    const hasRights = bru.getVar('consumer2HasSubscribeRights');
+    expect(hasRights).to.be.true;
+  });
+}
+
+docs {
+  # Initialize Consumer 2 Environment
+  
+  Fetches Consumer 2 environment details and extracts connector URLs and queue URL.
+  
+  ## Purpose
+  
+  This test MUST be run first before any other standalone tests. It:
+  1. Fetches Consumer 2 environment object from the broker
+  2. Extracts connector URLs (requests, events, queues)
+  3. Extracts the queue URL for event subscription
+  4. Stores URLs in Bruno variables for subsequent tests
+  
+  ## Prerequisites
+  
+  - Valid consumer2 session token and shared secret in .env
+  - Valid consumer2 environment ID in standalone.bru
+  - Consumer 2 environment exists in the broker
+  - Consumer 2 has an active subscription with a queue
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: Environment object with connector URLs and queue information
+  
+  ## Variables Set
+  
+  After successful execution, these variables are available:
+  - `consumer2RequestsUrl` - URL for consumer 2 to request objects
+  - `consumer2EventsUrl` - URL for consumer 2 to receive events
+  - `consumer2QueuesUrl` - URL for consumer 2 queue operations
+  - `consumer2QueueUrl` - Specific queue URL for polling events
+}

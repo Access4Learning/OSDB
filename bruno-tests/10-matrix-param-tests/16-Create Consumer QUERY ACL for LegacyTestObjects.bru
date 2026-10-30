@@ -1,0 +1,53 @@
+meta {
+  name: 16-Create Consumer QUERY ACL for LegacyTestObjects
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{gatewayUrl}}/{{mpDomainId}}/{{mpSolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{mpConsumerEnvId}}",
+    "serviceName": "LegacyTestObjects",
+    "zoneId": "{{mpZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "QUERY",
+    "accessLevel": "APPROVED"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('mpConsumerLegacyAclId', data.id);
+    console.log('Created QUERY ACL for consumer (LegacyTestObjects):', data.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Consumer QUERY ACL created for LegacyTestObjects", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody();
+    expect(data.serviceName).to.equal('LegacyTestObjects');
+  });
+}

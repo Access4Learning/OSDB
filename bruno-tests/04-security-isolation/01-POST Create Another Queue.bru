@@ -1,0 +1,93 @@
+meta {
+  name: POST Create Another Queue
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "{{testDataPrefix}}-adversary-queue-{{$randomUUID}}",
+      "ownerId": "{{createdAnotherEnvironmentId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.queue.id: isDefined
+  res.body.queue.ownerId: isDefined
+}
+
+script:pre-request {
+  const anotherEnvId = bru.getVar('createdAnotherEnvironmentId');
+  if (!anotherEnvId) {
+    throw new Error('No second environment ID found. Run "Create Another Environment" first.');
+  }
+  const anotherSessionToken = bru.getVar('createdAnotherSessionToken');
+  if (!anotherSessionToken) {
+    throw new Error('No second environment session token found. Run "Create Another Environment" first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'createdAnother' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdAnotherQueueId', data.queue.id);
+    console.log('Created adversary queue:', data.queue.id);
+  }
+}
+
+tests {
+  test("Queue created for second environment", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Queue is owned by second environment", function() {
+    const data = res.getBody().queue;
+    const expectedOwnerId = bru.getVar('createdAnotherEnvironmentId');
+    expect(data.ownerId).to.equal(expectedOwnerId);
+  });
+
+  test("Queue ID is valid UUID", function() {
+    const data = res.getBody().queue;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    expect(data.id).to.match(uuidRegex);
+  });
+}
+
+docs {
+  # Create Another Queue (Adversary-Owned)
+
+  **SECURITY ISOLATION TEST SETUP**
+
+  Creates a queue owned by the second environment. The first environment
+  will then attempt various operations on this queue, all of which should
+  be rejected with 403 Forbidden.
+
+  ## Prerequisites
+
+  - Second environment must be created (createdAnotherEnvironmentId)
+  - Second environment credentials must be stored (createdAnotherSessionToken, createdAnotherSharedSecret)
+
+  ## Stored Variables
+
+  - `createdAnotherQueueId` - ID of the queue owned by the second environment
+}

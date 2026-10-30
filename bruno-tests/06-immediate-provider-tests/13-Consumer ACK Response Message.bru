@@ -1,0 +1,76 @@
+meta {
+  name: 13-Consumer ACK Response Message
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{gatewayUrl}}/{{immDomainId}}/{{immSolutionId}}/queues/{{immConsumerQueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  connectionId: immConsumer
+  X-Environment-Id: {{immConsumerEnvId}}
+  deleteMessageId: {{immConsumerLastMessageId}}
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+script:pre-request {
+  const messageId = bru.getVar('immConsumerLastMessageId');
+  if (!messageId) {
+    throw new Error('No messageId to ACK. Run step 12 first and ensure a message was delivered.');
+  }
+  
+  console.log('ACKing messageId:', messageId);
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'immConsumer' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  
+  if (status === 200) {
+    const messageId = res.getHeaders()?.messageid;
+    if (messageId) {
+      bru.setVar('immConsumerLastMessageId', messageId);
+      console.log('Next message ID:', messageId);
+    }
+    console.log('Next payload:', JSON.stringify(res.getBody(), null, 2));
+  } else if (status === 204) {
+    console.log('Message ACKed. Queue is now empty.');
+    bru.setVar('immConsumerLastMessageId', '');
+  }
+}
+
+tests {
+  test("ACK succeeds", function() {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+  
+  test("Queue should be empty after ACK (204)", function() {
+    // We only sent one DELAYED request, so after ACK the queue should be drained
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  # Consumer ACKs the Response Message
+  
+  Acknowledges the delayed response message using the SIF "Get Next and Pop"
+  pattern. The deleteMessageId matrix parameter is set to the messageid from
+  the previous GET response (step 12).
+  
+  After ACK, the queue should be empty (204) since we only sent one request.
+  
+  ## Prerequisites
+  
+  - Message delivered in step 12 (status 200 with messageid header)
+}

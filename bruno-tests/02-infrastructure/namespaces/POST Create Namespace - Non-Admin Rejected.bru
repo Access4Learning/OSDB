@@ -1,0 +1,92 @@
+meta {
+  name: POST Create Namespace - Non-Admin Rejected
+  type: http
+  seq: 6
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/namespaces/namespace
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  serviceType: UTILITY
+}
+
+body:json {
+  {
+    "namespace": {
+      "zone": "environment-global",
+      "uri": "http://unauthorized-namespace-attempt.example.org",
+      "url": "http://unauthorized-namespace-attempt.example.org/schema.xsd"
+    }
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.error.id: isDefined
+  res.body.error.code: isDefined
+  res.body.error.subCode: isDefined
+  res.body.error.message: isDefined
+}
+
+script:pre-request {
+  const token = bru.getVar('createdSessionToken');
+  if (!token) {
+    throw new Error('No created environment credentials. Run "Create Environment - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+tests {
+  test("Non-admin rejected with 403", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+  
+  test("Response is SIF 3.7 errorCommon format", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('error');
+    expect(data.error).to.have.property('id');
+    expect(data.error).to.have.property('code');
+    expect(data.error).to.have.property('subCode');
+    expect(data.error).to.have.property('message');
+    expect(data.error.code).to.equal(403);
+  });
+  
+  test("Error indicates insufficient permissions", function() {
+    const data = res.getBody();
+    const bodyStr = JSON.stringify(data.error).toLowerCase();
+    expect(bodyStr).to.include('admin');
+  });
+}
+
+docs {
+  # Create Namespace - Non-Admin Rejected
+  
+  Attempts to create a namespace using a regular (non-admin) environment's credentials.
+  Should be rejected with 403 because only admin environments can create namespaces.
+  
+  ## Prerequisites
+  
+  - An environment must be created first (run "Create Environment - Success")
+  - Uses createdSessionToken/createdSharedSecret from that test
+  
+  ## Expected Response
+  
+  - Status: 403 Forbidden
+  
+  ## What This Tests
+  
+  - Non-admin namespace creation rejected (Requirement 3.7)
+  - Error response indicates admin-only access
+}

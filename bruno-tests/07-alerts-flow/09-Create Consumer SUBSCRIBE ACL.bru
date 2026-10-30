@@ -1,0 +1,56 @@
+meta {
+  name: 09-Create Consumer SUBSCRIBE ACL
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{altConsumerEnvId}}",
+    "serviceName": "TESTOBJECT1s",
+    "zoneId": "{{altZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "SUBSCRIBE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const envId = bru.getVar('altConsumerEnvId');
+  if (!envId) {
+    throw new Error('altConsumerEnvId not set. Run step 08 first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('altConsumerAclId', data.id);
+    console.log('Created SUBSCRIBE ACL for consumer:', data.id);
+  }
+}
+
+tests {
+  test("Consumer SUBSCRIBE ACL created for TESTOBJECT1s", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

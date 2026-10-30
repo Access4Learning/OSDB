@@ -1,0 +1,158 @@
+meta {
+  name: 15-Consumer Create Alert
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/alerts/alert
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  requestAction: CREATE
+  serviceType: UTILITY
+  serviceName: alerts
+}
+
+body:json {
+  {
+    "alert": {
+      "reporter": "AlertFlowConsumer",
+      "exchange": "EVENT",
+      "level": "ERROR",
+      "cause": "AlertFlowProvider",
+      "description": "Invalid student record format",
+      "messageID": "{{altEventMessageId}}"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.alert: isDefined
+  res.body.alert.id: isDefined
+  res.body.alert.reporter: eq AlertFlowConsumer
+  res.body.alert.exchange: eq EVENT
+  res.body.alert.level: eq ERROR
+  res.body.alert.SIF_ExtendedElements: isDefined
+}
+
+script:pre-request {
+  const messageId = bru.getVar('altEventMessageId');
+  if (!messageId) {
+    throw new Error('altEventMessageId not set. Run step 12 first to emit an event.');
+  }
+
+  console.log('Creating alert referencing messageId:', messageId);
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'altConsumer' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('altAlertId', data.alert.id);
+    console.log('Created alert:', data.alert.id);
+    console.log('Reporter:', data.alert.reporter);
+    console.log('Exchange:', data.alert.exchange);
+    console.log('Level:', data.alert.level);
+
+    if (data.alert.SIF_ExtendedElements && data.alert.SIF_ExtendedElements.SIF_ExtendedElement) {
+      const elements = data.alert.SIF_ExtendedElements.SIF_ExtendedElement;
+      elements.forEach(e => console.log('  Extended:', e.Name, '=', e.value));
+    }
+  }
+}
+
+tests {
+  test("Alert created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response wrapped under 'alert' key", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('alert');
+  });
+
+  test("Alert has broker-assigned UUID", function() {
+    const alert = res.getBody().alert;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    expect(alert.id).to.match(uuidRegex);
+  });
+
+  test("Alert fields match request", function() {
+    const alert = res.getBody().alert;
+    expect(alert.reporter).to.equal('AlertFlowConsumer');
+    expect(alert.exchange).to.equal('EVENT');
+    expect(alert.level).to.equal('ERROR');
+    expect(alert.cause).to.equal('AlertFlowProvider');
+    expect(alert.description).to.equal('Invalid student record format');
+  });
+
+  test("SIF_ExtendedElements present with server-populated fields", function() {
+    const alert = res.getBody().alert;
+    expect(alert).to.have.property('SIF_ExtendedElements');
+    expect(alert.SIF_ExtendedElements).to.have.property('SIF_ExtendedElement');
+    const elements = alert.SIF_ExtendedElements.SIF_ExtendedElement;
+    expect(elements).to.be.an('array');
+    const names = elements.map(e => e.Name);
+    expect(names).to.include('reportingEnvironmentFingerprint');
+    expect(names).to.include('createdAt');
+  });
+
+  test("Extended elements contain sourceEnvironmentId from message context", function() {
+    const alert = res.getBody().alert;
+    const elements = alert.SIF_ExtendedElements.SIF_ExtendedElement;
+    const sourceEnv = elements.find(e => e.Name === 'sourceEnvironmentId');
+    expect(sourceEnv).to.exist;
+    // sourceEnvironmentId should be the provider's env ID (who sent the original event)
+    const providerEnvId = bru.getVar('altProviderEnvId');
+    expect(sourceEnv.value).to.equal(providerEnvId);
+  });
+
+  test("Extended elements contain originatingZoneId", function() {
+    const alert = res.getBody().alert;
+    const elements = alert.SIF_ExtendedElements.SIF_ExtendedElement;
+    const zone = elements.find(e => e.Name === 'originatingZoneId');
+    expect(zone).to.exist;
+    expect(zone.value).to.be.a('string');
+    expect(zone.value.length).to.be.greaterThan(0);
+  });
+
+  test("Extended elements contain originatingContextId", function() {
+    const alert = res.getBody().alert;
+    const elements = alert.SIF_ExtendedElements.SIF_ExtendedElement;
+    const ctx = elements.find(e => e.Name === 'originatingContextId');
+    expect(ctx).to.exist;
+    expect(ctx.value).to.equal('DEFAULT');
+  });
+}
+
+docs {
+  # Consumer Create Alert
+  
+  Consumer creates an alert referencing the messageId from the event emitted
+  by the provider in step 12. The alerts service looks up the message context
+  in Redis and populates extended elements with sourceEnvironmentId,
+  originatingZoneId, and originatingContextId.
+  
+  ## Key Details
+  
+  - Reporter = consumer (AlertFlowConsumer)
+  - Cause = provider (AlertFlowProvider)
+  - Exchange = EVENT (the event that triggered the alert)
+  - Level = ERROR
+  - messageID = the UUID from step 12's event
+  
+  ## Expected Response
+  
+  - Status: 201 Created
+  - Body: `{ "alert": { ... } }` with broker-assigned ID and SIF_ExtendedElements
+  - Extended elements include sourceEnvironmentId matching the provider's env ID
+}

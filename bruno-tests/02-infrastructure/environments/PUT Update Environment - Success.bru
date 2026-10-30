@@ -1,0 +1,72 @@
+meta {
+  name: PUT Update Environment - Success
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/environments/{{createdEnvironmentId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "consumerName": "{{testDataPrefix}}-consumer-update-{{$timestamp}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isDefined
+  res.body.consumerName: isDefined
+}
+
+script:pre-request {
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No environment ID found. Run "Create Environment - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+tests {
+  test("Environment updated successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains updated consumerName", function() {
+    const data = res.getBody();
+    expect(data.consumerName).to.include('updated');
+  });
+  
+  test("Environment ID unchanged", function() {
+    const data = res.getBody();
+    const expectedId = bru.getVar('createdEnvironmentId');
+    expect(data.id).to.equal(expectedId);
+  });
+}
+
+docs {
+  # Update Environment - Success
+  
+  Updates mutable fields on an existing environment.
+  
+  ## Prerequisites
+  
+  - An environment must be created first
+  - Uses createdSessionToken/createdSharedSecret from the creation test
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: Updated SIF 3.7 environment object
+}

@@ -1,0 +1,107 @@
+meta {
+  name: POST Create Queue - Success
+  type: http
+  seq: 1
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "{{testDataPrefix}}-queue-{{$randomUUID}}",
+      "ownerId": "{{createdEnvironmentId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.queue.id: isDefined
+  res.body.queue.name: isDefined
+  res.body.queue.ownerId: isDefined
+}
+
+script:pre-request {
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No environment ID found. Run "Create Environment - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdQueueId', data.queue.id);
+    bru.setVar('createdQueueName', data.queue.name);
+    console.log('Created queue:', data.queue.id, data.queue.name);
+  }
+}
+
+tests {
+  test("Queue created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response contains queue data", function() {
+    const data = res.getBody().queue;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('name');
+    expect(data).to.have.property('ownerId');
+    expect(data).to.have.property('maxRetries');
+    expect(data).to.have.property('retryDelayMs');
+  });
+  
+  test("Queue owner matches created environment", function() {
+    const data = res.getBody().queue;
+    const expectedOwnerId = bru.getVar('createdEnvironmentId');
+    expect(data.ownerId).to.equal(expectedOwnerId);
+  });
+  
+  test("Queue ID is valid UUID", function() {
+    const data = res.getBody().queue;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    expect(data.id).to.match(uuidRegex);
+  });
+}
+
+docs {
+  # Create Queue - Success
+  
+  Creates a new queue owned by the environment created in "POST Create Environment - Success".
+  
+  ## Prerequisites
+  
+  - Run "POST Create Environment - Success" first to set `createdEnvironmentId`
+  - Update .env with the created environment's sessionToken and sharedSecret
+  
+  ## Expected Response
+  
+  - Status: 201 Created
+  - Body: Created queue with generated ID, name, ownerId, and configuration
+  
+  ## What This Tests
+  
+  - Queue creation with authentication
+  - Queue is associated with the correct owner environment
+  - Queue ID is generated as a valid UUID
+  - Default retry configuration is applied
+}

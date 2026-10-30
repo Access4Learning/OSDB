@@ -1,0 +1,101 @@
+meta {
+  name: 05-Register Provider for DataExport
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{gatewayUrl}}/{{fsDomainId}}/{{fsSolutionId}}/providers/provider
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "provider": {
+      "environmentId": "{{fsProviderEnvId}}",
+      "serviceName": "DataExport",
+      "zoneId": "{{fsZoneId}}",
+      "contextId": "DEFAULT",
+      "serviceType": "FUNCTIONAL",
+      "endPoint": {
+        "location": "http://mock-provider:9999/functional-services"
+      },
+      "supportedRequestTypes": {
+        "supportedRequestType": [
+          {
+            "requestType": "IMMEDIATE",
+            "operations": {
+              "operation": [
+                "CREATE",
+                "QUERY",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          },
+          {
+            "requestType": "DELAYED",
+            "operations": {
+              "operation": [
+                "CREATE",
+                "QUERY",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody().provider;
+    bru.setVar('fsProviderRegistrationId', data.id);
+    console.log('Registered provider for DataExport:', data.id);
+    console.log('Provider endpoint:', data.endPoint.location);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Provider registered for DataExport", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Registration has expected fields", function() {
+    const data = res.getBody().provider;
+    expect(data).to.have.property('id');
+    expect(data.serviceName).to.equal('DataExport');
+    expect(data).to.have.property('endPoint');
+  });
+}
+
+docs {
+  # Register Provider for DataExport
+
+  Registers the provider environment as the handler for the "DataExport"
+  functional service in the test zone. The services-connector uses this
+  registration to route consumer requests to the provider endpoint.
+
+  The endpoint is a mock URL — for DELAYED tests, the broker accepts the
+  request (202) and attempts to forward asynchronously. The response
+  delivery to the consumer queue is what we verify.
+}

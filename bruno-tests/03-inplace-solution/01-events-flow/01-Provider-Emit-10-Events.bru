@@ -1,0 +1,137 @@
+meta {
+  name: 01-Provider-Emit-10-Events
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{providerEventsUrl}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{testZoneId}}
+  contextId: DEFAULT
+  messageType: EVENT
+  messageId: {{$randomUUID}}
+  eventAction: CREATE
+  serviceType: OBJECT
+  serviceName: {{testObjectName}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "refId": "{{$randomUUID}}",
+    "localId": "{{testDataPrefix}}-event-{{$timestamp}}",
+    "name": {
+      "familyName": "Student",
+      "givenName": "TestEvent"
+    }
+  }
+}
+
+docs {
+  # Provider Emits 10 Events
+
+  Provider sends 10 CREATE events for the test object type.
+
+  ## Prerequisites
+
+  - Run `00-initialize/Initialize Provider Environment` first
+  - Provider has PROVIDE rights to the object type
+  - At least one consumer has an active subscription
+
+  ## Expected Response
+
+  - Status: 204 No Content (event accepted)
+  - Or 202 Accepted (event queued for distribution)
+
+  ## How to Run
+
+  This test sends ONE event per execution. To send 10 events:
+  1. Click "Send" 10 times
+  2. Or use Bruno's "Run Collection" feature with repeat count of 10
+
+  Each execution generates a unique event with:
+  - Unique messageId (UUID)
+  - Unique refId (UUID)
+  - Timestamp-based localId
+
+  ## What Happens Next
+
+  The broker will:
+  1. Validate the event
+  2. Distribute the event to all subscribed consumers' queues
+  3. Consumers can then poll their queues to retrieve events
+
+  ## SIF 3.x Event Headers
+
+  - `messageType: EVENT` - Indicates this is an event message
+  - `messageId: <UUID>` - Unique identifier for this message
+  - `eventAction: CREATE` - Type of event (CREATE/UPDATE/DELETE)
+  - `serviceType: OBJECT` - Indicates this is an object service event
+  - `serviceName: <ObjectName>` - The name of the service/object (e.g., StudentPersonals)
+  - `zoneId` - The zone where the event occurred
+  - `contextId` - The context where the event occurred
+  
+  ## URL Format
+  
+  Events are posted to the events connector URL directly (not with service name in path):
+  - Correct: `POST {{providerEventsUrl}}` with `serviceName` header
+  - Incorrect: `POST {{providerEventsUrl}}/ServiceType1s`
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  
+  // Verify initialization was run
+  const eventsUrl = bru.getVar('providerEventsUrl');
+  if (!eventsUrl) {
+    throw new Error('Provider not initialized. Run "00-initialize/Initialize Provider Environment" first.');
+  }
+  
+  auth.setAuthHeaders(req, bru, 'provider');
+}
+
+script:post-response {
+  const status = res.getStatus();
+  
+  if (status === 204 || status === 202) {
+    // Track how many events have been sent
+    let eventCount = bru.getVar('eventsEmittedCount') || 0;
+    eventCount++;
+    bru.setVar('eventsEmittedCount', eventCount);
+    
+    console.log(`Event ${eventCount} emitted successfully`);
+    
+    if (eventCount >= 10) {
+      console.log('✓ All 10 events have been emitted');
+      bru.setVar('eventsEmitted', true);
+    } else {
+      console.log(`Send this request ${10 - eventCount} more time(s) to emit all 10 events`);
+    }
+  } else {
+    console.error('Failed to emit event:', status);
+  }
+}
+
+assert {
+  res.status: in [202, 204]
+}
+
+tests {
+  test("Event accepted", function() {
+    const status = res.getStatus();
+    expect([202, 204]).to.include(status);
+  });
+  
+  test("Track event count", function() {
+    const count = bru.getVar('eventsEmittedCount') || 0;
+    expect(count).to.be.at.least(1);
+    expect(count).to.be.at.most(10);
+  });
+}

@@ -1,0 +1,36 @@
+meta {
+  name: solutions
+  seq: 2
+}
+
+docs {
+  # Solution Management Tests
+  
+  Tests for solution CRUD operations at `/{domainId}/solutions` paths.
+  
+  ## What Are Solutions?
+  
+  Solutions represent operating environments within a domain (e.g., production, staging, testing).
+  Each solution belongs to a domain and contains environments, queues, subscriptions, and other resources.
+  
+  ## URL Pattern
+  
+  Solution management endpoints are nested under domain:
+  - `POST /{domainId}/solutions` — Create a solution
+  - `GET /{domainId}/solutions` — List solutions for a domain
+  - `GET /{domainId}/solutions/{solutionId}` — Get a specific solution
+  - `DELETE /{domainId}/solutions/{solutionId}` — Delete a solution
+  
+  ## Tests Included
+  
+  - Create solution under a domain
+  - List solutions for a domain
+  - Get solution by ID
+  - Delete solution
+  
+  ## Important Notes
+  
+  - Solution endpoints use domain-level membership validation only
+  - The domainId in the URL determines the parent domain
+  - Authentication is required for solution operations
+}

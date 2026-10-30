@@ -1,0 +1,108 @@
+meta {
+  name: GET Get Alert by ID - Success
+  type: http
+  seq: 5
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/alerts/{{createdAlertId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.alert: isDefined
+  res.body.alert.id: isDefined
+  res.body.alert.reporter: isDefined
+  res.body.alert.exchange: isDefined
+  res.body.alert.level: isDefined
+  res.body.alert.SIF_ExtendedElements: isDefined
+}
+
+script:pre-request {
+  const alertId = bru.getVar('createdAlertId');
+  if (!alertId) {
+    throw new Error('No alert ID found. Run "POST Create Alert - With MessageID" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Alert retrieved successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response wrapped under 'alert' key", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('alert');
+  });
+  
+  test("Alert ID matches requested ID", function() {
+    const data = res.getBody();
+    const expectedId = bru.getVar('createdAlertId');
+    expect(data.alert.id).to.equal(expectedId);
+  });
+  
+  test("Alert contains all expected fields", function() {
+    const alert = res.getBody().alert;
+    expect(alert).to.have.property('id');
+    expect(alert).to.have.property('reporter');
+    expect(alert).to.have.property('exchange');
+    expect(alert).to.have.property('level');
+    expect(alert).to.have.property('SIF_ExtendedElements');
+  });
+  
+  test("Alert fields match originally created alert", function() {
+    const alert = res.getBody().alert;
+    expect(alert.reporter).to.equal('BrunoTestApp');
+    expect(alert.exchange).to.equal('REQUEST');
+    expect(alert.level).to.equal('ERROR');
+  });
+  
+  test("SIF_ExtendedElements has correct structure", function() {
+    const alert = res.getBody().alert;
+    expect(alert.SIF_ExtendedElements).to.have.property('SIF_ExtendedElement');
+    expect(alert.SIF_ExtendedElements.SIF_ExtendedElement).to.be.an('array');
+    
+    // Each element should have Name and value
+    const elements = alert.SIF_ExtendedElements.SIF_ExtendedElement;
+    if (elements.length > 0) {
+      expect(elements[0]).to.have.property('Name');
+      expect(elements[0]).to.have.property('value');
+    }
+  });
+}
+
+docs {
+  # Get Alert by ID - Success
+  
+  Retrieves a specific alert by its UUID.
+  
+  ## Prerequisites
+  
+  - Run "POST Create Alert - With MessageID" first to set `createdAlertId`
+  - Valid admin authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: `{ "alert": { ... } }` with matching alert data
+  
+  ## What This Tests
+  
+  - Alert retrieval by ID returns 200 (Requirement 11.5)
+  - Response wrapped under 'alert' key
+  - Alert ID matches the requested ID
+  - SIF_ExtendedElements has correct PESC-JSON structure
+}

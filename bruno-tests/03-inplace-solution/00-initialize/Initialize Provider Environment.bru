@@ -1,0 +1,161 @@
+meta {
+  name: Initialize Provider Environment
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{gatewayUrl}}/{{domainId}}/{{solutionId}}/environments/{{standaloneProviderEnvironmentId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isDefined
+  res.body.infrastructureServices: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  
+  // Verify environment ID is configured
+  const envId = bru.getEnvVar('standaloneProviderEnvironmentId');
+  if (!envId) {
+    throw new Error('standaloneProviderEnvironmentId not configured in standalone environment');
+  }
+  
+  auth.setAuthHeaders(req, bru, 'provider');
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const env = res.getBody();
+    
+    // Extract and store infrastructure service URLs for Provider
+    if (env.infrastructureServices && env.infrastructureServices.infrastructureService) {
+      const services = env.infrastructureServices.infrastructureService;
+      
+      const servicesService = services.find(s => s.name === 'SERVICES_CONNECTOR');
+      if (servicesService) {
+        bru.setVar('providerServicesUrl', servicesService.value);
+        console.log('Provider Services URL:', servicesService.value);
+      }
+      
+      const eventsService = services.find(s => s.name === 'EVENTS_CONNECTOR');
+      if (eventsService) {
+        bru.setVar('providerEventsUrl', eventsService.value);
+        console.log('Provider Events URL:', eventsService.value);
+      }
+      
+      const queuesService = services.find(s => s.name === 'QUEUES');
+      if (queuesService) {
+        bru.setVar('providerQueuesUrl', queuesService.value);
+        console.log('Provider Queues URL:', queuesService.value);
+      }
+    }
+    
+    // Store environment details
+    bru.setVar('providerEnvironmentId', env.id);
+    bru.setVar('providerConsumerName', env.consumerName);
+    
+    // Verify provider is registered to PROVIDE the test object in the test zone
+    const testZone = bru.getEnvVar('testZoneId');
+    const testObject = bru.getEnvVar('testObjectName');
+    
+    let hasProvideRights = false;
+    if (env.provisionedZones && env.provisionedZones.provisionedZone) {
+      const zone = env.provisionedZones.provisionedZone.find(z => z.id === testZone);
+      if (zone && zone.services && zone.services.service) {
+        const service = zone.services.service.find(s => s.name === testObject && s.type === 'OBJECT');
+        if (service && service.rights && service.rights.right) {
+          // Check for CREATE right (which implies PROVIDE capability)
+          const createRight = service.rights.right.find(r => r.type === 'CREATE');
+          hasProvideRights = createRight && createRight.value === 'APPROVED';
+        }
+      }
+    }
+    
+    bru.setVar('providerHasProvideRights', hasProvideRights);
+    
+    if (hasProvideRights) {
+      console.log(`✓ Provider has PROVIDE rights for ${testObject} in zone ${testZone}`);
+    } else {
+      console.warn(`✗ Provider does NOT have PROVIDE rights for ${testObject} in zone ${testZone}`);
+    }
+    
+    console.log('Provider environment initialized:', env.consumerName);
+  } else {
+    console.error('Failed to fetch provider environment');
+  }
+}
+
+tests {
+  test("Provider environment fetched successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Environment has infrastructure services", function() {
+    const env = res.getBody();
+    expect(env).to.have.property('infrastructureServices');
+    expect(env.infrastructureServices).to.have.property('infrastructureService');
+  });
+  
+  test("SERVICES_CONNECTOR URL is present", function() {
+    const env = res.getBody();
+    const services = env.infrastructureServices.infrastructureService;
+    const servicesService = services.find(s => s.name === 'SERVICES_CONNECTOR');
+    expect(servicesService).to.exist;
+    expect(servicesService.value).to.be.a('string');
+  });
+  
+  test("EVENTS_CONNECTOR URL is present", function() {
+    const env = res.getBody();
+    const services = env.infrastructureServices.infrastructureService;
+    const eventsService = services.find(s => s.name === 'EVENTS_CONNECTOR');
+    expect(eventsService).to.exist;
+    expect(eventsService.value).to.be.a('string');
+  });
+  
+  test("Provider has PROVIDE rights for test object in test zone", function() {
+    const hasRights = bru.getVar('providerHasProvideRights');
+    expect(hasRights).to.be.true;
+  });
+}
+
+docs {
+  # Initialize Provider Environment
+  
+  Fetches the provider environment details and extracts connector URLs.
+  
+  ## Purpose
+  
+  This test should be run after initializing the consumer environment. It:
+  1. Fetches the provider environment object from the broker
+  2. Extracts connector URLs (services, responses, events, queues)
+  3. Stores URLs in Bruno variables for subsequent tests
+  
+  ## Prerequisites
+  
+  - Valid provider session token and shared secret in .env
+  - Valid provider environment ID in .env
+  - Provider environment exists in the broker
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: Environment object with connector URLs
+  
+  ## Variables Set
+  
+  After successful execution, these variables are available:
+  - `providerServicesUrl` - URL for provider to publish objects
+  - `providerResponsesUrl` - URL for provider to respond to requests
+  - `providerEventsUrl` - URL for provider to send events
+  - `providerQueuesUrl` - URL for provider queue operations
+}

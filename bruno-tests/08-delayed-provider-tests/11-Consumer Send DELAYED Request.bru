@@ -1,0 +1,92 @@
+meta {
+  name: 11-Consumer Send DELAYED Request
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{dlyConsumerRequestsUrl}}/DELAYED_TEST_OBJECTs
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{dlyZoneId}}
+  contextId: DEFAULT
+  requestType: DELAYED
+  queueId: {{dlyConsumerQueueId}}
+  testRandomHeader: came through
+  navigationPageSize: 10
+  queryIntention: ALL
+}
+
+assert {
+  res.status: eq 202
+  res.body.messageId: isDefined
+}
+
+script:pre-request {
+  const queueId = bru.getVar('dlyConsumerQueueId');
+  if (!queueId) {
+    throw new Error('Consumer queue ID not set. Run step 10 first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'dlyConsumer' });
+}
+
+script:post-response {
+  await new Promise(resolve =>
+  setTimeout(resolve, 3000));
+  
+  const status = res.getStatus();
+  console.log('DELAYED request response status:', status);
+  
+  if (status === 202) {
+    const data = res.getBody();
+    console.log('Accepted — messageId:', data.messageId);
+    console.log('Response will be delivered to queueId:', data.queueId);
+    bru.setVar('dlyDelayedMessageId', data.messageId);
+  } else {
+    console.error('Unexpected status:', status, JSON.stringify(res.getBody()));
+  }
+}
+
+tests {
+  test("DELAYED request accepted with 202", function() {
+    expect(res.getStatus()).to.equal(202);
+  });
+  
+  test("Response contains messageId", function() {
+    const data = res.getBody();
+    expect(data.messageId).to.exist;
+  });
+}
+
+docs {
+  # Consumer Sends DELAYED GET Request
+  
+  The consumer sends a GET request with `requestType: DELAYED` and
+  `queueId` header. The broker accepts the request (202) and enqueues
+  it to the provider's queue. The DELAYED-only provider polls its queue,
+  processes the request, and submits a response via the Responses Connector.
+  The response is then delivered to the consumer's queue.
+  
+  ## Expected Flow
+  
+  1. Consumer → Requests Connector: GET with requestType=DELAYED, queueId
+  2. Requests Connector: returns 202 Accepted immediately
+  3. Broker enqueues request to provider's queue
+  4. Provider polls queue, picks up request
+  5. Provider generates response, submits via Responses Connector
+  6. Response delivered to consumer's queue
+  7. Consumer polls queue to retrieve the response (step 12)
+  
+  ## Prerequisites
+  
+  - All infrastructure setup complete (steps 00-09)
+  - Consumer queue created (step 10)
+  - Test provider application running with --provider.queue-id flag
+}

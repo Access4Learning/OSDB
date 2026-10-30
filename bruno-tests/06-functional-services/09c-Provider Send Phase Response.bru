@@ -1,0 +1,63 @@
+meta {
+  name: 09c-Provider Send Phase Response
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{gatewayUrl}}/{{fsDomainId}}/{{fsSolutionId}}/responses/DataExport
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  queueId: {{fsResponseQueueId}}
+  requestId: {{fsResponseRequestId}}
+  serviceType: FUNCTIONAL
+  zoneId: {{fsZoneId}}
+  contextId: DEFAULT
+}
+
+body:json {
+  {
+    "serviceName": "DataExport",
+    "serviceType": "FUNCTIONAL",
+    "payload": {
+      "phase": {
+        "name": "extraction",
+        "state": "INPROGRESS",
+        "description": "Phase data received, extraction in progress"
+      }
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'fsProvider' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Provider send phase response status:', status);
+}
+
+assert {
+  res.status: eq 202
+}
+
+tests {
+  test("Provider phase response accepted (202)", function() {
+    expect(res.getStatus()).to.equal(202);
+  });
+}
+
+docs {
+  # Provider Send Phase Response
+
+  Provider sends a response to the consumer's phase data submission
+  via the responses-connector.
+}

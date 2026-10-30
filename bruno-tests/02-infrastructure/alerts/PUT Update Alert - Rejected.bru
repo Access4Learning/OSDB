@@ -1,0 +1,78 @@
+meta {
+  name: PUT Update Alert - Rejected
+  type: http
+  seq: 6
+  tags: [
+    nondestructive
+  ]
+}
+
+put {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/alerts/{{createdAlertId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "alert": {
+      "reporter": "UpdatedReporter",
+      "exchange": "REQUEST",
+      "level": "WARNING"
+    }
+  }
+}
+
+assert {
+  res.status: eq 405
+}
+
+script:pre-request {
+  const alertId = bru.getVar('createdAlertId');
+  if (!alertId) {
+    throw new Error('No alert ID found. Run "POST Create Alert - With MessageID" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Update alert rejected with 405", function() {
+    expect(res.getStatus()).to.equal(405);
+  });
+  
+  test("Error indicates alerts are immutable", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    const bodyStr = JSON.stringify(data).toLowerCase();
+    expect(bodyStr).to.include('immutable');
+  });
+}
+
+docs {
+  # Update Alert - Rejected
+  
+  Attempts to update an existing alert via PUT. The SIF 3.7 specification
+  prohibits alert updates — alerts are immutable.
+  
+  ## Prerequisites
+  
+  - Run "POST Create Alert - With MessageID" first to set `createdAlertId`
+  - Valid admin authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 405 Method Not Allowed
+  
+  ## What This Tests
+  
+  - PUT on alerts returns 405 (Requirement 11.6)
+  - Alerts are immutable per SIF 3.7 specification
+}

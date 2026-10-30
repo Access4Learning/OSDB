@@ -1,0 +1,74 @@
+meta {
+  name: POST Create Zone - Success
+  type: http
+  seq: 2
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/zones/zone
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+body:json {
+  {
+    "zone": {
+      "id": "{{testDataPrefix}}-zone-{{$timestamp}}",
+      "description": "Test zone created by Bruno API tests"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdZoneId', data.zone.id);
+    console.log('Created zone:', data.zone.id);
+  }
+}
+
+tests {
+  test("Zone created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response is wrapped under zone with id", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('zone');
+    expect(data.zone).to.have.property('id');
+    expect(data.zone).to.have.property('solutionId');
+    expect(data.zone.id).to.include('bruno-test-zone');
+  });
+}
+
+docs {
+  # Create Zone - Success
+  
+  Creates a new zone in the solution via the singular SIF object-service subpath
+  `POST /zones/zone` with the body wrapped under the `zone` key and the identifier
+  supplied under `id`. A DEFAULT context is auto-created in the zone.
+  
+  ## Expected Response
+  
+  - Status: 201 Created
+  - Body: `{ "zone": { "id": ..., ... } }` with the business identifier under `id`
+}

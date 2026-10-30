@@ -1,0 +1,84 @@
+meta {
+  name: GET Current Session - Success
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{gatewayUrl}}/admin-users/sessions/current
+  body: none
+  auth: none
+}
+
+headers {
+  X-Admin-Session-Token: {{adminSessionToken}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.userId: isDefined
+  res.body.username: isDefined
+  res.body.domainUuid: isDefined
+  res.body.solutionUuid: isDefined
+}
+
+script:pre-request {
+  const token = bru.getVar('adminSessionToken');
+  if (!token) {
+    throw new Error('No admin session token found. Run "Login - Success" first.');
+  }
+}
+
+tests {
+  test("Current session returns 200 OK", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response contains user identity", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('userId');
+    expect(data).to.have.property('username');
+    expect(data.username).to.equal(bru.getVar('adminUserUsername'));
+  });
+  
+  test("Response contains domain and solution scope", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('domainUuid');
+    expect(data).to.have.property('solutionUuid');
+    expect(data.domainUuid).to.equal(bru.getVar('adminUserDomainUuid'));
+    expect(data.solutionUuid).to.equal(bru.getVar('adminUserSolutionUuid'));
+  });
+  
+  test("Response contains selectedEnvironmentId field", function() {
+    const data = res.getBody();
+    // selectedEnvironmentId may be null if no environment selected yet
+    expect(data).to.have.property('selectedEnvironmentId');
+  });
+}
+
+docs {
+  # Get Current Session - Success
+  
+  Retrieves the current admin session information.
+  
+  ## Prerequisites
+  
+  - Must have a valid admin session token (from successful login)
+  - Run this BEFORE the logout test (logout invalidates the token)
+  
+  ## Request
+  
+  - Header: `X-Admin-Session-Token` with valid session token
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: `{ userId, username, domainUuid, solutionUuid, selectedEnvironmentId }`
+  
+  ## What This Tests
+  
+  - Session info retrieval with valid token
+  - Response contains correct user identity and scope
+  - selectedEnvironmentId reflects current selection state
+  - Requirements: 3.1
+}

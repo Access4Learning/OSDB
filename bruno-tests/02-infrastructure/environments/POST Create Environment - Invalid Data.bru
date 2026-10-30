@@ -1,0 +1,83 @@
+meta {
+  name: POST Create Environment - Invalid Data
+  type: http
+  seq: 6
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/environments/environment
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environment": {
+      "consumerName": "",
+      "type": "INVALID_TYPE"
+    }
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.error.id: isDefined
+  res.body.error.code: isDefined
+  res.body.error.subCode: isDefined
+  res.body.error.message: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Request rejected with 400 Bad Request", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+  
+  test("Response contains SIF 3.7 errorCommon format", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('error');
+    expect(data.error).to.have.property('id');
+    expect(data.error).to.have.property('code');
+    expect(data.error).to.have.property('subCode');
+    expect(data.error).to.have.property('message');
+    expect(data.error).to.have.property('scope');
+    expect(data.error).to.not.have.property('timestamp');
+    expect(data.error.code).to.equal(400);
+  });
+  
+  test("Error message describes validation issue", function() {
+    const data = res.getBody();
+    expect(data.error.message).to.be.a('string');
+    expect(data.error.message.length).to.be.greaterThan(0);
+  });
+}
+
+docs {
+  # Create Environment - Invalid Data
+  
+  Attempts to create an environment with invalid data while authenticated.
+  
+  ## Expected Response
+  
+  - Status: 400 Bad Request
+  - Body: SIF error format with validation details
+  
+  ## What This Tests
+  
+  - Validation of required fields
+  - Validation of field formats
+  - SIF-compliant error response format
+}

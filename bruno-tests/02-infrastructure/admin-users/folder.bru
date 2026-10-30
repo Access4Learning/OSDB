@@ -1,0 +1,41 @@
+meta {
+  name: admin-users
+  seq: 8
+}
+
+docs {
+  # Admin User Management Tests
+  
+  Tests for admin user CRUD operations at `/admin-users` endpoints.
+  
+  ## What Are Admin Users?
+  
+  Admin users are human operator accounts for the SIF Unity Broker admin console.
+  Each admin user has:
+  - Username (3-128 chars, alphanumeric/underscore/hyphen)
+  - Bcrypt-hashed password (8-72 chars)
+  - Domain+solution scope
+  - Associations to one or more environments
+  
+  ## URL Pattern
+  
+  Admin user management endpoints:
+  - `POST /admin-users` — Create an admin user
+  - `GET /admin-users?domainUuid={}&solutionUuid={}` — List admin users
+  - `GET /admin-users/{id}` — Get admin user by ID
+  - `DELETE /admin-users/{id}` — Delete an admin user
+  
+  ## Tests Included
+  
+  - Create admin user (success)
+  - Create admin user (validation error)
+  - Create admin user (duplicate - 409 conflict)
+  - List admin users
+  - Delete admin user
+  
+  ## Important Notes
+  
+  - All endpoints require HMAC authentication
+  - Authorization scoping: global admin → any scope, broker-services → same domain+solution, regular → same domain+solution
+  - Username must be unique within a domain+solution combination
+}

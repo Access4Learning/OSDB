@@ -1,0 +1,94 @@
+meta {
+  name: 19-Register Legacy Provider for LegacyTestObjects
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{gatewayUrl}}/{{mpDomainId}}/{{mpSolutionId}}/providers/provider
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "provider": {
+      "environmentId": "{{mpLegacyProviderEnvId}}",
+      "serviceName": "LegacyTestObjects",
+      "zoneId": "{{mpZoneId}}",
+      "contextId": "DEFAULT",
+      "serviceType": "OBJECT",
+      "endPoint": {
+        "location": "http://localhost:9999/LegacyTestObjects"
+      },
+      "supportedRequestTypes": {
+        "supportedRequestType": [
+          {
+            "requestType": "DELAYED",
+            "operations": {
+              "operation": [
+                "CREATE",
+                "QUERY",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody().provider;
+    bru.setVar('mpLegacyProviderRegistrationId', data.id);
+    console.log('Registered legacy provider for LegacyTestObjects:', data.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.provider.id: isDefined
+  res.body.provider.serviceName: eq LegacyTestObjects
+}
+
+tests {
+  test("Legacy provider registered for LegacyTestObjects with DELAYED support", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody().provider;
+    expect(data.serviceName).to.equal('LegacyTestObjects');
+    expect(data.endPoint.location).to.include('LegacyTestObjects');
+  });
+}
+
+docs {
+  # Register Legacy Provider for LegacyTestObjects
+  
+  Registers the legacy-tagged provider for the LegacyTestObjects service
+  with DELAYED request type support. This is required for the requests-connector
+  to route DELAYED requests to this provider's queue.
+  
+  Uses a different service name (LegacyTestObjects) from the original provider
+  (MatrixParamTestObjects) because SIF only allows one provider per service
+  per zone/context.
+  
+  ## Prerequisites
+  
+  - Legacy provider environment created (step 13)
+  - Legacy provider PROVIDE ACL created (step 15)
+  - Legacy provider queue created (step 17)
+  - Legacy provider subscription created (step 18)
+}

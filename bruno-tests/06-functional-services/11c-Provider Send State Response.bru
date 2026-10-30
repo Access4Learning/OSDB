@@ -1,0 +1,62 @@
+meta {
+  name: 11c-Provider Send State Response
+  type: http
+  seq: 24
+}
+
+post {
+  url: {{gatewayUrl}}/{{fsDomainId}}/{{fsSolutionId}}/responses/DataExport
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  queueId: {{fsResponseQueueId}}
+  requestId: {{fsResponseRequestId}}
+  serviceType: FUNCTIONAL
+  zoneId: {{fsZoneId}}
+  contextId: DEFAULT
+}
+
+body:json {
+  {
+    "serviceName": "DataExport",
+    "serviceType": "FUNCTIONAL",
+    "payload": {
+      "state": {
+        "type": "INPROGRESS",
+        "description": "State updated successfully"
+      }
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'fsProvider' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Provider send state response status:', status);
+}
+
+assert {
+  res.status: eq 202
+}
+
+tests {
+  test("Provider state response accepted (202)", function() {
+    expect(res.getStatus()).to.equal(202);
+  });
+}
+
+docs {
+  # Provider Send State Response
+
+  Provider sends a response to the consumer's state update request
+  via the responses-connector.
+}

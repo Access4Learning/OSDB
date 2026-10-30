@@ -1,0 +1,46 @@
+meta {
+  name: Gateway Health Check
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{gatewayUrl}}/actuator/health
+  body: none
+  auth: none
+}
+
+docs {
+  # Gateway Health Check
+  
+  Verifies that the API Gateway is running and healthy.
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: JSON with status field indicating "UP"
+  
+  ## What This Tests
+  
+  - Gateway service is running
+  - Gateway is accessible on the configured port
+  - Gateway actuator endpoints are enabled
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: isDefined
+}
+
+tests {
+  test("Gateway is healthy", function() {
+    const data = res.getBody();
+    expect(res.getStatus()).to.equal(200);
+    expect(data).to.have.property('status');
+    expect(data.status).to.be.oneOf(['UP', 'SERVING']);
+  });
+  
+  test("Response time is acceptable", function() {
+    expect(res.getResponseTime()).to.be.below(5000);
+  });
+}

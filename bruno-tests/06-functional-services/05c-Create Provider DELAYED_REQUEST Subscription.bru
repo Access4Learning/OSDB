@@ -1,0 +1,102 @@
+meta {
+  name: 05c-Create Provider DELAYED_REQUEST Subscription
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{gatewayUrl}}/{{fsDomainId}}/{{fsSolutionId}}/subscriptions/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{fsProviderQueueId}}",
+      "aclEntryId": "{{fsProviderAclId}}",
+      "serviceName": "DataExport",
+      "serviceType": "FUNCTIONAL",
+      "messageType": "DELAYED_REQUEST"
+    }
+  }
+}
+
+script:pre-request {
+  const queueId = bru.getVar('fsProviderQueueId');
+  if (!queueId) {
+    throw new Error('Provider queue ID not set. Run step 05b first.');
+  }
+
+  const aclId = bru.getVar('fsProviderAclId');
+  if (!aclId) {
+    throw new Error('Provider ACL ID not set. Run step 04c first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'fsProvider' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('fsProviderSubscriptionId', data.subscription.id);
+    console.log('Created provider DELAYED_REQUEST subscription:', data.subscription.id);
+    console.log('Provider queueId:', data.subscription.queueId);
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.subscription.id: isDefined
+  res.body.subscription.queueId: isDefined
+}
+
+tests {
+  test("Provider DELAYED_REQUEST subscription created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Subscription has correct messageType", function() {
+    const data = res.getBody().subscription;
+    expect(data.messageType).to.equal('DELAYED_REQUEST');
+  });
+
+  test("Subscription queue matches provider queue", function() {
+    const data = res.getBody().subscription;
+    const expectedQueueId = bru.getVar('fsProviderQueueId');
+    expect(data.queueId).to.equal(expectedQueueId);
+  });
+}
+
+docs {
+  # Create Provider DELAYED_REQUEST Subscription
+
+  Creates a DELAYED_REQUEST subscription for the provider, binding the
+  "DataExport" functional service to the provider's queue.
+
+  When a consumer sends a DELAYED request, the broker's
+  `DelayedRequestHandler.handleDelayedToDelayed()` looks up this
+  subscription to find the provider's queue, then enqueues the
+  consumer's request there. The provider polls its queue, processes
+  the request, and sends the response back via the responses-connector.
+
+  ## Prerequisites
+
+  - Provider PROVIDE ACL exists (step 04c) — `fsProviderAclId`
+  - Provider queue exists (step 05b) — `fsProviderQueueId`
+
+  ## What This Enables
+
+  The full DELAYED_to_DELAYED flow:
+  1. Consumer sends DELAYED request → broker returns 202
+  2. Broker enqueues request to provider's queue (this subscription)
+  3. Provider polls queue, processes request
+  4. Provider sends response → broker delivers to consumer's queue
+}

@@ -1,0 +1,196 @@
+meta {
+  name: POST Create Code Set - Success
+  type: http
+  seq: 1
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/codeSets/codeSet
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  requestAction: CREATE
+  serviceType: UTILITY
+  serviceName: codeSets
+}
+
+body:json {
+  {
+    "codeSet": {
+      "id": "{{testDataPrefix}}-NCES_RaceEthnicity",
+      "zone": "environment-global",
+      "version": "2024.1",
+      "timestamp": "2024-06-15T10:30:00Z",
+      "source": "https://nces.ed.gov/ipeds/cipcode",
+      "codeItems": {
+        "codeItem": [
+          {
+            "code": "1",
+            "value": "American Indian or Alaska Native",
+            "description": "A person having origins in any of the original peoples of North and South America",
+            "definition": "Full NCES definition text for race ethnicity code 1",
+            "action": "ADD",
+            "timestamp": "2024-06-15T10:30:00Z",
+            "source": "https://nces.ed.gov/ipeds/cipcode/1",
+            "namespace": "urn:nces:race",
+            "aliases": {
+              "alias": [
+                {
+                  "code": {
+                    "old": false,
+                    "official": true,
+                    "value": "AI/AN"
+                  },
+                  "source": "https://nces.ed.gov",
+                  "namespace": "urn:nces:race:alias"
+                }
+              ]
+            }
+          },
+          {
+            "code": "2",
+            "value": "Asian",
+            "description": "A person having origins in any of the original peoples of the Far East",
+            "action": "ADD",
+            "timestamp": "2024-06-15T10:30:00Z"
+          }
+        ]
+      }
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.codeSet: isDefined
+  res.body.codeSet.id: isDefined
+  res.body.codeSet.zone: eq environment-global
+  res.body.codeSet.version: eq 2024.1
+  res.body.codeSet.timestamp: isDefined
+}
+
+script:pre-request {
+  const domainId = bru.getVar('createdDomainId');
+  if (!domainId) {
+    throw new Error('No domain ID found. Run domain/solution/environment setup first.');
+  }
+  
+  const solutionId = bru.getVar('createdSolutionId');
+  if (!solutionId) {
+    throw new Error('No solution ID found. Run domain/solution/environment setup first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdCodeSetId', data.codeSet.id);
+    console.log('Created code set:', data.codeSet.id);
+    console.log('Zone:', data.codeSet.zone);
+    console.log('Version:', data.codeSet.version);
+  }
+}
+
+tests {
+  test("Code set created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response wrapped under 'codeSet' key", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('codeSet');
+  });
+  
+  test("Code set ID matches requested ID", function() {
+    const data = res.getBody();
+    const prefix = bru.getEnvVar('testDataPrefix') || 'bruno-test';
+    expect(data.codeSet.id).to.equal(prefix + '-NCES_RaceEthnicity');
+  });
+  
+  test("Code set has correct zone", function() {
+    const data = res.getBody();
+    expect(data.codeSet.zone).to.equal('environment-global');
+  });
+  
+  test("Code set has correct version", function() {
+    const data = res.getBody();
+    expect(data.codeSet.version).to.equal('2024.1');
+  });
+  
+  test("Code set has timestamp", function() {
+    const data = res.getBody();
+    expect(data.codeSet.timestamp).to.equal('2024-06-15T10:30:00Z');
+  });
+  
+  test("Code set has source URI", function() {
+    const data = res.getBody();
+    expect(data.codeSet.source).to.equal('https://nces.ed.gov/ipeds/cipcode');
+  });
+  
+  test("Code set contains codeItems", function() {
+    const codeSet = res.getBody().codeSet;
+    expect(codeSet).to.have.property('codeItems');
+    expect(codeSet.codeItems).to.have.property('codeItem');
+    expect(codeSet.codeItems.codeItem).to.be.an('array');
+    expect(codeSet.codeItems.codeItem.length).to.equal(2);
+  });
+  
+  test("First code item has correct fields", function() {
+    const item = res.getBody().codeSet.codeItems.codeItem[0];
+    expect(item.code).to.equal('1');
+    expect(item.value).to.equal('American Indian or Alaska Native');
+    expect(item.action).to.equal('ADD');
+    expect(item.timestamp).to.equal('2024-06-15T10:30:00Z');
+  });
+  
+  test("First code item has aliases with correct structure", function() {
+    const item = res.getBody().codeSet.codeItems.codeItem[0];
+    expect(item).to.have.property('aliases');
+    expect(item.aliases).to.have.property('alias');
+    expect(item.aliases.alias).to.be.an('array');
+    expect(item.aliases.alias.length).to.equal(1);
+    
+    const alias = item.aliases.alias[0];
+    expect(alias).to.have.property('code');
+    expect(alias.code.old).to.equal(false);
+    expect(alias.code.official).to.equal(true);
+    expect(alias.code.value).to.equal('AI/AN');
+    expect(alias.source).to.equal('https://nces.ed.gov');
+    expect(alias.namespace).to.equal('urn:nces:race:alias');
+  });
+}
+
+docs {
+  # Create Code Set - Success
+  
+  Creates a new code set with a valid payload including codeItems with nested aliases.
+  
+  ## Prerequisites
+  
+  - Domain and solution must exist (createdDomainId, createdSolutionId)
+  - A codeSets provider must be registered in the environment-global zone
+  - Valid admin authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 201 Created
+  - Body: `{ "codeSet": { ... } }` with all fields matching the request
+  
+  ## What This Tests
+  
+  - Code set creation with full payload (Requirement 14.1)
+  - Response wrapped under 'codeSet' key (SIF 3.7 convention)
+  - codeItems with nested aliases round-trip correctly
+  - Code set ID stored for subsequent tests
+}

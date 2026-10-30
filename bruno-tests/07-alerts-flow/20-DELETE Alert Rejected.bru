@@ -1,0 +1,54 @@
+meta {
+  name: 20-DELETE Alert Rejected
+  type: http
+  seq: 23
+}
+
+delete {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/alerts/{{altAlertId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 405
+}
+
+script:pre-request {
+  const alertId = bru.getVar('altAlertId');
+  if (!alertId) {
+    throw new Error('altAlertId not set. Run step 15 first to create an alert.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Delete alert rejected with 405", function() {
+    expect(res.getStatus()).to.equal(405);
+  });
+
+  test("Error indicates alerts are immutable", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    const bodyStr = JSON.stringify(data).toLowerCase();
+    expect(bodyStr).to.include('immutable');
+  });
+}
+
+docs {
+  # DELETE Alert Rejected
+  
+  Attempts to delete an existing alert via DELETE. The SIF 3.7 specification
+  prohibits alert deletion — alerts are immutable.
+  
+  ## Expected Response
+  
+  - Status: 405 Method Not Allowed
+}

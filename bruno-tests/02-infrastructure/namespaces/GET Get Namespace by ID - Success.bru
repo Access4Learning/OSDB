@@ -1,0 +1,93 @@
+meta {
+  name: GET Get Namespace by ID - Success
+  type: http
+  seq: 3
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/namespaces/{{createdNamespaceId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.namespace: isDefined
+  res.body.namespace.id: isDefined
+  res.body.namespace.zone: isDefined
+  res.body.namespace.uri: isDefined
+  res.body.namespace.url: isDefined
+}
+
+script:pre-request {
+  const namespaceId = bru.getVar('createdNamespaceId');
+  if (!namespaceId) {
+    throw new Error('No namespace ID found. Run "POST Create Namespace - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Namespace retrieved successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response wrapped under 'namespace' key", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('namespace');
+  });
+  
+  test("Namespace ID matches requested ID", function() {
+    const data = res.getBody();
+    const expectedId = bru.getVar('createdNamespaceId');
+    expect(data.namespace.id).to.equal(expectedId);
+  });
+  
+  test("Namespace contains all expected fields", function() {
+    const ns = res.getBody().namespace;
+    expect(ns).to.have.property('id');
+    expect(ns).to.have.property('zone');
+    expect(ns).to.have.property('uri');
+    expect(ns).to.have.property('url');
+  });
+  
+  test("Namespace fields match originally created values", function() {
+    const ns = res.getBody().namespace;
+    expect(ns.zone).to.equal('environment-global');
+    expect(ns.uri).to.equal('http://www.sifassociation.org/infrastructure/3.7');
+    expect(ns.url).to.equal('http://specification.sifassociation.org/Implementation/Infrastructure/3.7/XSD/Schema_NoIncludes_Annotated_Strict/SIF_Message.xsd');
+  });
+}
+
+docs {
+  # Get Namespace by ID - Success
+  
+  Retrieves a specific namespace by its broker-assigned UUID identifier.
+  
+  ## Prerequisites
+  
+  - Run "POST Create Namespace - Success" first to set `createdNamespaceId`
+  - Valid authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: `{ "namespace": { ... } }` with matching namespace data
+  
+  ## What This Tests
+  
+  - Namespace retrieval by ID returns 200 (Requirement 2.1)
+  - Response wrapped under 'namespace' key
+  - Namespace ID matches the requested ID
+  - All fields match the originally created values
+}

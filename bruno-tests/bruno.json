@@ -1,0 +1,13 @@
+{
+  "version": "1",
+  "name": "SIF Unity Broker API Tests",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git",
+    ".env"
+  ],
+  "scripts": {
+    "additionalContextRoots": ["./common"]
+  }
+}

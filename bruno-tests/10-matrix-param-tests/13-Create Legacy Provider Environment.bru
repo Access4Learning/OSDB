@@ -1,0 +1,54 @@
+meta {
+  name: 13-Create Legacy Provider Environment
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{gatewayUrl}}/{{mpDomainId}}/{{mpSolutionId}}/environments/environment
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environment": {
+      "consumerName": "MPLegacyProvider-{{$timestamp}}",
+      "type": "BROKERED",
+      "defaultZone": {
+        "id": "{{mpZoneId}}"
+      }
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody().environment;
+    bru.setVar('mpLegacyProviderEnvId', data.id);
+    bru.setVar('mpLegacyProviderSessionToken', data.sessionToken);
+    bru.setVar('mpLegacyProviderSharedSecret', data.sharedSecret);
+    console.log('Created legacy provider environment:', data.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Legacy provider environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

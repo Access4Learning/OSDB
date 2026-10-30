@@ -1,0 +1,39 @@
+meta {
+  name: 04 GET Environment (Before Rotation)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/environments/{{rotTestEnvId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isDefined
+}
+
+script:pre-request {
+  // Authenticate AS the created environment (not admin)
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, {
+    sessionToken: bru.getVar('rotTestSessionToken'),
+    sharedSecret: bru.getVar('rotTestSharedSecret')
+  });
+}
+
+tests {
+  test("Can GET environment with original credentials", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    expect(data.id).to.equal(bru.getVar('rotTestEnvId'));
+    console.log('Successfully authenticated with ORIGINAL credentials');
+  });
+}

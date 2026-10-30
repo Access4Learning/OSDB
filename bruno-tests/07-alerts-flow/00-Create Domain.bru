@@ -1,0 +1,47 @@
+meta {
+  name: 00-Create Domain
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{gatewayUrl}}/domains
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "domainId": "AlertFlowDomain-{{$timestamp}}",
+    "description": "Domain for alerts flow tests"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('altDomainId', data.domainId || data.id);
+    console.log('Created alerts flow domain:', bru.getVar('altDomainId'));
+  }
+}
+
+tests {
+  test("Domain created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

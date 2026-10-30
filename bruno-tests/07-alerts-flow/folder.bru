@@ -1,0 +1,39 @@
+meta {
+  name: Alerts Flow
+  seq: 7
+}
+
+docs {
+  # Alerts Flow - End-to-End Test Suite
+  
+  Exercises the full alerts lifecycle: infrastructure setup, event emission,
+  alert creation referencing a messageId, alert querying, alert event delivery
+  to the provider, and immutability enforcement (405 on PUT/DELETE).
+  
+  ## What This Tests
+  
+  1. Creates domain/solution/zone infrastructure (solution auto-creates environment-global zone, DEFAULT context, BROKER_SERVICES env, alerts provider)
+  2. Creates provider environment with PROVIDE ACL for TESTOBJECT1s, queue, and alerts subscription on environment-global/DEFAULT
+  3. Creates consumer environment with SUBSCRIBE ACL, queue, and subscription for TESTOBJECT1s events
+  4. Provider emits TESTOBJECT1s event with messageId header (gateway caches context in Redis)
+  5. Consumer pulls event off queue and ACKs it
+  6. Consumer creates alert referencing the messageId from the event
+  7. Verifies alert created with extended elements (sourceEnvironmentId, originatingZoneId, originatingContextId, createdAt)
+  8. Lists alerts and verifies collection contains the alert
+  9. Gets alert by ID and verifies fields match
+  10. Provider pulls alert event off its queue (verifies targeted delivery)
+  11. Verifies 405 on PUT and DELETE (alerts are immutable per SIF 3.7)
+  
+  ## Prerequisites
+  
+  - All services running (gateway, environment-service, events-connector, queue-service, subscription-service)
+  - Admin credentials configured in .env
+  
+  ## Variable Prefix
+  
+  All variables use `alt` prefix to avoid conflicts with other test suites.
+  
+  ## Run Order
+  
+  Tests are numbered 00-20 and must be run in sequence.
+}

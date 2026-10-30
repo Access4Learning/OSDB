@@ -1,0 +1,71 @@
+meta {
+  name: 04-Create Provider Environment
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/environments/environment
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environment": {
+      "consumerName": "AlertFlowProvider-{{$timestamp}}",
+      "type": "BROKERED"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.environment.id: isDefined
+  res.body.environment.sessionToken: isDefined
+}
+
+script:pre-request {
+  const solutionId = bru.getVar('altSolutionId');
+  if (!solutionId) {
+    throw new Error('altSolutionId not set. Run step 01 first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody().environment;
+    bru.setVar('altProviderEnvId', data.id);
+    bru.setVar('altProviderSessionToken', data.sessionToken);
+    bru.setVar('altProviderSharedSecret', data.sharedSecret);
+    console.log('Created provider environment:', data.id);
+
+    if (data.infrastructureServices && data.infrastructureServices.infrastructureService) {
+      const services = data.infrastructureServices.infrastructureService;
+      const eventsService = services.find(s => s.name === 'EVENTS_CONNECTOR');
+      if (eventsService) {
+        bru.setVar('altProviderEventsUrl', eventsService.value);
+        console.log('Provider Events URL:', eventsService.value);
+      }
+    }
+  }
+}
+
+tests {
+  test("Provider environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody().environment;
+    expect(data.id).to.exist;
+    expect(data.sessionToken).to.exist;
+    expect(data.sharedSecret).to.exist;
+  });
+}

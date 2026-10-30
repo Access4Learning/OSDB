@@ -1,0 +1,110 @@
+meta {
+  name: POST Create Another Environment
+  type: http
+  seq: 0
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/environments/environment
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environment": {
+      "consumerName": "{{testDataPrefix}}-adversary-{{$randomUUID}}",
+      "type": "BROKERED"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.environment.id: isDefined
+  res.body.environment.sessionToken: isDefined
+  res.body.environment.sharedSecret: isDefined
+}
+
+script:pre-request {
+  const domainId = bru.getVar('createdDomainId');
+  if (!domainId) {
+    throw new Error('No domain ID found. Run infrastructure setup first.');
+  }
+  const solutionId = bru.getVar('createdSolutionId');
+  if (!solutionId) {
+    throw new Error('No solution ID found. Run infrastructure setup first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody().environment;
+    bru.setVar('createdAnotherEnvironmentId', data.id);
+    bru.setVar('createdAnotherSessionToken', data.sessionToken);
+    bru.setVar('createdAnotherSharedSecret', data.sharedSecret);
+    console.log('Created adversary environment:', data.id);
+    console.log('Stored createdAnotherSessionToken and createdAnotherSharedSecret for isolation tests');
+  }
+}
+
+tests {
+  test("Second environment created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response contains environment credentials", function() {
+    const data = res.getBody().environment;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('sessionToken');
+    expect(data).to.have.property('sharedSecret');
+    expect(data).to.have.property('consumerName');
+    expect(data.type).to.equal('BROKERED');
+  });
+
+  test("Second environment ID is valid UUID", function() {
+    const data = res.getBody().environment;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    expect(data.id).to.match(uuidRegex);
+  });
+
+  test("Second environment is different from first environment", function() {
+    const data = res.getBody().environment;
+    const firstEnvId = bru.getVar('createdEnvironmentId');
+    expect(data.id).to.not.equal(firstEnvId);
+  });
+}
+
+docs {
+  # Create Another Environment (Adversary)
+
+  **SECURITY ISOLATION TEST SETUP**
+
+  Creates a second environment ("adversary") under the same domain/solution.
+  This environment will be the target of cross-environment access attempts.
+
+  The first environment (createdEnvironmentId) will attempt to access
+  resources owned by this second environment, and all such attempts
+  should be rejected with 403 Forbidden.
+
+  ## Prerequisites
+
+  - Domain and solution must be created (createdDomainId, createdSolutionId)
+  - Admin credentials must be available in .env
+  - First environment must already exist (createdEnvironmentId)
+
+  ## Stored Variables
+
+  - `createdAnotherEnvironmentId` - ID of the second environment
+  - `createdAnotherSessionToken` - Session token for the second environment
+  - `createdAnotherSharedSecret` - Shared secret for the second environment
+}

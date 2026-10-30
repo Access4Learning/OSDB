@@ -1,0 +1,86 @@
+meta {
+  name: POST Create Zone - Non-Admin Rejected
+  type: http
+  seq: 6
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/zones/zone
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "zone": {
+      "id": "unauthorized-zone-attempt",
+      "description": "This should be rejected"
+    }
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.error.id: isDefined
+  res.body.error.code: isDefined
+  res.body.error.subCode: isDefined
+  res.body.error.message: isDefined
+}
+
+script:pre-request {
+  const token = bru.getVar('createdSessionToken');
+  if (!token) {
+    throw new Error('No created environment credentials. Run "Create Environment - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+tests {
+  test("Non-admin rejected with 403", function() {
+    expect(res.getStatus()).to.equal(403);
+  });
+  
+  test("Response is SIF 3.7 errorCommon shape", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('error');
+    expect(data.error).to.have.property('id');
+    expect(data.error).to.have.property('code');
+    expect(data.error).to.have.property('subCode');
+    expect(data.error).to.have.property('message');
+    expect(data.error).to.have.property('scope');
+    expect(data.error).to.not.have.property('timestamp');
+    expect(data.error.scope).to.equal('BROKER');
+    expect(data.error.code).to.equal(403);
+  });
+  
+  test("Error indicates insufficient permissions", function() {
+    const data = res.getBody();
+    expect(data.error.message).to.include('admin');
+  });
+}
+
+docs {
+  # Create Zone - Non-Admin Rejected
+  
+  Attempts to create a zone using a regular (non-admin) environment's credentials
+  via the singular `POST /zones/zone` subpath with a wrapped body.
+  Should be rejected with 403 and a standard `SifErrorResponse`
+  (`{ code, message, scope, timestamp }`) because only global admin environments
+  can manage zones.
+  
+  ## Prerequisites
+  
+  - An environment must be created first (run "Create Environment - Success")
+  - Uses createdSessionToken/createdSharedSecret from that test
+}

@@ -1,0 +1,101 @@
+meta {
+  name: GET List Subscriptions - Success
+  type: http
+  seq: 3
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/subscriptions?queueId={{createdQueueId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.subscription: isDefined
+}
+
+script:pre-request {
+  const queueId = bru.getVar('createdQueueId');
+  if (!queueId) {
+    throw new Error('No queue ID found. Run "POST Create Queue - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+tests {
+  test("List subscriptions returns 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response uses SIF collection wrapper with 'subscription' key", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('subscription');
+    expect(data.subscription).to.be.an('array');
+  });
+  
+  test("Collection contains the previously created subscription", function() {
+    const data = res.getBody();
+    const createdId = bru.getVar('createdSubscriptionId');
+    if (createdId) {
+      const found = data.subscription.some(s => s.id === createdId);
+      expect(found).to.be.true;
+    }
+  });
+  
+  test("Each subscription has SIF-aligned fields", function() {
+    const data = res.getBody();
+    if (data.subscription.length > 0) {
+      const sub = data.subscription[0];
+      // SIF 3.7 required fields
+      expect(sub).to.have.property('id');
+      expect(sub).to.have.property('queueId');
+      expect(sub).to.have.property('type');
+      // Fields populated from ACL entry
+      expect(sub).to.have.property('serviceName');
+      expect(sub).to.have.property('zoneId');
+      // Broker extensions
+      expect(sub).to.have.property('aclEntryId');
+      expect(sub).to.have.property('createdAt');
+    }
+  });
+}
+
+docs {
+  # List Subscriptions - Success
+  
+  Lists subscriptions filtered by queue ID.
+  
+  ## SIF 3.7 Compliance Notes
+  
+  The SIF 3.7 spec defines `GET /subscriptions` as returning all subscriptions
+  for the calling environment (no query params required). Our current implementation
+  requires a `queueId` query parameter. A future enhancement will add environment-scoped
+  listing derived from the session token.
+  
+  Response uses the SIF collection wrapper: `{"subscription": [...]}`.
+  
+  Each subscription includes SIF fields (id, queueId, serviceName, zoneId, contextId, type)
+  plus broker extensions (aclEntryId, createdAt).
+  
+  ## Prerequisites
+  
+  - A queue must exist (createdQueueId)
+  - A subscription should exist — run "POST Create Subscription - Success"
+  - Valid authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: `{"subscription": [...]}`
+}

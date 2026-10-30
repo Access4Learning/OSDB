@@ -1,0 +1,85 @@
+meta {
+  name: POST Create Alert - Invalid MessageID
+  type: http
+  seq: 3
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/alerts/alert
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  requestAction: CREATE
+  serviceType: UTILITY
+  serviceName: alerts
+}
+
+body:json {
+  {
+    "alert": {
+      "reporter": "BrunoTestInvalidMsg",
+      "exchange": "REQUEST",
+      "level": "ERROR",
+      "messageID": "non-existent-message-id-{{$timestamp}}"
+    }
+  }
+}
+
+assert {
+  res.status: eq 404
+}
+
+script:pre-request {
+  const domainId = bru.getVar('createdDomainId');
+  if (!domainId) {
+    throw new Error('No domain ID found. Run domain/solution/environment setup first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Alert creation rejected with invalid messageID", function() {
+    expect(res.getStatus()).to.equal(404);
+  });
+  
+  test("Error response indicates message ID not found", function() {
+    const data = res.getBody();
+    expect(data).to.exist;
+    // Response should contain error information about the unknown message ID
+    const bodyStr = JSON.stringify(data).toLowerCase();
+    expect(bodyStr).to.include('message');
+  });
+}
+
+docs {
+  # Create Alert - Invalid MessageID
+  
+  Attempts to create an alert with a non-existent `messageID`. The service
+  should return 404 because the message context cannot be found in Redis.
+  
+  ## Prerequisites
+  
+  - Domain and solution must exist (createdDomainId, createdSolutionId)
+  - An alerts provider must be registered in the environment-global zone
+  - Valid admin authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 404 Not Found
+  - Body: Error indicating message ID not found or expired
+  
+  ## What This Tests
+  
+  - Alert creation with invalid messageID returns 404 (Requirement 11.3)
+  - Error message indicates the message ID is unknown or expired
+}

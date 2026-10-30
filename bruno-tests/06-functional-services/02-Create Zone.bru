@@ -1,0 +1,57 @@
+meta {
+  name: 02-Create Zone
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{gatewayUrl}}/{{fsDomainId}}/{{fsSolutionId}}/zones/zone
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  X-Run-As-Environment: broker-services
+}
+
+body:json {
+  {
+    "zone": {
+      "id": "FuncSvcZone-{{$timestamp}}",
+      "description": "Zone for functional services tests"
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    const zoneId = data.zone.id;
+    bru.setVar('fsZoneId', zoneId);
+    console.log('Created zone:', zoneId);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Zone created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  # Create Zone
+
+  Creates a zone for routing functional service jobs.
+}

@@ -1,0 +1,54 @@
+meta {
+  name: Namespaces
+  seq: 12
+}
+
+docs {
+  # Namespaces Registry Utility Service Tests
+  
+  Tests for the SIF 3.7 Namespaces Registry Utility Service endpoints.
+  
+  ## What Are Namespaces?
+  
+  Namespaces are a centralized registry of XML namespace URIs and their
+  corresponding schema location URLs that are currently valid within the
+  Environment. Consumers and providers use the registry to stay synchronized
+  and prevent namespace mismatches while exchanging messages. Namespaces
+  support zone-scoping: global entries can be overridden by zone-specific
+  entries with the same URI.
+  
+  ## URL Pattern
+  
+  Namespace endpoints are scoped to a domain and solution:
+  - `POST /{domainId}/{solutionId}/namespaces/namespace` — Create a namespace (admin only)
+  - `GET /{domainId}/{solutionId}/namespaces` — List namespaces (zone-scoped)
+  - `GET /{domainId}/{solutionId}/namespaces/{id}` — Get namespace by ID
+  - `PUT /{domainId}/{solutionId}/namespaces/{id}` — Update namespace (admin only)
+  - `DELETE /{domainId}/{solutionId}/namespaces/{id}` — Delete namespace (admin only)
+  
+  ## Tests Included
+  
+  - Create namespace (admin, valid payload — broker assigns UUID id)
+  - List namespaces (verify collection format)
+  - Get namespace by ID
+  - Update namespace (full replacement)
+  - Delete namespace
+  - Create namespace — non-admin rejected (403)
+  - Zone scoping query — global + zone-specific override by URI
+  
+  ## Prerequisites
+  
+  - A domain and solution must exist (createdDomainId, createdSolutionId)
+  - A namespaces provider must be registered in the environment-global zone
+  - Valid authentication credentials
+  
+  ## Important Notes
+  
+  - Namespaces support full CRUD (unlike alerts which are immutable)
+  - Only admin environments can create, update, or delete namespaces
+  - Any authenticated environment can query namespaces
+  - PUT does full replacement of the entire namespace object
+  - Zone-scoping: zone-specific entries override global entries with the same uri
+  - The `id` is a broker-assigned UUID (not user-provided like code sets)
+  - Namespaces are flat objects: zone, uri, url (no nested child objects)
+}

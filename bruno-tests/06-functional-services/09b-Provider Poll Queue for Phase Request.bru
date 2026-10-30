@@ -1,0 +1,61 @@
+meta {
+  name: 09b-Provider Poll Queue for Phase Request
+  type: http
+  seq: 19
+}
+
+get {
+  url: {{gatewayUrl}}/{{fsDomainId}}/{{fsSolutionId}}/queues/{{fsProviderQueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  connectionId: fsProvider
+  X-Environment-Id: {{fsProviderEnvId}}
+  deleteMessageId: {{fsProviderLastMessageId}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'fsProvider' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  if (status === 200) {
+    const headers = res.getHeaders();
+    const messageId = headers?.messageid;
+    if (messageId) {
+      bru.setVar('fsProviderLastMessageId', messageId);
+    }
+    if (headers.queueid) {
+      bru.setVar('fsResponseQueueId', headers.queueid);
+    }
+    if (headers.requestid) {
+      bru.setVar('fsResponseRequestId', headers.requestid);
+    }
+    console.log('Phase request payload:', JSON.stringify(res.getBody(), null, 2));
+  } else if (status === 204) {
+    console.log('No phase request message available yet.');
+  }
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+tests {
+  test("Provider queue poll succeeds", function() {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+}
+
+docs {
+  # Provider Poll Queue for Phase Request
+
+  Provider polls queue for phase request. ACKs previous message.
+  Extracts SIF headers from response for correlation.
+}

@@ -1,0 +1,60 @@
+meta {
+  name: GET List Solutions - Success
+  type: http
+  seq: 2
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/solutions
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Solutions listed successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response has SIF collection wrapper", function() {
+    const data = res.getBody();
+    expect(data.solutions).to.exist;
+    expect(data.solutions.solution).to.be.an('array');
+  });
+}
+
+docs {
+  # List Solutions - Success
+  
+  Retrieves all solutions for the specified domain.
+  
+  ## URL Pattern
+  
+  `GET /{domainId}/solutions` — returns only solutions belonging to the domain.
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: Array of solution objects scoped to the domain
+  
+  ## What This Tests
+  
+  - Solution listing at `/{domainId}/solutions` path
+  - Results are scoped to the specified domain
+}

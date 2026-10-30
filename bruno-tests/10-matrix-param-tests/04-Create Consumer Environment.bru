@@ -1,0 +1,69 @@
+meta {
+  name: 04-Create Consumer Environment
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{gatewayUrl}}/{{mpDomainId}}/{{mpSolutionId}}/environments/environment
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environment": {
+      "consumerName": "MPConsumer-{{$timestamp}}",
+      "type": "BROKERED",
+      "defaultZone": {
+        "id": "{{mpZoneId}}"
+      }
+    }
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody().environment;
+    bru.setVar('mpConsumerEnvId', data.id);
+    bru.setVar('mpConsumerSessionToken', data.sessionToken);
+    bru.setVar('mpConsumerSharedSecret', data.sharedSecret);
+    console.log('Created consumer environment:', data.id);
+    
+    // Extract requests connector URL from infrastructure services
+    if (data.infrastructureServices && data.infrastructureServices.infrastructureService) {
+      const services = data.infrastructureServices.infrastructureService;
+      const requestsConn = services.find(s => s.name === 'requestsConnector');
+      if (requestsConn) {
+        bru.setVar('mpConsumerRequestsUrl', requestsConn.value);
+        console.log('Consumer Requests URL:', requestsConn.value);
+      }
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.environment.id: isDefined
+  res.body.environment.sessionToken: isDefined
+}
+
+tests {
+  test("Consumer environment created", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody().environment;
+    expect(data.id).to.exist;
+    expect(data.sessionToken).to.exist;
+  });
+}

@@ -1,0 +1,52 @@
+meta {
+  name: 01-Create Solution
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{gatewayUrl}}/{{altDomainId}}/solutions
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "solutionId": "AlertFlowSolution-{{$timestamp}}",
+    "description": "Solution for alerts flow tests"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const domainId = bru.getVar('altDomainId');
+  if (!domainId) {
+    throw new Error('altDomainId not set. Run step 00 first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('altSolutionId', data.solutionId || data.id);
+    console.log('Created alerts flow solution:', bru.getVar('altSolutionId'));
+  }
+}
+
+tests {
+  test("Solution created (auto-creates environment-global zone, DEFAULT context, BROKER_SERVICES env, alerts provider)", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

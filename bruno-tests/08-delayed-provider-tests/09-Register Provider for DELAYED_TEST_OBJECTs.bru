@@ -1,0 +1,106 @@
+meta {
+  name: 09-Register Provider for DELAYED_TEST_OBJECTs
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{gatewayUrl}}/{{dlyDomainId}}/{{dlySolutionId}}/providers/provider
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "provider": {
+      "environmentId": "{{dlyProviderEnvId}}",
+      "serviceName": "DELAYED_TEST_OBJECTs",
+      "zoneId": "{{dlyZoneId}}",
+      "contextId": "DEFAULT",
+      "serviceType": "OBJECT",
+      "endPoint": {
+        "location": "http://localhost:9091/DELAYED_TEST_OBJECTs"
+      },
+      "supportedRequestTypes": {
+        "supportedRequestType": [
+          {
+            "requestType": "DELAYED",
+            "operations": {
+              "operation": [
+                "CREATE",
+                "QUERY",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.provider.id: isDefined
+  res.body.provider.serviceName: eq DELAYED_TEST_OBJECTs
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody().provider;
+    bru.setVar('dlyProviderRegistrationId', data.id);
+    console.log('Registered provider for DELAYED_TEST_OBJECTs:', data.id);
+    console.log('Endpoint:', data.endPoint.location);
+  }
+  
+  const token = bru.getVar('dlyProviderSessionToken');
+  const secret = bru.getVar('dlyProviderSharedSecret');
+  const domain = bru.getVar('dlyDomainId');
+  const solution = bru.getVar('dlySolutionId');
+  const queueId = bru.getVar('dlyProviderQueueId');
+  console.log('');
+  console.log('=== Copy/paste to start test-provider (DELAYED mode) ===');
+  console.log(`java -jar target/test-provider-1.0.0-SNAPSHOT.jar --provider.session-token=${token} --provider.shared-secret=${secret} --provider.domain-id=${domain} --provider.solution-id=${solution} --provider.queue-id=${queueId}`);
+  console.log('=========================================================');
+}
+
+tests {
+  test("Provider registered for DELAYED_TEST_OBJECTs", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody().provider;
+    expect(data.serviceName).to.equal('DELAYED_TEST_OBJECTs');
+    expect(data.endPoint.location).to.include('DELAYED_TEST_OBJECTs');
+  });
+}
+
+docs {
+  # Register Provider for DELAYED_TEST_OBJECTs
+  
+  Registers the test provider application as the DELAYED-only provider
+  for DELAYED_TEST_OBJECTs in the test zone.
+  
+  Unlike the immediate provider tests, this registration only includes
+  the DELAYED request type. The broker will enqueue consumer requests
+  to the provider's queue instead of proxying them via HTTP.
+  
+  The post-response script outputs the java -jar command with the
+  --provider.queue-id flag so the provider knows which queue to poll.
+  
+  ## Prerequisites
+  
+  - Provider environment created (step 04)
+  - Provider PROVIDE ACL created (step 06)
+  - Provider queue created (step 08)
+}

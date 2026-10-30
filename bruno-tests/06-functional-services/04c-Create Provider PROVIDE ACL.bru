@@ -1,0 +1,58 @@
+meta {
+  name: 04c-Create Provider PROVIDE ACL
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{gatewayUrl}}/{{fsDomainId}}/{{fsSolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{fsProviderEnvId}}",
+    "serviceName": "DataExport",
+    "zoneId": "{{fsZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "PROVIDE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('fsProviderAclId', data.id);
+    console.log('Created provider PROVIDE ACL:', data.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Provider PROVIDE ACL created", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  # Create Provider PROVIDE ACL
+
+  Grants the provider PROVIDE access to the DataExport functional service.
+  This is required before registering the provider for the service.
+}

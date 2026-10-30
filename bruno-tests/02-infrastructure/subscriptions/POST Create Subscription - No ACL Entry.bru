@@ -1,0 +1,98 @@
+meta {
+  name: POST Create Subscription - No ACL Entry
+  type: http
+  seq: 2
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/subscriptions/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{createdQueueId}}",
+      "aclEntryId": "00000000-0000-0000-0000-000000000000",
+      "type": "EVENT"
+    }
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.error.id: isDefined
+  res.body.error.code: isDefined
+  res.body.error.message: isDefined
+}
+
+script:pre-request {
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No environment ID found. Run "Create Environment - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+tests {
+  test("Subscription creation rejected with 400", function() {
+    // D7 (2.16): POST /subscriptions/subscription declares no 404. A caller-supplied aclEntryId that does not resolve is a malformed reference, not a missing resource, so the broker returns 400. "Caller holds no matching grant" is the separate 403 case.
+    expect(res.getStatus()).to.equal(400);
+  });
+  
+  test("Error response contains message", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('error');
+    expect(data.error).to.have.property('message');
+    expect(data.error.message).to.be.a('string');
+    expect(data.error.message.length).to.be.greaterThan(0);
+  });
+  
+  test("Error response contains error code", function() {
+    const data = res.getBody();
+    expect(data.error).to.have.property('code');
+    expect(data.error).to.have.property('subCode');
+  });
+  
+  test("Error response scope is BROKER", function() {
+    const data = res.getBody();
+    expect(data.error).to.have.property('scope');
+    expect(data.error.scope).to.equal('BROKER');
+  });
+}
+
+docs {
+  # Create Subscription - No ACL Entry
+  
+  Attempts to create a subscription with a non-existent ACL entry ID.
+  This should fail with a 400 Bad Request error.
+  
+  ## Prerequisites
+  
+  - A domain and solution must exist (createdDomainId, createdSolutionId)
+  - A queue must exist (createdQueueId)
+  - Valid authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 400 Bad Request
+  - Body: Error response with message indicating ACL entry not found
+  
+  ## What This Tests
+  
+  - Subscription creation is rejected when aclEntryId does not exist
+  - Proper error response format is returned
+  - No subscription is created for invalid ACL references
+}

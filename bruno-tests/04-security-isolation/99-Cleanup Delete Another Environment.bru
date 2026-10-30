@@ -1,0 +1,53 @@
+meta {
+  name: Cleanup Delete Another Environment
+  type: http
+  seq: 99
+}
+
+delete {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/environments/{{createdAnotherEnvironmentId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 204
+}
+
+script:pre-request {
+  const anotherEnvId = bru.getVar('createdAnotherEnvironmentId');
+  if (!anotherEnvId) {
+    throw new Error('No second environment ID found. Nothing to clean up.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Second environment deleted successfully", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  # Cleanup - Delete Another Environment
+
+  **TEST CLEANUP**
+
+  Deletes the second (adversary) environment created for isolation testing.
+  Uses admin authentication since only admins can delete environments.
+
+  This also implicitly cleans up the queue owned by the second environment,
+  as environment deletion cascades to owned resources.
+
+  ## Prerequisites
+
+  - Second environment must exist (createdAnotherEnvironmentId)
+  - Admin credentials must be available in .env
+}

@@ -1,0 +1,59 @@
+meta {
+  name: 21-Consumer Send DELAYED Request
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{mpConsumerRequestsUrl}}/LegacyTestObjects
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{mpZoneId}}
+  contextId: DEFAULT
+  requestType: DELAYED
+  queueId: {{mpConsumerQueueId}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'mpConsumer' });
+}
+
+script:post-response {
+  // Wait for message to be enqueued to provider's queue
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
+  if (res.getStatus() === 202) {
+    const data = res.getBody();
+    bru.setVar('mpDelayedMessageId', data.messageId);
+    console.log('DELAYED request accepted:', data.messageId);
+  }
+}
+
+assert {
+  res.status: eq 202
+}
+
+tests {
+  test("DELAYED request accepted", function() {
+    expect(res.getStatus()).to.equal(202);
+    expect(res.getBody().messageId).to.exist;
+  });
+}
+
+docs {
+  # Consumer Sends DELAYED Request to Legacy Provider
+  
+  The consumer sends a DELAYED GET request for LegacyTestObjects.
+  The requests-connector looks up the provider (which has the legacy tag)
+  and enqueues the request to the provider's queue with relativeServicePath
+  formatted with matrix params.
+  
+  Uses LegacyTestObjects service name to target the legacy-tagged provider
+  registered in step 19.
+}

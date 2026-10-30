@@ -1,0 +1,59 @@
+meta {
+  name: 11-Create Consumer Subscription
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/subscriptions/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{altConsumerQueueId}}",
+      "aclEntryId": "{{altConsumerAclId}}",
+      "messageType": "EVENT"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.subscription.id: isDefined
+  res.body.subscription.messageType: eq EVENT
+}
+
+script:pre-request {
+  const queueId = bru.getVar('altConsumerQueueId');
+  const aclId = bru.getVar('altConsumerAclId');
+  if (!queueId || !aclId) {
+    throw new Error('altConsumerQueueId or altConsumerAclId not set. Run steps 09-10 first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'altConsumer' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('altConsumerSubId', data.subscription.id);
+    console.log('Created consumer subscription:', data.subscription.id);
+  }
+}
+
+tests {
+  test("Consumer subscription created for TESTOBJECT1s events", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().subscription.messageType).to.equal('EVENT');
+  });
+}

@@ -1,0 +1,41 @@
+meta {
+  name: 24-Tag Legacy Consumer
+  type: http
+  seq: 24
+}
+
+post {
+  url: {{gatewayUrl}}/{{mpDomainId}}/{{mpSolutionId}}/tags
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "entityType": "ENVIRONMENT",
+    "entityId": "{{mpLegacyConsumerEnvId}}",
+    "tagKey": "SIF_LEGACY_MATRIX_PARAMS",
+    "tagValue": "true"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Legacy tag applied to consumer", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

@@ -1,0 +1,36 @@
+meta {
+  name: acls
+  seq: 6
+}
+
+docs {
+  # ACL Management Tests
+  
+  Tests for Access Control List (ACL) management APIs.
+  
+  ## What Are ACLs?
+  
+  ACLs control which environments can access which services in which zones/contexts. Each ACL entry specifies:
+  - Environment ID
+  - Service name (e.g., StudentPersonal)
+  - Zone ID
+  - Context ID
+  - Access type (PROVIDE, CONSUME, SUBSCRIBE)
+  - Access level (APPROVED, DENIED, PENDING)
+  
+  ## Tests Included
+  
+  - Create ACL entry
+  - List ACL entries (all and filtered)
+  - Get ACL entry by ID
+  - Update ACL entry
+  - Delete ACL entry
+  - Error scenarios
+  
+  ## Important Notes
+  
+  - ACL entries require authentication
+  - APPROVED entries grant access
+  - DENIED entries explicitly deny access
+  - Missing ACL entries result in 403 Forbidden
+}

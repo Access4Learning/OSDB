@@ -1,0 +1,43 @@
+meta {
+  name: provider-registry
+  seq: 9
+}
+
+docs {
+  # Provider Registry Tests
+  
+  Tests for provider registration and discovery APIs.
+  
+  ## What Is the Provider Registry?
+  
+  The provider registry tracks which providers offer which services in which zones/contexts. Each registration includes:
+  - Provider environment ID
+  - Service name
+  - Zone ID and context ID
+  - Provider endpoint URL
+  - Supported message patterns (IMMEDIATE, DELAYED, EVENT)
+  
+  ## Tests Included (Execution Order)
+  
+  1. **POST Create Provider Registration - Success** — Register a provider for "StudentPersonals" with IMMEDIATE pattern
+  2. **POST Create Provider Registration - Duplicate** — Verify duplicate (serviceName, zoneId, contextId) returns 409
+  3. **GET Lookup Provider - Success** — Lookup by serviceName/zoneId/contextId, verify match
+  4. **GET Lookup Provider - Not Found** — Lookup non-existent service, verify 404
+  5. **GET List Provider Registrations - Success** — List all registrations for environment
+  6. **DELETE Delete Provider Registration - Success** — Delete registration by ID
+  7. **GET Lookup Provider - After Delete** — Verify deleted provider returns 404
+  
+  ## Prerequisites
+  
+  - Domain created (createdDomainId)
+  - Solution created (createdSolutionId)
+  - Environment created of type BROKERED (createdEnvironmentId)
+  - Zone created (createdZoneId)
+  - Admin authentication credentials configured
+  
+  ## Important Notes
+  
+  - Provider registrations require admin authentication
+  - The (serviceName, zoneId, contextId) combination must be unique
+  - The broker uses registrations to route requests to providers
+}

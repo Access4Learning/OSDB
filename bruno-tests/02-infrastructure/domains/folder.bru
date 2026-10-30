@@ -1,0 +1,36 @@
+meta {
+  name: domains
+  seq: 1
+}
+
+docs {
+  # Domain Management Tests
+  
+  Tests for domain CRUD operations at root-level `/domains` paths.
+  
+  ## What Are Domains?
+  
+  Domains are the top-level tenant boundary in the SIF Unity Broker. Each domain represents
+  an organization (e.g., a state department of education, a school district). Domains contain
+  solutions, which in turn contain environments and other resources.
+  
+  ## URL Pattern
+  
+  Domain management endpoints are at the root level:
+  - `POST /domains` — Create a domain
+  - `GET /domains` — List all domains
+  - `GET /domains/{domainId}` — Get a specific domain
+  - `DELETE /domains/{domainId}` — Delete a domain
+  
+  ## Tests Included
+  
+  - Create domain
+  - List domains
+  - Get domain by ID
+  - Delete domain
+  
+  ## Important Notes
+  
+  - Domain endpoints are exempt from domain/solution membership validation
+  - Authentication is required for domain operations
+}

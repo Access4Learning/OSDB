@@ -1,0 +1,40 @@
+meta {
+  name: Immediate Provider Tests
+  seq: 6
+}
+
+docs {
+  # Immediate Provider Tests
+  
+  End-to-end tests for request/response flows against an IMMEDIATE provider.
+  Covers both IMMEDIATE and DELAYED consumer request patterns.
+  
+  ## What This Tests
+  
+  1. Creates a complete domain/solution/zone infrastructure
+  2. Creates a provider environment with PROVIDE ACL for IMMEDIATE_TEST_OBJECTs
+  3. Creates a consumer environment with QUERY ACL for IMMEDIATE_TEST_OBJECTs
+  4. Registers the provider with IMMEDIATE pattern
+  5. **IMMEDIATE request**: Consumer sends GET, gets synchronous response
+  6. **DELAYED request**: Consumer creates a queue, sends POST with requestType=DELAYED
+     and queueId header, then polls queue for the response
+  
+  ## Prerequisites
+  
+  - All services running (gateway, environment-service, requests-connector, queue-service)
+  - Test provider application running on port 9090
+  - Admin credentials configured in .env
+  
+  ## Run Order
+  
+  Tests are numbered and must be run in sequence:
+  - 00-03: Infrastructure setup (domain, solution, zone, default context)
+  - 04-05: Environment creation (provider, consumer)
+  - 06-07: ACL creation (PROVIDE for provider, QUERY for consumer)
+  - 08: Register provider URL with IMMEDIATE pattern
+  - 09: Consumer sends IMMEDIATE GET request
+  - 10: Consumer creates a queue
+  - 11: Consumer sends DELAYED POST request (with queueId header)
+  - 12: Consumer polls queue for the delayed response
+  - 13: Consumer ACKs the response message
+}

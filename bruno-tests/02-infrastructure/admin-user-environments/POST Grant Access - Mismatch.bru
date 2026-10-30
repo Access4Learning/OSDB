@@ -1,0 +1,76 @@
+meta {
+  name: POST Grant Access - Mismatch
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/admin-users/{{createdAdminUserId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "00000000-0000-0000-0000-000000000099"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.error.id: isDefined
+  res.body.error.code: isDefined
+  res.body.error.message: isDefined
+}
+
+script:pre-request {
+  const adminUserId = bru.getVar('createdAdminUserId');
+  if (!adminUserId) {
+    throw new Error('No admin user ID found. Run "POST Create Admin User - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Request rejected with 400 Bad Request", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+  
+  test("Response contains error details", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('error');
+    expect(data.error).to.have.property('message');
+    expect(data.error.message).to.be.a('string');
+    expect(data.error.message.length).to.be.greaterThan(0);
+  });
+}
+
+docs {
+  # Grant Environment Access - Domain+Solution Mismatch
+  
+  Attempts to grant access to an environment that does not belong to the
+  same domain+solution as the admin user.
+  
+  ## Expected Response
+  
+  - Status: 400 Bad Request
+  - Body: Error message indicating domain+solution mismatch
+  
+  ## What This Tests
+  
+  - Domain+solution scope enforcement (Requirement 2.3, 2.4)
+  - Proper error response for mismatched environments
+  
+  ## Note
+  
+  Uses a non-existent environment UUID to trigger the mismatch/not-found error.
+  In a real scenario, this would be an environment from a different domain+solution.
+}

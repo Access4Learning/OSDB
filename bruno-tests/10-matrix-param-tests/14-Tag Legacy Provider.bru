@@ -1,0 +1,44 @@
+meta {
+  name: 14-Tag Legacy Provider
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{gatewayUrl}}/{{mpDomainId}}/{{mpSolutionId}}/tags
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "entityType": "ENVIRONMENT",
+    "entityId": "{{mpLegacyProviderEnvId}}",
+    "tagKey": "SIF_LEGACY_MATRIX_PARAMS",
+    "tagValue": "true"
+  }
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+assert {
+  res.status: eq 201
+}
+
+tests {
+  test("Legacy tag applied to provider", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody();
+    expect(data.tagKey).to.equal('SIF_LEGACY_MATRIX_PARAMS');
+    expect(data.tagValue).to.equal('true');
+  });
+}

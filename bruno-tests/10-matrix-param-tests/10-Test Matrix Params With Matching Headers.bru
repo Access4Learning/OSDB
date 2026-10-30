@@ -1,0 +1,44 @@
+meta {
+  name: 10-Test Matrix Params With Matching Headers
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{mpConsumerRequestsUrl}}/MatrixParamTestObjects;zoneId={{mpZoneId}};contextId=DEFAULT
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{mpZoneId}}
+  contextId: DEFAULT
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'mpConsumer' });
+}
+
+assert {
+  res.status: neq 400
+}
+
+tests {
+  test("Matching matrix params and headers accepted (no conflict)", function() {
+    expect(res.getStatus()).to.not.equal(400);
+    console.log('Matching params+headers response status:', res.getStatus());
+  });
+}
+
+docs {
+  # Test Matrix Params With Matching Headers
+  
+  Sends a GET request with BOTH matrix parameters AND matching HTTP headers.
+  When the values are identical, there is no conflict and the gateway should
+  accept the request normally.
+  
+  A 400 would indicate the gateway incorrectly rejects duplicate-but-matching values.
+}

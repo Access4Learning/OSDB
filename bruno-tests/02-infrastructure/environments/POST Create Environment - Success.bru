@@ -1,0 +1,100 @@
+meta {
+  name: POST Create Environment - Success
+  type: http
+  seq: 1
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/environments/environment
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environment": {
+      "consumerName": "{{testDataPrefix}}-consumer-{{$randomUUID}}",
+      "type": "BROKERED"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.headers.location: isDefined
+  res.body.environment.id: isDefined
+  res.body.environment.sessionToken: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody().environment;
+    bru.setVar('createdEnvironmentId', data.id);
+    bru.setVar('createdSessionToken', data.sessionToken);
+    bru.setVar('createdSharedSecret', data.sharedSecret);
+    // Recorded so the provider-registry tests can pin where providerName comes from: a client
+    // cannot set it (it is not a field on the provider request), so the only correct assertion
+    // downstream is that it equals this environment's consumerName.
+    bru.setVar('createdEnvironmentConsumerName', data.consumerName);
+    console.log('Created environment:', data.id);
+    console.log('Stored createdSessionToken and createdSharedSecret for downstream tests');
+  }
+}
+
+tests {
+  test("Environment created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getHeader('location')).to.exist;
+  });
+  
+  test("Response contains environment data", function() {
+    const data = res.getBody().environment;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('sessionToken');
+    expect(data).to.have.property('consumerName');
+    expect(data.type).to.equal('BROKERED');
+  });
+  
+  test("Environment ID is valid UUID", function() {
+    const data = res.getBody().environment;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    expect(data.id).to.match(uuidRegex);
+  });
+}
+
+docs {
+  # Create Environment - Success
+  
+  Creates a new environment under a domain/solution.
+  
+  ## Important
+  
+  Requires admin authentication via the bootstrapped ADMIN environment credentials.
+  
+  ## Expected Response
+  
+  - Status: 201 Created
+  - Location header with new environment URL
+  - Body: Created environment with generated ID
+  
+  ## What This Tests
+  
+  - Environment creation with admin authentication
+  - Session token and shared secret are stored
+  - Environment ID is generated
+  - Default zone and context are set
+}

@@ -1,0 +1,56 @@
+meta {
+  name: 05-Create Provider ACL for TESTOBJECT1s
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{gatewayUrl}}/{{altDomainId}}/{{altSolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{altProviderEnvId}}",
+    "serviceName": "TESTOBJECT1s",
+    "zoneId": "{{altZoneId}}",
+    "contextId": "DEFAULT",
+    "accessType": "PROVIDE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const envId = bru.getVar('altProviderEnvId');
+  if (!envId) {
+    throw new Error('altProviderEnvId not set. Run step 04 first.');
+  }
+
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('altProviderAclId', data.id);
+    console.log('Created PROVIDE ACL for provider:', data.id);
+  }
+}
+
+tests {
+  test("Provider PROVIDE ACL created for TESTOBJECT1s", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

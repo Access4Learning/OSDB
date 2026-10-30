@@ -1,0 +1,84 @@
+meta {
+  name: POST Grant Access - Duplicate
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/admin-users/{{createdAdminUserId}}/environments
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{createdEnvironmentId}}"
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.error.id: isDefined
+  res.body.error.code: isDefined
+  res.body.error.message: isDefined
+}
+
+script:pre-request {
+  const adminUserId = bru.getVar('createdAdminUserId');
+  if (!adminUserId) {
+    throw new Error('No admin user ID found. Run "POST Create Admin User - Success" first.');
+  }
+  
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No environment ID found. Run "POST Create Environment - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Request rejected with 409 Conflict", function() {
+    expect(res.getStatus()).to.equal(409);
+  });
+  
+  test("Response contains error details", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('error');
+    expect(data.error).to.have.property('message');
+    expect(data.error.message).to.be.a('string');
+    expect(data.error.message.length).to.be.greaterThan(0);
+  });
+  
+  test("Error message indicates duplicate association", function() {
+    const data = res.getBody();
+    expect(data.error.message.toLowerCase()).to.include('already');
+  });
+}
+
+docs {
+  # Grant Environment Access - Duplicate
+  
+  Attempts to grant access to an environment that the user already has access to.
+  
+  ## Prerequisites
+  
+  - Must run after "POST Grant Access - Success" so the association already exists
+  
+  ## Expected Response
+  
+  - Status: 409 Conflict
+  - Body: Error message indicating duplicate association
+  
+  ## What This Tests
+  
+  - Duplicate association rejection (Requirement 2.7)
+  - Unique constraint enforcement on (user_id, environment_id)
+}

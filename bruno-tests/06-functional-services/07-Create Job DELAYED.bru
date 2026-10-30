@@ -1,0 +1,113 @@
+meta {
+  name: 07-Create Job DELAYED
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{gatewayUrl}}/{{fsDomainId}}/{{fsSolutionId}}/services/DataExport
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{fsZoneId}}
+  contextId: DEFAULT
+  serviceType: FUNCTIONAL
+  requestType: DELAYED
+  requestId: {{fsJobRequestId}}
+  queueId: {{fsConsumerQueueId}}
+  messageId: {{fsJobMessageId}}
+  xTESTHEADER: trueish
+}
+
+body:json {
+  {
+    "job": {
+      "name": "DataExport-Test",
+      "description": "Export student data in CSV format",
+      "phases": {
+        "phase": [
+          {
+            "name": "extraction",
+            "required": true
+          }
+        ]
+      }
+    }
+  }
+}
+
+assert {
+  res.status: eq 202
+}
+
+script:pre-request {
+  const envId = bru.getVar('fsConsumerEnvId');
+  if (!envId) {
+    throw new Error('Consumer environment not set. Run step 03 first.');
+  }
+  
+  // Generate a requestId for DELAYED correlation
+  const crypto = require('crypto');
+  const requestId = crypto.randomUUID();
+  bru.setVar('fsJobRequestId', requestId);
+  
+  const messageId = crypto.randomUUID();
+  bru.setVar('fsJobMessageId', messageId);
+  
+  console.log('DELAYED requestId:', requestId);
+  console.log('queueId:', bru.getVar('fsConsumerQueueId'));
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'fsConsumer' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  console.log('Create Job DELAYED response status:', status);
+  if (status === 202) {
+    console.log('Job creation accepted (DELAYED). Response will be delivered to consumer queue.');
+    const body = res.getBody();
+    if (body) {
+      console.log('Response body:', JSON.stringify(body, null, 2));
+    }
+  } else {
+    console.error('Unexpected status:', status);
+    console.error('Response:', JSON.stringify(res.getBody(), null, 2));
+  }
+}
+
+tests {
+  test("DELAYED job creation returns 202 Accepted", function() {
+    expect(res.getStatus()).to.equal(202);
+  });
+}
+
+docs {
+  # Create Job (DELAYED)
+  
+  Consumer sends a DELAYED POST to `/{domainId}/{solutionId}/services/DataExport`
+  to create a new job. The request body is a raw SIF job payload — no `serviceName`,
+  `zoneId`, or `contextId` in the body.
+  
+  ## New URL Pattern
+  
+  `POST /{domainId}/{solutionId}/services/{functionalServiceName}`
+  
+  ## SIF Headers
+  
+  - `serviceType: FUNCTIONAL` — identifies this as a functional service request
+  - `requestType: DELAYED` — asynchronous request/response via queue
+  - `requestId` — correlation ID for the delayed response
+  - `queueId` — consumer's queue where the response will be delivered
+  - `zoneId` / `contextId` — routing context (from headers, not body)
+  
+  ## Expected Response
+  
+  - Status: 202 Accepted (DELAYED request acknowledged)
+  - The provider's response will be delivered to the consumer's queue asynchronously
+}

@@ -1,0 +1,91 @@
+meta {
+  name: 04 Create First Environment
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{gatewayUrl}}/{{domainId}}/{{solutionId}}/environments/environment
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environment": {
+      "consumerName": "FirstConsumer",
+      "type": "BROKERED"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.environment.id: isDefined
+  res.body.environment.sessionToken: isDefined
+  res.body.environment.sharedSecret: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody().environment;
+    bru.setVar('firstEnvId', data.id);
+    bru.setVar('firstEnvSessionToken', data.sessionToken);
+    bru.setVar('firstEnvSharedSecret', data.sharedSecret);
+    console.log('===========================================');
+    console.log('SAVE THESE CREDENTIALS - shown only once:');
+    console.log('  Environment ID:', data.id);
+    console.log('  Session Token:', data.sessionToken);
+    console.log('  Shared Secret:', data.sharedSecret);
+    console.log('===========================================');
+  }
+}
+
+tests {
+  test("Environment created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response contains credentials", function() {
+    const data = res.getBody().environment;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('sessionToken');
+    expect(data).to.have.property('sharedSecret');
+    expect(data).to.have.property('consumerName');
+    expect(data.consumerName).to.equal('FirstConsumer');
+    expect(data.type).to.equal('BROKERED');
+  });
+}
+
+docs {
+  # Create First Environment
+  
+  Registers the first consumer environment. This is the equivalent of
+  "hey, I'm an application and I want to connect to the broker."
+  
+  ## IMPORTANT
+  
+  The response contains the `sharedSecret` — this is shown ONLY ONCE.
+  Save it immediately. It's needed for all future authenticated requests
+  from this environment.
+  
+  ## Prerequisites
+  - Domain created (step 02)
+  - Solution created (step 03)
+  
+  ## Response
+  - id: UUID of the new environment
+  - sessionToken: used in Authorization header
+  - sharedSecret: used to compute HMAC signatures (SAVE THIS!)
+}

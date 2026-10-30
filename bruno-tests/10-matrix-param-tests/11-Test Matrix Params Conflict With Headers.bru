@@ -1,0 +1,50 @@
+meta {
+  name: 11-Test Matrix Params Conflict With Headers
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{mpConsumerRequestsUrl}}/MatrixParamTestObjects;zoneId=CONFLICT_ZONE
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  zoneId: {{mpZoneId}}
+  contextId: DEFAULT
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'mpConsumer' });
+}
+
+assert {
+  res.status: eq 400
+}
+
+tests {
+  test("Conflicting matrix param and header returns 400", function() {
+    expect(res.getStatus()).to.equal(400);
+  });
+  
+  test("Response body contains PARAM_CONFLICT", function() {
+    const body = res.getBody();
+    const bodyStr = typeof body === 'string' ? body : JSON.stringify(body);
+    expect(bodyStr).to.contain('PARAM_CONFLICT');
+  });
+}
+
+docs {
+  # Test Matrix Params Conflict With Headers
+  
+  Sends a GET request where the matrix parameter zoneId=CONFLICT_ZONE differs
+  from the header zoneId={{mpZoneId}}. The gateway must detect this conflict
+  and return 400 with a PARAM_CONFLICT error.
+  
+  This ensures the gateway does not silently prefer one source over the other
+  when they disagree.
+}

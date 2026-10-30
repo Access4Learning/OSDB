@@ -1,0 +1,87 @@
+meta {
+  name: 12-Consumer Poll Queue for Response
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{gatewayUrl}}/{{immDomainId}}/{{immSolutionId}}/queues/{{immConsumerQueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  connectionId: immConsumer
+  X-Environment-Id: {{immConsumerEnvId}}
+}
+
+assert {
+  res.status: in [200, 204]
+}
+
+script:pre-request {
+  const queueId = bru.getVar('immConsumerQueueId');
+  if (!queueId) {
+    throw new Error('Consumer queue ID not set. Run step 10 first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'immConsumer' });
+}
+
+script:post-response {
+  const status = res.getStatus();
+  
+  if (status === 200) {
+    const messageId = res.getHeaders()?.messageid;
+    if (messageId) {
+      bru.setVar('immConsumerLastMessageId', messageId);
+      console.log('Delivered message ID:', messageId);
+    }
+    console.log('Response payload:', JSON.stringify(res.getBody(), null, 2));
+  } else if (status === 204) {
+    console.log('Queue empty — response not yet delivered. Try again in a few seconds.');
+  }
+}
+
+tests {
+  test("Queue poll succeeds", function() {
+    expect([200, 204]).to.include(res.getStatus());
+  });
+  
+  test("If response delivered, it contains TESTOBJECT data", function() {
+    if (res.getStatus() === 200) {
+      const body = res.getBody();
+      expect(body).to.exist;
+      console.log('Delayed response received from provider via queue');
+    }
+  });
+  
+  test("If queue empty, response is 204", function() {
+    if (res.getStatus() === 204) {
+      console.log('Response not yet available — the background proxy may still be processing');
+    }
+  });
+}
+
+docs {
+  # Consumer Polls Queue for Delayed Response
+  
+  After sending a DELAYED request (step 11), the consumer polls their
+  queue to retrieve the provider's response. The broker's background
+  worker proxied the request to the IMMEDIATE provider and delivered
+  the response to this queue.
+  
+  ## SIF "Get Next" Pattern
+  
+  - GET returns the oldest undelivered message (200) or empty (204)
+  - Repeated calls without deleteMessageId return the SAME message
+  - If 204, wait a few seconds and retry — the background proxy may still be processing
+  
+  ## Prerequisites
+  
+  - DELAYED request sent (step 11)
+  - Wait a few seconds for the background proxy to complete
+}

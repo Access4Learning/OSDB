@@ -1,0 +1,79 @@
+meta {
+  name: 22-Legacy Provider Poll Queue - Verify Matrix Params
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{gatewayUrl}}/{{mpDomainId}}/{{mpSolutionId}}/queues/{{mpLegacyProviderQueueId}}/messages
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+  connectionId: mpLegacyProvider
+  X-Environment-Id: {{mpLegacyProviderEnvId}}
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'mpLegacyProvider' });
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const headers = res.getHeaders();
+    const rsp = headers['relativeservicepath'] || headers['relativeServicePath'];
+    console.log('relativeServicePath from queue:', rsp);
+    console.log('zoneId header:', headers['zoneid'] || headers['zoneId']);
+    console.log('contextId header:', headers['contextid'] || headers['contextId']);
+    bru.setVar('mpLegacyProviderRelativeServicePath', rsp);
+    
+    const messageId = headers['messageid'];
+    if (messageId) {
+      bru.setVar('mpLegacyProviderLastMessageId', messageId);
+    }
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("Message delivered to legacy provider queue", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("relativeServicePath contains matrix params (legacy format)", function() {
+    const headers = res.getHeaders();
+    const rsp = headers['relativeservicepath'] || headers['relativeServicePath'];
+    expect(rsp).to.exist;
+    expect(rsp).to.contain(';');
+    expect(rsp).to.contain('contextId=');
+    expect(rsp).to.contain('zoneId=');
+    console.log('PASS: relativeServicePath has matrix params:', rsp);
+  });
+  
+  test("zoneId and contextId headers are also present (always)", function() {
+    const headers = res.getHeaders();
+    const zoneId = headers['zoneid'] || headers['zoneId'];
+    const contextId = headers['contextid'] || headers['contextId'];
+    expect(zoneId).to.exist;
+    expect(contextId).to.exist;
+  });
+}
+
+docs {
+  # Legacy Provider Polls Queue - Verify Matrix Params in relativeServicePath
+  
+  The legacy-tagged provider polls its queue. The message should have
+  relativeServicePath formatted with matrix params (e.g., 
+  /LegacyTestObjects;contextId=DEFAULT;zoneId=mp-zone-xxx)
+  because the provider has SIF_LEGACY_MATRIX_PARAMS=true.
+  
+  Additionally, zoneId and contextId should ALWAYS be present as
+  separate headers regardless of the legacy tag (Requirement 5.3).
+}

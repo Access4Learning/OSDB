@@ -1,0 +1,90 @@
+meta {
+  name: 05a Find Admin Environment ID
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{gatewayUrl}}/GLOBAL_DOMAIN/GLOBAL_SOLUTION/environments
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const data = res.getBody();
+    console.log('Response type:', typeof data);
+    console.log('Response:', JSON.stringify(data, null, 2).substring(0, 500));
+    
+    // Try to find environments in various response shapes
+    let envs = [];
+    if (Array.isArray(data)) {
+      envs = data;
+    } else if (data && data.environments && data.environments.environment) {
+      envs = data.environments.environment;
+    } else if (data && data.environments) {
+      envs = Array.isArray(data.environments) ? data.environments : [data.environments];
+    } else if (data && data.content) {
+      envs = data.content;
+    } else if (data && data.id) {
+      envs = [data];
+    }
+    
+    const adminEnv = envs.find(e => 
+      (e.sessionToken && e.sessionToken.includes('admin')) ||
+      (e.applicationName && e.applicationName.startsWith('ADMIN')) ||
+      (e.consumerName && e.consumerName.startsWith('ADMIN'))
+    ) || envs[envs.length - 1];
+    if (adminEnv) {
+      bru.setVar('adminEnvironmentId', adminEnv.id);
+      console.log('=============================================');
+      console.log('ADMIN ENVIRONMENT FOUND:');
+      console.log('  ID:', adminEnv.id);
+      console.log('  Application Name:', adminEnv.applicationName || adminEnv.consumerName);
+      console.log('=============================================');
+      console.log('Variable adminEnvironmentId has been set for the next test.');
+    } else {
+      console.log('No admin environment found in the response');
+    }
+  }
+}
+
+tests {
+  test("Admin environment found", function() {
+    expect(res.getStatus()).to.equal(200);
+    const data = res.getBody();
+    const envs = Array.isArray(data) ? data : (data.environments || data.content || []);
+    expect(envs.length).to.be.greaterThan(0);
+  });
+}
+
+docs {
+  # Find Admin Environment ID
+  
+  Lists admin environments and stores the admin's UUID as `adminEnvironmentId`
+  for use in the credential rotation test.
+  
+  ## What This Does
+  - Queries `/GLOBAL/GLOBAL/environments?type=ADMIN`
+  - Finds the admin environment
+  - Sets `adminEnvironmentId` Bruno variable
+  
+  ## Note
+  
+  The GLOBAL/GLOBAL path refers to the global admin domain/solution.
+  If your setup uses a different prefix for admin, adjust the URL.
+}

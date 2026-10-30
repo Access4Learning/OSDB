@@ -1,0 +1,47 @@
+meta {
+  name: 23-Disable Sequencing - Delete Entity Tag
+  type: http
+  seq: 24
+}
+
+delete {
+  url: {{gatewayUrl}}/{{seqDomainId}}/{{seqSolutionId}}/tags/SOLUTION/{{seqSolutionUuid}}/SEQUENCE_ENABLED
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 204
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  //wait for cache to update
+  await new Promise(resolve => setTimeout(resolve, 30000));
+}
+
+tests {
+  test("SEQUENCE_ENABLED entity tag deleted", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  # Disable Sequencing by Deleting Entity Tag
+  
+  Deletes the SEQUENCE_ENABLED entity tag from the SOLUTION entity.
+  After the ToggleService cache TTL expires (default 30s), the filter
+  will stop injecting x-sif-sequenceId headers.
+  
+  Note: There may be a brief window where cached "enabled" state persists.
+  The next test waits briefly or relies on the cache TTL being short in test config.
+}

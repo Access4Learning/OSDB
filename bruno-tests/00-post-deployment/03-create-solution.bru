@@ -1,0 +1,57 @@
+meta {
+  name: 03 Create Solution
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{gatewayUrl}}/{{domainId}}/solutions
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "solutionId": "{{solutionId}}",
+    "description": "Production solution"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdSolutionId', data.solutionId || bru.getEnvVar('solutionId'));
+    console.log('Solution created:', data.solutionId || bru.getEnvVar('solutionId'));
+  }
+}
+
+tests {
+  test("Solution created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
+
+docs {
+  # Create Solution
+  
+  Creates a solution under the domain. A solution represents an operating
+  environment (production, staging, testing).
+  
+  ## Prerequisites
+  - Domain created (step 02)
+}

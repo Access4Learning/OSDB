@@ -1,0 +1,102 @@
+meta {
+  name: 08-Register Provider for IMMEDIATE_TEST_OBJECTs
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{gatewayUrl}}/{{immDomainId}}/{{immSolutionId}}/providers/provider
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "provider": {
+      "environmentId": "{{immProviderEnvId}}",
+      "serviceName": "IMMEDIATE_TEST_OBJECTs",
+      "zoneId": "{{immZoneId}}",
+      "contextId": "DEFAULT",
+      "serviceType": "OBJECT",
+      "endPoint": {
+        "location": "http://localhost:9091/IMMEDIATE_TEST_OBJECTs"
+      },
+      "supportedRequestTypes": {
+        "supportedRequestType": [
+          {
+            "requestType": "IMMEDIATE",
+            "operations": {
+              "operation": [
+                "CREATE",
+                "QUERY",
+                "UPDATE",
+                "DELETE"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.provider.id: isDefined
+  res.body.provider.serviceName: eq IMMEDIATE_TEST_OBJECTs
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody().provider;
+    bru.setVar('immProviderRegistrationId', data.id);
+    console.log('Registered provider for IMMEDIATE_TEST_OBJECTs:', data.id);
+    console.log('Endpoint:', data.endPoint.location);
+  }
+    
+    const token = bru.getVar('immProviderSessionToken');
+    const secret = bru.getVar('immProviderSharedSecret');
+    const domain = bru.getVar('immDomainId');
+    const solution = bru.getVar('immSolutionId');
+    console.log('');
+    console.log('=== Copy/paste to start test-provider ===');
+    console.log(`java -jar target/test-provider-1.0.0-SNAPSHOT.jar --provider.session-token=${token} --provider.shared-secret=${secret} --provider.domain-id=${domain} --provider.solution-id=${solution}`);
+    console.log('==========================================');
+}
+
+tests {
+  test("Provider registered for IMMEDIATE_TEST_OBJECTs", function() {
+    expect(res.getStatus()).to.equal(201);
+    const data = res.getBody().provider;
+    expect(data.serviceName).to.equal('IMMEDIATE_TEST_OBJECTs');
+    expect(data.endPoint.location).to.include('IMMEDIATE_TEST_OBJECTs');
+  });
+}
+
+docs {
+  # Register Provider for IMMEDIATE_TEST_OBJECTs
+  
+  Registers the test provider application as the IMMEDIATE provider
+  for IMMEDIATE_TEST_OBJECTs in the test zone.
+  
+  The endpoint points to the test-provider app running on localhost:9090.
+  The test-provider handles IMMEDIATE requests by returning a TESTOBJECT
+  response synchronously.
+  
+  ## Prerequisites
+  
+  - Provider environment created (step 04)
+  - Provider PROVIDE ACL created (step 06)
+  - Test provider application running on port 9090
+}

@@ -1,0 +1,65 @@
+meta {
+  name: DELETE Delete Code Set - Success
+  type: http
+  seq: 5
+  tags: [
+    destructive
+  ]
+}
+
+delete {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/codeSets/{{createdCodeSetId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 204
+}
+
+script:pre-request {
+  const codeSetId = bru.getVar('createdCodeSetId');
+  if (!codeSetId) {
+    throw new Error('No code set ID found. Run "POST Create Code Set - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+script:post-response {
+  if (res.getStatus() === 204) {
+    console.log('Code set deleted:', bru.getVar('createdCodeSetId'));
+  }
+}
+
+tests {
+  test("Code set deleted successfully", function() {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  # Delete Code Set - Success
+  
+  Deletes an existing code set by its identifier.
+  
+  ## Prerequisites
+  
+  - Run "POST Create Code Set - Success" first to set `createdCodeSetId`
+  - Valid admin authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 204 No Content
+  
+  ## What This Tests
+  
+  - Code set deletion returns 204 (Requirement 14.5)
+  - Successful cleanup returns 204 with no body
+}

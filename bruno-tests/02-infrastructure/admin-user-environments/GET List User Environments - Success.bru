@@ -1,0 +1,78 @@
+meta {
+  name: GET List User Environments - Success
+  type: http
+  seq: 5
+  tags: [
+    nondestructive
+  ]
+}
+
+get {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/admin-users/{{createdAdminUserId}}/environments
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+assert {
+  res.status: eq 200
+  res.body: isArray
+}
+
+script:pre-request {
+  const adminUserId = bru.getVar('createdAdminUserId');
+  if (!adminUserId) {
+    throw new Error('No admin user ID found. Run "POST Create Admin User - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("User environments listed successfully", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("Response is an array", function() {
+    const data = res.getBody();
+    expect(data).to.be.an('array');
+  });
+  
+  test("Each entry has required fields", function() {
+    const data = res.getBody();
+    if (data.length > 0) {
+      const entry = data[0];
+      expect(entry).to.have.property('id');
+      expect(entry).to.have.property('userId');
+      expect(entry).to.have.property('environmentId');
+      expect(entry).to.have.property('applicationName');
+      expect(entry).to.have.property('grantedAt');
+    }
+  });
+}
+
+docs {
+  # List User Environments - Success
+  
+  Lists all environments an admin user has access to.
+  
+  ## Prerequisites
+  
+  - An admin user must exist (createdAdminUserId)
+  
+  ## Expected Response
+  
+  - Status: 200 OK
+  - Body: Array of environment access associations
+  
+  ## What This Tests
+  
+  - Successful listing of user's environment access (Requirement 2.2)
+  - Response contains array with expected fields
+  - Each entry includes id, userId, environmentId, applicationName, grantedAt
+}

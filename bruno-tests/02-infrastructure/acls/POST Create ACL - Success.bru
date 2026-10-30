@@ -1,0 +1,85 @@
+meta {
+  name: POST Create ACL - Success
+  type: http
+  seq: 1
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/acl-entries
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "environmentId": "{{createdEnvironmentId}}",
+    "serviceName": "StudentPersonal",
+    "zoneId": "{{createdZoneId}}",
+    "contextId": "ASSESSMENT",
+    "accessType": "SUBSCRIBE",
+    "accessLevel": "APPROVED"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.accessLevel: eq APPROVED
+}
+
+script:pre-request {
+  const envId = bru.getVar('createdEnvironmentId');
+  if (!envId) {
+    throw new Error('No environment ID found. Run "Create Environment - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, "admin");
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdAclId', data.id);
+    console.log('Created ACL entry:', data.id);
+  }
+}
+
+tests {
+  test("ACL entry created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response contains ACL data", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('id');
+    expect(data.accessType).to.equal('CONSUME');
+    expect(data.accessLevel).to.equal('APPROVED');
+  });
+}
+
+docs {
+  # Create ACL Entry - Success
+  
+  Creates a new ACL entry granting access to a service.
+  
+  ## Prerequisites
+  
+  - An environment must exist (createdEnvironmentId)
+  - Valid authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 201 Created
+  - Location header with new ACL entry URL
+  - Body: Created ACL entry with generated ID
+}

@@ -1,0 +1,98 @@
+meta {
+  name: POST Create Provider Registration - Duplicate
+  type: http
+  seq: 2
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/providers/provider
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "provider": {
+      "environmentId": "{{createdEnvironmentId}}",
+      "serviceName": "StudentPersonals",
+      "zoneId": "{{createdZoneId}}",
+      "contextId": "DEFAULT",
+      "serviceType": "OBJECT",
+      "endPoint": {
+        "location": "http://localhost:9091/StudentPersonals"
+      },
+      "supportedRequestTypes": {
+        "supportedRequestType": [
+          {
+            "requestType": "IMMEDIATE",
+            "operations": {
+              "operation": [
+                "CREATE",
+                "QUERY"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+
+assert {
+  res.status: eq 409
+}
+
+script:pre-request {
+  const registrationId = bru.getVar('createdProviderRegistrationId');
+  if (!registrationId) {
+    throw new Error('No provider registration ID found. Run "POST Create Provider Registration - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, 'admin');
+}
+
+tests {
+  test("Duplicate provider registration rejected with 409 Conflict", function() {
+    expect(res.getStatus()).to.equal(409);
+  });
+  
+  test("Error response contains message", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('message');
+    expect(data.message).to.be.a('string');
+    expect(data.message.length).to.be.greaterThan(0);
+  });
+}
+
+docs {
+  # Create Provider Registration - Duplicate
+  
+  Attempts to register a provider with the same (serviceName, zoneId, contextId) combination
+  that was already registered. This should fail with 409 Conflict.
+  
+  ## Prerequisites
+  
+  - Run "POST Create Provider Registration - Success" first
+  - The same serviceName/zoneId/contextId combination must already exist
+  
+  ## Expected Response
+  
+  - Status: 409 Conflict
+  - Body: Error response with message indicating duplicate registration
+  
+  ## What This Tests
+  
+  - Duplicate provider registration is rejected
+  - Unique constraint on (serviceName, zoneId, contextId) is enforced
+  - Proper error response format is returned
+}

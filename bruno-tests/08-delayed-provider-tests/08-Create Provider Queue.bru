@@ -1,0 +1,73 @@
+meta {
+  name: 08-Create Provider Queue
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{gatewayUrl}}/{{dlyDomainId}}/{{dlySolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "PROVIDER_DELAYED_QUEUE",
+      "ownerId": "{{dlyProviderEnvId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.queue.id: isDefined
+}
+
+script:pre-request {
+  const envId = bru.getVar('dlyProviderEnvId');
+  if (!envId) {
+    throw new Error('Provider environment ID not set. Run step 04 first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'dlyProvider' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('dlyProviderQueueId', data.queue.id);
+    console.log('Created provider queue:', data.queue.id);
+  }
+}
+
+tests {
+  test("Provider queue created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().queue.name).to.equal('PROVIDER_DELAYED_QUEUE');
+  });
+}
+
+docs {
+  # Create Provider Queue
+  
+  Creates a queue for the provider to receive delayed requests from the broker.
+  When a consumer sends a DELAYED request for DELAYED_TEST_OBJECTs, the broker
+  enqueues the request to this provider queue instead of proxying via HTTP.
+  
+  The provider application polls this queue, processes requests, and submits
+  responses via the Responses Connector.
+  
+  ## Prerequisites
+  
+  - Provider environment created (step 04)
+}

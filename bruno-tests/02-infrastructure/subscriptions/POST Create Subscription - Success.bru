@@ -1,0 +1,110 @@
+meta {
+  name: POST Create Subscription - Success
+  type: http
+  seq: 1
+  tags: [
+    nondestructive
+  ]
+}
+
+post {
+  url: {{gatewayUrl}}/{{createdDomainId}}/{{createdSolutionId}}/subscriptions/subscription
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "subscription": {
+      "queueId": "{{createdQueueId}}",
+      "aclEntryId": "{{createdAclId}}",
+      "messageType": "EVENT"
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.subscription.id: isDefined
+  res.body.subscription.queueId: isDefined
+  res.body.subscription.messageType: isDefined
+  res.body.subscription.createdAt: isDefined
+}
+
+script:pre-request {
+  const queueId = bru.getVar('createdQueueId');
+  if (!queueId) {
+    throw new Error('No queue ID found. Run "POST Create Queue - Success" first.');
+  }
+  
+  const aclId = bru.getVar('createdAclId');
+  if (!aclId) {
+    throw new Error('No ACL entry ID found. Run "POST Create ACL - Success" first.');
+  }
+  
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'created' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('createdSubscriptionId', data.subscription.id);
+    console.log('Created subscription:', data.subscription.id);
+  }
+}
+
+tests {
+  test("Subscription created successfully", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  
+  test("Response contains subscription wrapper", function() {
+    const data = res.getBody();
+    expect(data).to.have.property('subscription');
+  });
+  
+  test("Subscription contains all expected fields", function() {
+    const data = res.getBody().subscription;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('queueId');
+    expect(data).to.have.property('messageType');
+    expect(data).to.have.property('createdAt');
+  });
+  
+  test("Subscription messageType is EVENT", function() {
+    const data = res.getBody().subscription;
+    expect(data.messageType).to.equal('EVENT');
+  });
+  
+  test("Queue ID matches", function() {
+    const data = res.getBody().subscription;
+    const expectedQueueId = bru.getVar('createdQueueId');
+    expect(data.queueId).to.equal(expectedQueueId);
+  });
+}
+
+docs {
+  # Create Subscription - Success
+  
+  Creates a new EVENT subscription bound to an existing ACL entry.
+  
+  ## Prerequisites
+  
+  - A domain and solution must exist (createdDomainId, createdSolutionId)
+  - An environment must exist (createdEnvironmentId)
+  - A queue must exist (createdQueueId) — run "POST Create Queue - Success"
+  - An ACL entry must exist (createdAclId) — run "POST Create ACL - Success"
+  - Valid authentication credentials
+  
+  ## Expected Response
+  
+  - Status: 201 Created
+  - Body: Subscription with id, queueId, aclEntryId, type, createdAt
+}

@@ -1,0 +1,61 @@
+meta {
+  name: 10-Create Consumer Queue
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{gatewayUrl}}/{{immDomainId}}/{{immSolutionId}}/queues/queue
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: {{authorizationHeader}}
+  timestamp: {{timestampHeader}}
+}
+
+body:json {
+  {
+    "queue": {
+      "name": "DEFAULTQUEUE",
+      "ownerId": "{{immConsumerEnvId}}",
+      "maxRetries": 3,
+      "retryDelayMs": 5000
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.queue.id: isDefined
+}
+
+script:pre-request {
+  const auth = require('./common/auth.js');
+  auth.setAuthHeaders(req, bru, { varPrefix: 'immConsumer' });
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    bru.setVar('immConsumerQueueId', data.queue.id);
+    console.log('Created consumer queue:', data.queue.id);
+  }
+}
+
+tests {
+  test("Consumer queue created", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().queue.name).to.equal('DEFAULTQUEUE');
+  });
+}
+
+docs {
+  # Create Consumer Queue
+  
+  Creates a queue for the consumer to receive delayed responses.
+  The queue ID will be passed in the queueId header when making
+  DELAYED requests.
+}
